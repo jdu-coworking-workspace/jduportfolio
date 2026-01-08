@@ -1147,13 +1147,12 @@ const Top = () => {
 
 	const portalContent = (
 		<Box className={styles.buttonsContainer}>
-			{role === 'Student' && (
+			{role === 'Student' && viewingLive && (
 				<Button
 					variant='contained'
 					size='small'
 					onClick={async () => {
 						try {
-							console.log(student)
 							downloadCV(student)
 						} catch (err) {
 							console.log(err)

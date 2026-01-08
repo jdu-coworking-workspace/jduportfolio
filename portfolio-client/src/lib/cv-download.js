@@ -21,12 +21,10 @@ function formatJapaneseDateWithAge(birthdayStr) {
 	return `${birthday.getFullYear()}年 ${birthday.getMonth() + 1}月 ${birthday.getDate()}日 （満 ${age} 歳）`
 }
 export const downloadCV = async cvData => {
-	// 1️⃣ Template faylni fetch bilan olish
 	const response = await fetch('/resume-template.xlsx')
 	const arrayBuffer = await response.arrayBuffer()
 	const workbook = new ExcelJS.Workbook()
 	await workbook.xlsx.load(arrayBuffer)
-	// 2️⃣ Ma'lumotlarni to'ldirish
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
 
@@ -57,7 +55,6 @@ export const downloadCV = async cvData => {
 
 			// Formatni URL dan aniqlash
 			const ext = cvData.photo.endsWith('.png') ? 'png' : cvData.photo.endsWith('.jpg') || cvData.photo.endsWith('.jpeg') ? 'jpeg' : 'png'
-			// ExcelJS ga rasm qo‘shish
 			const imageId = workbook.addImage({
 				buffer,
 				extension: ext,
@@ -65,8 +62,8 @@ export const downloadCV = async cvData => {
 
 			// Rasm joylashuvi (G3)
 			sheet.addImage(imageId, {
-				tl: { col: 6, row: 2 }, // G3 → col=6, row=2 (0-based)
-				br: { col: 7, row: 6 }, // G6 → col=7, row=6 (br col index is exclusive)
+				tl: { col: 6, row: 2 },
+				br: { col: 7, row: 6 },
 				editAs: 'oneCell',
 			})
 		} catch (error) {
@@ -74,7 +71,6 @@ export const downloadCV = async cvData => {
 			sheet.getCell('G3').value = '写真エラー：画像を貼れませんでした。'
 		}
 	} else {
-		// Rasm bo‘lmasa placeholder
 		sheet.getCell('G3').value = `　写真を貼る位置
 写真を貼る必要がある場合
 1．縦  36～40mm　横  24～30mm
@@ -121,7 +117,6 @@ export const downloadCV = async cvData => {
 			sheet.getCell(`B${23 + index}`).value = new Date(item.from).getFullYear()
 			sheet.getCell(`C${23 + index}`).value = new Date(item.from).getMonth() + 1
 			sheet.getCell(`D${23 + index}`).value = `${item.company} ${item.details}`
-			// sheet.getCell(`G${17 + index}`).value = item.status
 		})
 	} else {
 		sheet.getCell('D23').value = 'なし'
@@ -137,14 +132,12 @@ export const downloadCV = async cvData => {
 
 			// IELTS max score formatlash
 			if (certificateValue.startsWith('IELTS')) {
-				const jsonPart = certificateValue.slice(5).trim() // {...} qismi
+				const jsonPart = certificateValue.slice(5).trim()
 				try {
 					const obj = JSON.parse(jsonPart)
-					const latestTest = obj.ieltslist[0] // eng so‘nggi test
+					const latestTest = obj.ieltslist[0]
 					certificateValue = `IELTS ${latestTest.level}`
-				} catch (e) {
-					// JSON parse bo‘lmasa, asl stringni saqlaymiz
-				}
+				} catch (e) {}
 			}
 
 			sheet.getCell(`L${4 + index}`).value = certificateValue
@@ -175,7 +168,7 @@ export const downloadCV = async cvData => {
 	// projekt deliverables (A8)
 	if (cvData.draft.deliverables.length > 0) {
 		cvData.draft.deliverables.map((item, index) => {
-			const offset = index * 2 // <-- TO‘G‘RI PIVOT
+			const offset = index * 2
 
 			sheet2.getCell(`A${8 + offset}`).value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
 			sheet2.getCell(`A${9 + offset}`).value = item.description
@@ -205,14 +198,3 @@ export const downloadCV = async cvData => {
 	const buffer = await workbook.xlsx.writeBuffer()
 	saveAs(new Blob([buffer]), `${cvData.first_name}-CV.xlsx`)
 }
-
-const ari = [
-	{
-		period: '2020年4月～2021年3月',
-		company: '株式会社サンプル',
-		role: '販売スタッフ',
-		// details: '販売スタッフとして勤務',
-		description: '主に接客とレジ業務を担当しました。',
-		technologies: ['git', 'html', 'css', 'javascript'],
-	},
-]
