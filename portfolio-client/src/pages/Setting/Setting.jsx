@@ -1,19 +1,21 @@
-import { useState, useEffect, useContext, useCallback } from 'react'
-import axios from '../../utils/axiosUtils'
-import { Container, TextField, Button, Avatar, Grid, Box, IconButton, InputAdornment, Card, CardContent, Typography, FormControl, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
-import { PhotoCamera, Visibility, VisibilityOff, Business, Translate as TranslateIcon } from '@mui/icons-material'
-import { useForm, Controller } from 'react-hook-form'
-import { UserContext } from '../../contexts/UserContext'
-import SettingStyle from './Setting.module.css'
+import { Business, PhotoCamera, Translate as TranslateIcon, Visibility, VisibilityOff } from '@mui/icons-material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
+import InfoIcon from '@mui/icons-material/Info'
+import PersonIcon from '@mui/icons-material/Person'
+import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
+import { useCallback, useContext, useEffect, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { useAlert } from '../../contexts/AlertContext'
 import { useLanguage } from '../../contexts/LanguageContext'
+import { UserContext } from '../../contexts/UserContext'
 import translations from '../../locales/translations'
-
+import axios from '../../utils/axiosUtils'
+import SettingStyle from './Setting.module.css'
 // Custom icons import
-import SaveIcon from '../../assets/icons/save-3-fill.svg'
-import LockIcon from '../../assets/icons/lock-2-fill.svg'
 import IdCardIcon from '../../assets/icons/id-card-line.svg'
-
+import LockIcon from '../../assets/icons/lock-2-fill.svg'
+import SaveIcon from '../../assets/icons/save-3-fill.svg'
 const Setting = () => {
 	const { activeUser, updateUser } = useContext(UserContext)
 	const { language, changeLanguage } = useLanguage()
@@ -52,6 +54,12 @@ const Setting = () => {
 		contactPhone: '',
 		workingHours: '',
 		location: '',
+		additionalAddress: '',
+		additionalAddressFurigana: '',
+		additionalEmail: '',
+		additionalIndeks: '',
+		additionalPhone: '',
+		isMarried: false,
 	}
 
 	const {
@@ -133,6 +141,12 @@ const Setting = () => {
 				contactPhone: userData.contactPhone || '+998 90 234 56 78',
 				workingHours: userData.workingHours || '09:00 - 18:00',
 				location: userData.location || 'Tashkent, Shayhontohur district, Sebzor, 21',
+				additionalAddress: userData.additional_info.additionalAddress || '',
+				additionalAddressFurigana: userData.additional_info.additionalAddressFurigana || '',
+				additionalEmail: userData.additional_info.additionalEmail || '',
+				additionalIndeks: userData.additional_info.additionalIndeks || '',
+				additionalPhone: userData.additional_info.additionalPhone || '',
+				isMarried: userData.additional_info.isMarried || false,
 			}
 
 			reset(formData)
@@ -439,135 +453,304 @@ const Setting = () => {
 						},
 					}}
 				>
-					<CardContent>
-						<Box className={SettingStyle.sectionHeader}>
-							<img src={IdCardIcon} alt='Personal Info' className={SettingStyle.sectionIcon} />
-							<Typography variant='h6' className={SettingStyle.sectionTitle}>
-								{t('personal_info') || '個人情報'}
-							</Typography>
-						</Box>
-						<Grid container spacing={3} className={SettingStyle.formGrid}>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('first_name') || '名'}
+					<Accordion>
+						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+								<img src={IdCardIcon} alt='Personal Info' className={SettingStyle.sectionIcon} />
+								<Typography variant='h6' className={SettingStyle.sectionTitle}>
+									{t('personal_info') || '個人情報'}
 								</Typography>
-								<Controller
-									name='first_name'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											fullWidth
-											disabled={!isEditing}
-											className={SettingStyle.textField}
+							</Box>
+						</AccordionSummary>
+						<AccordionDetails>
+							<CardContent>
+								<Grid container spacing={3} className={SettingStyle.formGrid}>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('first_name') || '名'}
+										</Typography>
+										<Controller
+											name='first_name'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('first_name_furigana') || '名 (ふりがな)'}
-								</Typography>
-								<Controller
-									name='first_name_furigana'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											fullWidth
-											disabled={!isEditing}
-											className={SettingStyle.textField}
-											placeholder={t('furigana_help')}
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('first_name_furigana') || '名 (ふりがな)'}
+										</Typography>
+										<Controller
+											name='first_name_furigana'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+													placeholder={t('furigana_help')}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('last_name') || '姓'}
-								</Typography>
-								<Controller
-									name='last_name'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											fullWidth
-											disabled={!isEditing}
-											className={SettingStyle.textField}
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('last_name') || '姓'}
+										</Typography>
+										<Controller
+											name='last_name'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('last_name_furigana') || '姓 (ふりがな)'}
-								</Typography>
-								<Controller
-									name='last_name_furigana'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											fullWidth
-											disabled={!isEditing}
-											className={SettingStyle.textField}
-											placeholder={t('furigana_help')}
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('last_name_furigana') || '姓 (ふりがな)'}
+										</Typography>
+										<Controller
+											name='last_name_furigana'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+													placeholder={t('furigana_help')}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('phone') || '電話番号'}
-								</Typography>
-								<Controller
-									name='phone'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											fullWidth
-											disabled={!isEditing}
-											className={SettingStyle.textField}
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('phone') || '電話番号'}
+										</Typography>
+										<Controller
+											name='phone'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12} sm={6}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('email') || 'メール'}
-								</Typography>
-								<Controller
-									name='email'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											autoComplete='false'
-											variant='outlined'
-											fullWidth
-											disabled={true}
-											className={SettingStyle.textField}
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('email') || 'メール'}
+										</Typography>
+										<Controller
+											name='email'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													autoComplete='false'
+													variant='outlined'
+													fullWidth
+													disabled={true}
+													className={SettingStyle.textField}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-						</Grid>
-					</CardContent>
+									</Grid>
+								</Grid>
+							</CardContent>
+						</AccordionDetails>
+					</Accordion>
 				</Card>
-
+				{/* additional info */}
+				<Card
+					className={SettingStyle.sectionCard}
+					sx={{
+						boxShadow: `
+							0 1px 3px rgba(0, 0, 0, 0.04),
+							0 1px 2px rgba(0, 0, 0, 0.03)
+						`,
+						transition: 'box-shadow 0.3s ease',
+						'&:hover': {
+							boxShadow: `
+								0 2px 4px rgba(0, 0, 0, 0.06),
+								0 4px 8px rgba(0, 0, 0, 0.04)
+							`,
+						},
+					}}
+				>
+					<Accordion>
+						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+								<InfoIcon className={SettingStyle.sectionIcon} />
+								<Typography variant='h6' className={SettingStyle.sectionTitle}>
+									Additional info
+								</Typography>
+							</Box>
+						</AccordionSummary>
+						<AccordionDetails>
+							<CardContent>
+								<Grid container spacing={3}>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											Additional Address
+										</Typography>
+										<Controller
+											name='additionalAddress'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											Additional Address (Furigana)
+										</Typography>
+										<Controller
+											name='additionalAddressFurigana'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											Additional Email
+										</Typography>
+										<Controller
+											name='additionalEmail'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											Additional Index
+										</Typography>
+										<Controller
+											name='additionalIndeks'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											Additional Phone
+										</Typography>
+										<Controller
+											name='additionalPhone'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											isMarried
+										</Typography>
+										<Controller
+											name='isMarried'
+											control={control}
+											render={({ field }) => (
+												<RadioGroup row value={field.value ? 'married' : 'single'} onChange={e => field.onChange(e.target.value === 'married')} sx={{ display: 'flex', gap: 2, mt: 1 }}>
+													<FormControlLabel
+														value='single'
+														control={<Radio />}
+														disabled={!isEditing}
+														label={
+															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+																<PersonIcon sx={{ fontSize: 20 }} />
+																<span>Single</span>
+															</Box>
+														}
+													/>
+													<FormControlLabel
+														value='married'
+														control={<Radio />}
+														disabled={!isEditing}
+														label={
+															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+																<FamilyRestroomIcon sx={{ fontSize: 20 }} />
+																<span>Married</span>
+															</Box>
+														}
+													/>
+												</RadioGroup>
+											)}
+										/>
+									</Grid>
+								</Grid>
+							</CardContent>
+						</AccordionDetails>
+					</Accordion>
+				</Card>
 				{/* Password Change Card */}
 				<Card
 					className={SettingStyle.sectionCard}
@@ -585,112 +768,119 @@ const Setting = () => {
 						},
 					}}
 				>
-					<CardContent>
-						<Box className={SettingStyle.sectionHeader}>
-							<img src={LockIcon} alt='Password' className={SettingStyle.sectionIcon} />
-							<Typography variant='h6' className={SettingStyle.sectionTitle}>
-								{t('change_password') || 'パスワードの変更'}
-							</Typography>
-						</Box>
-						<Grid container spacing={3} className={SettingStyle.formGrid}>
-							<Grid item xs={12}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('current_password') || 'パスワード'}
+					<Accordion>
+						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+								<img src={LockIcon} alt='Password' className={SettingStyle.sectionIcon} />
+								<Typography variant='h6' className={SettingStyle.sectionTitle}>
+									{t('change_password') || 'パスワードの変更'}
 								</Typography>
-								<Controller
-									name='currentPassword'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											type={showCurrentPassword ? 'text' : 'password'}
-											fullWidth
-											disabled={!isEditing}
-											autoComplete='new-password'
-											error={!!errors.currentPassword}
-											helperText={errors.currentPassword?.message}
-											className={SettingStyle.textField}
-											InputProps={{
-												endAdornment: (
-													<InputAdornment position='end'>
-														<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('current')} edge='end'>
-															{showCurrentPassword ? <VisibilityOff /> : <Visibility />}
-														</IconButton>
-													</InputAdornment>
-												),
-											}}
+							</Box>
+						</AccordionSummary>
+						<AccordionDetails>
+							{' '}
+							<CardContent>
+								<Grid container spacing={3} className={SettingStyle.formGrid}>
+									<Grid item xs={12}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('current_password') || 'パスワード'}
+										</Typography>
+										<Controller
+											name='currentPassword'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													type={showCurrentPassword ? 'text' : 'password'}
+													fullWidth
+													disabled={!isEditing}
+													autoComplete='new-password'
+													error={!!errors.currentPassword}
+													helperText={errors.currentPassword?.message}
+													className={SettingStyle.textField}
+													InputProps={{
+														endAdornment: (
+															<InputAdornment position='end'>
+																<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('current')} edge='end'>
+																	{showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+																</IconButton>
+															</InputAdornment>
+														),
+													}}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('new_password') || '新しいパスワード'}
-								</Typography>
-								<Controller
-									name='password'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											type={showNewPassword ? 'text' : 'password'}
-											fullWidth
-											disabled={!isEditing}
-											autoComplete='new-password'
-											error={!!errors.password}
-											helperText={errors.password?.message}
-											className={SettingStyle.textField}
-											InputProps={{
-												endAdornment: (
-													<InputAdornment position='end'>
-														<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('new')} edge='end'>
-															{showNewPassword ? <VisibilityOff /> : <Visibility />}
-														</IconButton>
-													</InputAdornment>
-												),
-											}}
+									</Grid>
+									<Grid item xs={12}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('new_password') || '新しいパスワード'}
+										</Typography>
+										<Controller
+											name='password'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													type={showNewPassword ? 'text' : 'password'}
+													fullWidth
+													disabled={!isEditing}
+													autoComplete='new-password'
+													error={!!errors.password}
+													helperText={errors.password?.message}
+													className={SettingStyle.textField}
+													InputProps={{
+														endAdornment: (
+															<InputAdornment position='end'>
+																<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('new')} edge='end'>
+																	{showNewPassword ? <VisibilityOff /> : <Visibility />}
+																</IconButton>
+															</InputAdornment>
+														),
+													}}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-							<Grid item xs={12}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('confirm_password') || 'パスワードを認証する'}
-								</Typography>
-								<Controller
-									name='confirmPassword'
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											value={field.value || ''} // Ensure never undefined
-											variant='outlined'
-											type={showConfirmPassword ? 'text' : 'password'}
-											fullWidth
-											disabled={!isEditing}
-											autoComplete='new-password'
-											error={!!errors.confirmPassword}
-											helperText={errors.confirmPassword?.message}
-											className={SettingStyle.textField}
-											InputProps={{
-												endAdornment: (
-													<InputAdornment position='end'>
-														<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('confirm')} edge='end'>
-															{showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-														</IconButton>
-													</InputAdornment>
-												),
-											}}
+									</Grid>
+									<Grid item xs={12}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('confirm_password') || 'パスワードを認証する'}
+										</Typography>
+										<Controller
+											name='confirmPassword'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													type={showConfirmPassword ? 'text' : 'password'}
+													fullWidth
+													disabled={!isEditing}
+													autoComplete='new-password'
+													error={!!errors.confirmPassword}
+													helperText={errors.confirmPassword?.message}
+													className={SettingStyle.textField}
+													InputProps={{
+														endAdornment: (
+															<InputAdornment position='end'>
+																<IconButton aria-label={t('toggle_password_visibility')} onClick={() => togglePasswordVisibility('confirm')} edge='end'>
+																	{showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+																</IconButton>
+															</InputAdornment>
+														),
+													}}
+												/>
+											)}
 										/>
-									)}
-								/>
-							</Grid>
-						</Grid>
-					</CardContent>
+									</Grid>
+								</Grid>
+							</CardContent>
+						</AccordionDetails>
+					</Accordion>
 				</Card>
 
 				{/* Language Settings Card */}
@@ -710,63 +900,69 @@ const Setting = () => {
 						},
 					}}
 				>
-					<CardContent>
-						<Box className={SettingStyle.sectionHeader}>
-							<TranslateIcon className={SettingStyle.sectionIcon} />
-							<Typography variant='h6' className={SettingStyle.sectionTitle}>
-								{t('language_settings') || '言語設定'}
-							</Typography>
-						</Box>
-						<Grid container spacing={3} className={SettingStyle.formGrid}>
-							<Grid item xs={12}>
-								<Typography variant='body2' className={SettingStyle.fieldLabel}>
-									{t('display_language') || '表示言語'}
+					<Accordion>
+						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+								<TranslateIcon className={SettingStyle.sectionIcon} />
+								<Typography variant='h6' className={SettingStyle.sectionTitle}>
+									{t('language_settings') || '言語設定'}
 								</Typography>
-								<FormControl variant='outlined' fullWidth>
-									<Select
-										value={language}
-										onChange={e => {
-											if (isEditing && hasUnsavedChanges) {
-												setPendingLanguage(e.target.value)
-												setShowLanguageConfirm(true)
-											} else {
-												changeLanguage(e.target.value)
-											}
-										}}
-										className={SettingStyle.textField}
-									>
-										<MenuItem value='ja'>
-											<Box display='flex' alignItems='center' gap={1}>
-												<span>🇯🇵</span>
-												<span>日本語</span>
-											</Box>
-										</MenuItem>
-										<MenuItem value='en'>
-											<Box display='flex' alignItems='center' gap={1}>
-												<span>🇺🇸</span>
-												<span>English</span>
-											</Box>
-										</MenuItem>
-										<MenuItem value='uz'>
-											<Box display='flex' alignItems='center' gap={1}>
-												<span>🇺🇿</span>
-												<span>O'zbek</span>
-											</Box>
-										</MenuItem>
-										<MenuItem value='ru'>
-											<Box display='flex' alignItems='center' gap={1}>
-												<span>🇷🇺</span>
-												<span>Русский</span>
-											</Box>
-										</MenuItem>
-									</Select>
-								</FormControl>
-								<Typography variant='caption' color='textSecondary' sx={{ mt: 1, display: 'block' }}>
-									{t('language_change_notice') || 'アプリケーションの表示言語を変更します'}
-								</Typography>
-							</Grid>
-						</Grid>
-					</CardContent>
+							</Box>
+						</AccordionSummary>
+						<AccordionDetails>
+							<CardContent>
+								<Grid container spacing={3} className={SettingStyle.formGrid}>
+									<Grid item xs={12}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('display_language') || '表示言語'}
+										</Typography>
+										<FormControl variant='outlined' fullWidth>
+											<Select
+												value={language}
+												onChange={e => {
+													if (isEditing && hasUnsavedChanges) {
+														setPendingLanguage(e.target.value)
+														setShowLanguageConfirm(true)
+													} else {
+														changeLanguage(e.target.value)
+													}
+												}}
+												className={SettingStyle.textField}
+											>
+												<MenuItem value='ja'>
+													<Box display='flex' alignItems='center' gap={1}>
+														<span>🇯🇵</span>
+														<span>日本語</span>
+													</Box>
+												</MenuItem>
+												<MenuItem value='en'>
+													<Box display='flex' alignItems='center' gap={1}>
+														<span>🇺🇸</span>
+														<span>English</span>
+													</Box>
+												</MenuItem>
+												<MenuItem value='uz'>
+													<Box display='flex' alignItems='center' gap={1}>
+														<span>🇺🇿</span>
+														<span>O'zbek</span>
+													</Box>
+												</MenuItem>
+												<MenuItem value='ru'>
+													<Box display='flex' alignItems='center' gap={1}>
+														<span>🇷🇺</span>
+														<span>Русский</span>
+													</Box>
+												</MenuItem>
+											</Select>
+										</FormControl>
+										<Typography variant='caption' color='textSecondary' sx={{ mt: 1, display: 'block' }}>
+											{t('language_change_notice') || 'アプリケーションの表示言語を変更します'}
+										</Typography>
+									</Grid>
+								</Grid>
+							</CardContent>
+						</AccordionDetails>
+					</Accordion>
 				</Card>
 
 				{/* Admin Contact Information Card */}

@@ -143,15 +143,6 @@
 		0 20px 6px 0 rgba(0, 0, 0, 0.04);
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin-bottom: 24px;
-	padding-bottom: 16px;
-	border-bottom: 1px solid #f0f0f0;
-}
-
 .sectionIcon {
 	color: #6366f1 !important;
 	font-size: 24px !important;
