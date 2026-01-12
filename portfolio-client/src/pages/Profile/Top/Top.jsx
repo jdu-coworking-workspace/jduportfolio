@@ -34,6 +34,8 @@ import QA from '../../../pages/Profile/QA/QA'
 import axios from '../../../utils/axiosUtils'
 import { Education } from '../Education/Education'
 import WorkExperience from '../WorkExperience/WorkExperience'
+import Arubaito from '../Arubaito/Arubaito'
+import { Licenses } from '../Licenses/Licenses'
 import styles from './Top.module.css'
 const Top = () => {
 	let id
@@ -743,7 +745,7 @@ const Top = () => {
 	}
 
 	const mapData = data => {
-		const draftKeys = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'qa', 'education']
+		const draftKeys = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'qa', 'education', 'work_experience', 'licenses', 'arubaito']
 		return {
 			...data,
 			draft: draftKeys.reduce((acc, key) => {
@@ -1728,6 +1730,9 @@ const Top = () => {
 							<TextField title={t('origin')} data={student.draft.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
+							<TextField title={t('address_furigana') || '住所（ふりがな）'} data={student.draft.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
+						</div>
+						<div style={{ flex: 1, minWidth: 280 }}>
 							<TextField title={t('major')} data={student.draft.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
@@ -1897,6 +1902,8 @@ const Top = () => {
 						/>
 
 						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
+
+						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData.draft.licenses || [] : currentDraft.profile_data.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 					</div>
 				</Box>
 			)}
@@ -1914,6 +1921,7 @@ const Top = () => {
 			{subTabIndex === 'work_experience' && (
 				<Box my={2}>
 					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData.draft.work_experience || [] : currentDraft.profile_data.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
+					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData.draft.arubaito || [] : currentDraft.profile_data.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
 			)}
 			{/* Credits section is temporarily disabled */}
