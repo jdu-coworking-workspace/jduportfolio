@@ -50,6 +50,7 @@ const Setting = () => {
 		last_name_furigana: '',
 		phone: '',
 		email: '',
+		postal_code: '',
 		contactEmail: '',
 		contactPhone: '',
 		workingHours: '',
@@ -137,6 +138,7 @@ const Setting = () => {
 				last_name_furigana: userData.last_name_furigana || '',
 				phone: userData.phone || '',
 				email: userData.email || '',
+				postal_code: userData.postal_code || '',
 				contactEmail: userData.contactEmail || 'test@jdu.uz',
 				contactPhone: userData.contactPhone || '+998 90 234 56 78',
 				workingHours: userData.workingHours || '09:00 - 18:00',
@@ -228,6 +230,7 @@ const Setting = () => {
 				last_name_furigana: data.last_name_furigana,
 				phone: data.phone,
 				email: data.email,
+				postal_code: data.postal_code,
 				contactEmail: data.contactEmail,
 				contactPhone: data.contactPhone,
 				workingHours: data.workingHours,
@@ -320,6 +323,7 @@ const Setting = () => {
 			last_name_furigana: user.last_name_furigana || '',
 			phone: user.phone || '',
 			email: user.email || '',
+			postal_code: user.postal_code || '',
 			contactEmail: user.contactEmail || 'test@jdu.uz',
 			contactPhone: user.contactPhone || '+998 90 234 56 78',
 			workingHours: user.workingHours || '09:00 - 18:00',
@@ -578,6 +582,26 @@ const Setting = () => {
 													fullWidth
 													disabled={true}
 													className={SettingStyle.textField}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid item xs={12} sm={6}>
+										<Typography variant='body2' className={SettingStyle.fieldLabel}>
+											{t('postal_code') || '郵便番号'}
+										</Typography>
+										<Controller
+											name='postal_code'
+											control={control}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													value={field.value || ''} // Ensure never undefined
+													variant='outlined'
+													fullWidth
+													disabled={!isEditing}
+													className={SettingStyle.textField}
+													placeholder={t('postal_code_placeholder') || 'e.g. 160-0023'}
 												/>
 											)}
 										/>
