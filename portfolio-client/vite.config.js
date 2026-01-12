@@ -24,7 +24,8 @@ export default defineConfig({
 		},
 		proxy: {
 			'/api': {
-				target: process.env.VITE_API_URL || 'http://localhost:4000',
+				// eslint-disable-next-line no-undef
+				target: process.env.VITE_API_URL || 'http://localhost:8000',
 				changeOrigin: true,
 				secure: false,
 			},
