@@ -23,6 +23,7 @@ const itSkillRoutes = require('./routes/itSkillRoutes')
 const skillRoutes = require('./routes/skillRoutes')
 const recruiterFileRoutes = require('./routes/recruiterFileRoutes')
 const deliverableRoutes = require('./routes/deliverableRoutes')
+const maintenanceRoute = require('./routes/maintenance-route')
 // const healthRoute = require('./routes/health-route')
 
 /**
@@ -59,6 +60,9 @@ const deliverableRoutes = require('./routes/deliverableRoutes')
  */
 
 const configureRoutes = app => {
+	// Maintenance endpoint (public, no auth required)
+	app.use('/api/maintenance', maintenanceRoute)
+
 	// Auth routes
 	app.use('/api/auth', authRoute)
 

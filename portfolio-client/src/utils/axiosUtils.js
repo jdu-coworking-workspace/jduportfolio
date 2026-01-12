@@ -23,12 +23,14 @@ axios.interceptors.response.use(
 	},
 	function (error) {
 		const originalRequest = error.config
-		if (error.response.status === 401 && !originalRequest._retry) {
+		// Don't redirect to login for maintenance errors or network errors
+		if (error.response && error.response.status === 401 && !originalRequest._retry && !error.response.data?.maintenance) {
 			originalRequest._retry = true
 			window.location.href = '/login'
 
 			return axios(originalRequest)
 		}
+		// For network errors or maintenance errors, just reject
 		return Promise.reject(error)
 	}
 )
