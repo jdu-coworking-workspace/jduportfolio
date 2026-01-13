@@ -1,116 +1,91 @@
 'use strict'
-
 const bcrypt = require('bcrypt')
 
 module.exports = {
-	up: async (queryInterface, Sequelize) => {
-		// Check if test students already exist - use specific email list to avoid false positives
-		const testEmails = ['student@jdu.uz', 'student00@jdu.uz', 'student01@jdu.uz', 'student02@jdu.uz', 'student03@jdu.uz', 'student04@jdu.uz', 'student05@jdu.uz', 'student06@jdu.uz', 'student07@jdu.uz', 'student08@jdu.uz', 'student09@jdu.uz']
+	async up(queryInterface, Sequelize) {
+		// Check if test student accounts already exist
+		const existingStudents = await queryInterface.sequelize.query(`SELECT email FROM "Students" WHERE email LIKE 'student%@jdu.uz'`, { type: Sequelize.QueryTypes.SELECT })
 
-		const existingStudents = await queryInterface.sequelize.query(`SELECT email FROM "Students" WHERE email IN (:emails)`, {
-			replacements: { emails: testEmails },
-			type: Sequelize.QueryTypes.SELECT,
-		})
-
-		// If any test students already exist, skip insertion
 		if (existingStudents.length > 0) {
-			console.log('Test student accounts already exist. Skipping insertion.')
+			console.log('✅ Test student accounts already exist. Skipping insertion.')
 			return
 		}
 
-		// Hash the password once (all students will have the same password: "1234")
-		const salt = await bcrypt.genSalt(10)
-		const hashedPassword = await bcrypt.hash('1234', salt)
+		// Hash the password once (for all accounts)
+		const hashedPassword = await bcrypt.hash('1234', 10)
 
+		// Base date for enrollment (2020-09-01)
+		const baseEnrollmentDate = new Date('2020-09-01')
+
+		// Generate 10 test student accounts (student@jdu.uz + student01-09@jdu.uz)
 		const testStudents = []
 
-		// Create 10 test student accounts
 		for (let i = 0; i < 10; i++) {
-			const studentNumber = String(i).padStart(2, '0')
-			const email = i === 0 ? 'student@jdu.uz' : `student${studentNumber}@jdu.uz`
-			const studentId = `TEST${studentNumber}`
+			const paddedNum = i.toString().padStart(2, '0')
+			const email = i === 0 ? 'student@jdu.uz' : `student${paddedNum}@jdu.uz`
+			const studentId = `TEST${paddedNum}`
 
 			testStudents.push({
 				email: email,
 				password: hashedPassword,
 				student_id: studentId,
-				first_name: `Test${studentNumber}`,
+				first_name: `Test${paddedNum}`,
 				last_name: 'Student',
-				first_name_furigana: `テスト${studentNumber}`,
+				first_name_furigana: `テスト${paddedNum}`,
 				last_name_furigana: 'スチューデント',
-				date_of_birth: '2000-01-01',
-				phone: '080-0000-0000',
-				photo: null,
-				gender: i % 2 === 0 ? 'Male' : 'Female',
-				address: 'Tashkent, Uzbekistan',
-				parents_phone_number: '998-90-000-0000',
-				enrollment_date: '2021-04-01',
-				partner_university_enrollment_date: '2021-04-01',
-				semester: String((i % 8) + 1),
-				partner_university: 'Tashkent State University',
-				faculty: 'Information Technology',
-				department: 'Computer Science',
-				student_status: 'active',
-				partner_university_credits: 20,
-				world_language_university_credits: 10,
-				business_skills_credits: 5,
-				japanese_employment_credits: 5,
-				liberal_arts_education_credits: 5,
-				total_credits: 45,
-				specialized_education_credits: 15,
-				self_introduction: `I am Test Student ${studentNumber}. This is a test account for development and testing purposes.`,
-				hobbies: 'Reading, Coding, Gaming',
-				gallery: [],
-				skills: {
+				date_of_birth: `200${i}-01-01`, // 2000-2009
+				phone: `+99890123450${i}`,
+				gender: i % 2 === 0 ? 'MALE' : 'FEMALE',
+				address: `${123 + i} Test Street, Tashkent, Uzbekistan`,
+				parents_phone_number: `+99890123460${i}`,
+				enrollment_date: baseEnrollmentDate,
+				partner_university: 'Tokyo Communication University',
+				partner_university_enrollment_date: new Date('2021-04-01'),
+				semester: ((i % 8) + 1).toString(),
+				graduation_year: (2024 + (i % 4)).toString(),
+				graduation_season: i % 2 === 0 ? '春' : '秋',
+				department: 'ITマネジメント学科',
+				faculty: '情報マネジメント学部',
+				// TUZATILDI: JSON.stringify qo'shildi
+				it_skills: JSON.stringify({
 					上級: [],
 					中級: [],
 					初級: [],
-				},
-				it_skills: {
-					上級: [],
-					中級: [],
-					初級: [],
-				},
-				other_information: 'Test account - do not modify',
-				other_skills: {},
-				language_skills: 'English (Basic), Japanese (N5)',
-				ielts: null,
-				jlpt: null,
-				toeic: null,
-				group: `Group ${(i % 3) + 1}`,
-				jdu_credits: 0,
-				deliverables: [],
-				graduation_year: '2025年',
-				graduation_season: '春',
-				employment_status: 'seeking',
-				desired_job_type: 'IT Engineer',
-				desired_industry: 'Information Technology',
-				desired_location: 'Tokyo',
-				job_hunting_status: 'active',
-				visibility: false, // Hidden by default
-				created_by: 'system',
-				is_public: false,
+				}),
+				partner_university_credits: 20 + i * 5,
+				world_language_university_credits: 10 + i * 2,
+				business_skills_credits: 5 + i,
+				japanese_employment_credits: 8 + i,
+				liberal_arts_education_credits: 12 + i * 2,
+				total_credits: 55 + i * 10,
+				specialized_education_credits: 0,
+				active: true,
+				visibility: false,
+				has_pending: false,
+				kintone_id: 99900 + i,
+				self_introduction: `This is a test student account created for development and testing purposes. Account ID: ${studentId}`,
+				other_information: 'TEST ACCOUNT - Do not use in production',
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			})
 		}
 
+		// Insert all test students
 		await queryInterface.bulkInsert('Students', testStudents)
-		console.log('✅ Successfully created 10 test student accounts')
-		console.log('📧 Email pattern: student@jdu.uz, student01@jdu.uz, ..., student09@jdu.uz')
-		console.log('🔑 Password for all accounts: 1234')
-		console.log('🆔 Student IDs: TEST00, TEST01, ..., TEST09')
+
+		console.log('✅ Successfully created 10 test student accounts:')
+		console.log('   - student@jdu.uz (password: 1234)')
+		console.log('   - student01@jdu.uz through student09@jdu.uz (password: 1234)')
 	},
 
-	down: async (queryInterface, Sequelize) => {
-		// Remove test students - use explicit email list to avoid deleting legitimate users
-		const testEmails = ['student@jdu.uz', 'student00@jdu.uz', 'student01@jdu.uz', 'student02@jdu.uz', 'student03@jdu.uz', 'student04@jdu.uz', 'student05@jdu.uz', 'student06@jdu.uz', 'student07@jdu.uz', 'student08@jdu.uz', 'student09@jdu.uz']
-
+	async down(queryInterface, Sequelize) {
+		// Remove all test student accounts
 		await queryInterface.bulkDelete('Students', {
 			email: {
-				[Sequelize.Op.in]: testEmails,
+				[Sequelize.Op.like]: 'student%@jdu.uz',
 			},
 		})
-		console.log('✅ Test student accounts removed')
+
+		console.log('✅ Removed all test student accounts')
 	},
 }

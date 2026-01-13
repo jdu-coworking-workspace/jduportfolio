@@ -562,6 +562,47 @@ class DraftService {
 		const draftVersion = studentData.drafts?.find(d => d.version_type === 'draft') || null
 		const pendingVersion = studentData.drafts?.find(d => d.version_type === 'pending') || null
 
+		// ========== RENAME CV FIELDS (remove cv_ prefix)  ==========
+		if (studentData.cv_education) {
+			studentData.education = studentData.cv_education
+			delete studentData.cv_education
+		}
+
+		if (studentData.cv_work_experience) {
+			studentData.workExperience = studentData.cv_work_experience
+			delete studentData.cv_work_experience
+		}
+
+		if (studentData.cv_licenses) {
+			studentData.licenses = studentData.cv_licenses
+			delete studentData.cv_licenses
+		}
+
+		// Remove cv_projects (frontend uses deliverables instead)
+		if (studentData.cv_projects) {
+			delete studentData.cv_projects
+		}
+
+		if (studentData.cv_additional_info) {
+			studentData.additionalInfo = studentData.cv_additional_info
+			delete studentData.cv_additional_info
+		}
+
+		if (studentData.address_furigana) {
+			studentData.addressFurigana = studentData.address_furigana
+			delete studentData.address_furigana
+		}
+
+		if (studentData.postal_code) {
+			studentData.postalCode = studentData.postal_code
+			delete studentData.postal_code
+		}
+
+		if (studentData.additionalInfo && studentData.additionalInfo.arubaito) {
+			studentData.arubaito = studentData.additionalInfo.arubaito
+			delete studentData.additionalInfo.arubaito
+		}
+
 		return {
 			...studentData,
 			draft: draftVersion,

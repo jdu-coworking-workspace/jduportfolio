@@ -595,6 +595,47 @@ class StudentService {
 				})
 			}
 
+			// ======= RENAME CV FIELDS (remove cv_ prefix) ==========
+			if (studentJson.cv_education) {
+				studentJson.education = studentJson.cv_education
+				delete studentJson.cv_education
+			}
+
+			if (studentJson.cv_work_experience) {
+				studentJson.workExperience = studentJson.cv_work_experience
+				delete studentJson.cv_work_experience
+			}
+
+			if (studentJson.cv_licenses) {
+				studentJson.licenses = studentJson.cv_licenses
+				delete studentJson.cv_licenses
+			}
+
+			// Remove cv_projects (frontend uses deliverables instead)
+			if (studentJson.cv_projects) {
+				delete studentJson.cv_projects
+			}
+
+			if (studentJson.cv_additional_info) {
+				studentJson.additionalInfo = studentJson.cv_additional_info
+				delete studentJson.cv_additional_info
+			}
+
+			if (studentJson.address_furigana) {
+				studentJson.addressFurigana = studentJson.address_furigana
+				delete studentJson.address_furigana
+			}
+
+			if (studentJson.postal_code) {
+				studentJson.postalCode = studentJson.postal_code
+				delete studentJson.postal_code
+			}
+
+			if (studentJson.additionalInfo && studentJson.additionalInfo.arubaito) {
+				studentJson.arubaito = studentJson.additionalInfo.arubaito
+				delete studentJson.additionalInfo.arubaito
+			}
+
 			return studentJson
 		} catch (error) {
 			throw error
@@ -1030,6 +1071,177 @@ class StudentService {
 			console.log(`✅ Sync completed for ${students.length} students`)
 			return results
 		} catch (error) {
+			throw error
+		}
+	}
+
+	/**
+	 * Service method to get student data formatted for CV download
+	 * @param {string} studentId - Student ID
+	 * @returns {object} Student data formatted for CV
+	 */
+	static async getStudentForCV(studentId) {
+		try {
+			console.log('🔍 Fetching student for CV:', studentId)
+
+			const student = await Student.findOne({
+				where: { student_id: studentId },
+				raw: true,
+			})
+
+			if (!student) {
+				throw new Error('Student not found')
+			}
+
+			delete student.password
+			console.log('✅ Student found:', student.student_id)
+
+			// Safe helper functions
+			const parseJSON = field => {
+				if (!field) return null
+				if (typeof field === 'object') return field
+				if (typeof field === 'string') {
+					try {
+						return JSON.parse(field)
+					} catch (e) {
+						return null
+					}
+				}
+				return null
+			}
+
+			const safeArray = value => {
+				return Array.isArray(value) ? value : []
+			}
+
+			const calculateAge = birthDate => {
+				if (!birthDate) return null
+				const today = new Date()
+				const birth = new Date(birthDate)
+				let age = today.getFullYear() - birth.getFullYear()
+				const monthDiff = today.getMonth() - birth.getMonth()
+				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+					age--
+				}
+				return age
+			}
+
+			// FIXED: Use cv_education directly
+			const allEducation = safeArray(student.cv_education).sort((a, b) => {
+				if (a.year !== b.year) return (a.year || 0) - (b.year || 0)
+				return (a.month || 0) - (b.month || 0)
+			})
+
+			// Work Experience
+			const workExperience = safeArray(student.cv_work_experience)
+
+			// Licenses (cv_licenses + parsed certificates)
+			const licenses = [...safeArray(student.cv_licenses)]
+
+			const jlptData = parseJSON(student.jlpt)
+			if (jlptData?.highest) {
+				licenses.push({
+					year: new Date().getFullYear(),
+					month: 12,
+					certifacateName: `JLPT ${jlptData.highest} Certificate`,
+				})
+			}
+
+			if (student.ielts) {
+				licenses.push({
+					year: new Date().getFullYear(),
+					month: 6,
+					certifacateName: `IELTS ${student.ielts}`,
+				})
+			}
+
+			const jduJapaneseData = parseJSON(student.jdu_japanese_certification)
+			if (jduJapaneseData?.highest) {
+				licenses.push({
+					year: new Date().getFullYear(),
+					month: 3,
+					certifacateName: `JDU Japanese Certification ${jduJapaneseData.highest}`,
+				})
+			}
+
+			// IT Skills → Programming
+			const itSkills = student.it_skills || {}
+			const programmingSkills = []
+
+			if (itSkills && typeof itSkills === 'object') {
+				Object.keys(itSkills).forEach(level => {
+					const skillsAtLevel = itSkills[level]
+					if (Array.isArray(skillsAtLevel)) {
+						skillsAtLevel.forEach(skill => {
+							if (skill && skill.name && !programmingSkills.includes(skill.name)) {
+								programmingSkills.push(skill.name)
+							}
+						})
+					}
+				})
+			}
+
+			// Hobbies
+			let hobbiesArray = []
+			if (student.hobbies) {
+				if (typeof student.hobbies === 'string') {
+					hobbiesArray = [student.hobbies]
+				} else if (Array.isArray(student.hobbies)) {
+					hobbiesArray = student.hobbies
+				}
+			}
+
+			// Additional Info
+			const additionalInfo = student.cv_additional_info || {}
+			// Build CV Data
+			const cvData = {
+				fullNameFurigana: `${student.last_name_furigana || ''} ${student.first_name_furigana || ''}`.trim() || null,
+				fullName: `${student.last_name} ${student.first_name}`,
+				gender: student.gender || null,
+				imageUrl: student.photo || null,
+				birthday: student.date_of_birth || null,
+				age: calculateAge(student.date_of_birth),
+				addressFurigana: student.address_furigana || additionalInfo.addressFurigana || null,
+				indeks: student.postal_code || additionalInfo.indeks || null,
+				address: student.address || null,
+				tel: student.phone || null,
+				email: student.email || null,
+				additionalAddressFurigana: additionalInfo.additionalAddressFurigana || null,
+				additionalIndeks: additionalInfo.additionalIndeks || null,
+				additionalAddress: additionalInfo.additionalAddress || student.address || null,
+				additionalTel: student.parents_phone_number || null,
+				additionalEmail: additionalInfo.additionalEmail || student.email || null,
+				education: allEducation, // ← Fixed: no duplicates
+				workExperience: workExperience,
+				licenses: licenses,
+				skills: {
+					programming: programmingSkills,
+					languages: {
+						uzbek: additionalInfo.languageUzbek || 'Native',
+						english: student.language_skills || additionalInfo.languageEnglish || 'Intermediate',
+						japanese: jlptData?.highest ? `${jlptData.highest} Level` : additionalInfo.languageJapanese || 'Elementary',
+						russian: additionalInfo.languageRussian || 'Fluent',
+					},
+					tools: safeArray(additionalInfo.tools),
+					databases: safeArray(additionalInfo.databases),
+				},
+				personalStatement: student.self_introduction || '',
+				hobbies: hobbiesArray,
+				transportation: additionalInfo.transportation || '自転車通勤可能',
+				commuteTime: additionalInfo.commuteTime || 45,
+				numDependents: additionalInfo.numDependents || 0,
+				isMarried: additionalInfo.isMarried || false,
+				spousalSupportObligation: additionalInfo.spousalSupportObligation || false,
+				hopes: additionalInfo.hopes || student.other_information || '',
+				// ==========  CHANGED: Use deliverables only  ==========
+				projects: safeArray(student.deliverables),
+				arubaito: safeArray(additionalInfo.arubaito), // ← Changed arubaito
+			}
+
+			console.log('✅ CV data built successfully')
+			return cvData
+		} catch (error) {
+			console.error('❌ Error in getStudentForCV:', error)
 			throw error
 		}
 	}

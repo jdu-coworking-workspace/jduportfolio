@@ -72,7 +72,7 @@ module.exports = (sequelize, DataTypes) => {
 			partner_university: { type: DataTypes.STRING, allowNull: true },
 			faculty: { type: DataTypes.STRING, allowNull: true },
 			department: { type: DataTypes.STRING, allowNull: true },
-			student_status: { type: DataTypes.STRING, allowNull: true },
+			// student_status: { type: DataTypes.STRING, allowNull: true },
 			partner_university_credits: {
 				type: DataTypes.INTEGER,
 				allowNull: true,
@@ -136,6 +136,49 @@ module.exports = (sequelize, DataTypes) => {
 				comment: 'Detailed credit information from Kintone app 233',
 			},
 			active: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false },
+
+			// ==================== CV-SPECIFIC FIELDS ====================
+			cv_education: {
+				type: DataTypes.JSONB,
+				allowNull: true,
+				defaultValue: [],
+				comment: 'Education history for CV',
+			},
+			cv_work_experience: {
+				type: DataTypes.JSONB,
+				allowNull: true,
+				defaultValue: [],
+				comment: 'Work experience for CV',
+			},
+			cv_licenses: {
+				type: DataTypes.JSONB,
+				allowNull: true,
+				defaultValue: [],
+				comment: 'Licenses and certifications for CV',
+			},
+			cv_projects: {
+				type: DataTypes.JSONB,
+				allowNull: true,
+				defaultValue: [],
+				comment: 'Projects for CV',
+			},
+			cv_additional_info: {
+				type: DataTypes.JSONB,
+				allowNull: true,
+				defaultValue: {},
+				comment: 'Additional CV information',
+			},
+			address_furigana: {
+				type: DataTypes.TEXT,
+				allowNull: true,
+				comment: 'Address in furigana',
+			},
+			postal_code: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				comment: 'Postal code',
+			},
+
 			visibility: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,

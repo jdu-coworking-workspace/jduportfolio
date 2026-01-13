@@ -215,6 +215,26 @@ class StudentController {
 		}
 	}
 
+	/**
+	 * Controller method to get student data for CV download
+	 */
+	static async getStudentForCV(req, res, next) {
+		try {
+			const { id } = req.params
+			const cvData = await StudentService.getStudentForCV(id)
+
+			res.status(200).json(cvData)
+		} catch (error) {
+			if (error.message === 'Student not found') {
+				return res.status(404).json({
+					error: 'Student not found',
+					message: `Student with ID ${req.params.id} not found`,
+				})
+			}
+			next(error)
+		}
+	}
+
 	static async updateStudent(req, res, next) {
 		try {
 			const { id } = req.params

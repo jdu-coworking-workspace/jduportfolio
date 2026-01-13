@@ -1,7 +1,11 @@
 const express = require('express')
 const StudentController = require('../controllers/studentController')
-const { validateStudentCreation, validateStudentUpdate } = require('../middlewares/student-validation')
+// const { validateStudentCreation, validateStudentUpdate } = require('../middlewares/student-validation')
+const { validateStudentCreation, validateStudentUpdate } = require('../validators/studentValidators')
 
+const authMiddleware = require('../middlewares/auth-middleware')
+// const { validateEducation, validateWorkExperience, validateLicenses, validateProjects, validateAdditionalInfo, validateAddress } = require('../validators/studentValidator')
+const { checkOwnership } = require('../middlewares/ownershipMiddleware')
 const router = express.Router()
 
 /**
@@ -96,6 +100,44 @@ router.get('/', StudentController.getAllStudents)
  *                     type: string
  */
 router.get('/ids', StudentController.getStudentIds)
+
+/**
+ * @swagger
+ * /api/students/{id}/for-cv:
+ *   get:
+ *     tags: [Students]
+ *     summary: Get student data formatted for CV download
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Student ID
+ *     responses:
+ *       200:
+ *         description: Student CV data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 fullName:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 education:
+ *                   type: array
+ *                 workExperience:
+ *                   type: array
+ *                 licenses:
+ *                   type: array
+ *                 skills:
+ *                   type: object
+ *       404:
+ *         description: Student not found
+ */
+router.get('/:id/for-cv', StudentController.getStudentForCV)
 
 /**
  * @swagger
@@ -201,7 +243,62 @@ router.post('/:id/sync-credit-details', StudentController.syncStudentCreditDetai
  *         description: Bad request
  */
 // PUT /api/students/:id
-router.put('/:id', validateStudentUpdate, StudentController.updateStudent)
+// router.put('/:id', validateStudentUpdate, StudentController.updateStudent)
+
+/**
+ * @swagger
+ * /api/students/{id}:
+ *   patch:
+ *     tags: [Students]
+ *     summary: Update student information (including CV data)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Student ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               # Basic fields
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               # CV fields
+ *               cv_education:
+ *                 type: array
+ *               cv_work_experience:
+ *                 type: array
+ *               cv_licenses:
+ *                 type: array
+ *               cv_projects:
+ *                 type: array
+ *               cv_additional_info:
+ *                 type: object
+ *               address_furigana:
+ *                 type: string
+ *               postal_code:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Student updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - not owner or admin
+ *       404:
+ *         description: Student not found
+ */
+router.patch('/:id', authMiddleware, checkOwnership, validateStudentUpdate, StudentController.updateStudent)
 
 /**
  * @swagger
