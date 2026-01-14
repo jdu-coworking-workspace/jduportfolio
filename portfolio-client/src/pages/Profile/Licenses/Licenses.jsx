@@ -1,7 +1,7 @@
-import { Delete as DeleteIcon, Edit as EditIcon, MoreVert as MoreVertIcon } from '@mui/icons-material'
+import { MoreVert as MoreVertIcon } from '@mui/icons-material'
 import AddIcon from '@mui/icons-material/Add'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Menu, MenuItem, TextField, Typography } from '@mui/material'
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, TextField, Typography } from '@mui/material'
 import * as React from 'react'
 import { useState } from 'react'
 
@@ -93,52 +93,46 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 
 			<div>
 				{licenses && licenses.length > 0 ? (
-					<Box display='flex' flexDirection='column' gap={2}>
+					<Box display='grid' gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={1.5}>
 						{licenses.map((item, index) => (
 							<Box
 								key={`${item.certifacateName || 'certificate'}-${index}`}
-								display='flex'
-								flexDirection={{ xs: 'column', sm: 'row' }}
-								justifyContent='space-between'
-								alignItems='flex-start'
-								p={2}
+								p={1.5}
 								sx={{
-									borderRadius: 2,
+									borderRadius: 1.5,
 									border: '1px solid',
 									borderColor: 'grey.200',
 									backgroundColor: 'background.paper',
-									position: 'relative',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									minHeight: 56,
 								}}
 							>
-								<Box flex={1}>
-									<Typography variant='subtitle1' sx={{ fontWeight: 700 }}>
+								<Box minWidth={0}>
+									<Typography
+										variant='body2'
+										sx={{
+											fontWeight: 600,
+											whiteSpace: 'nowrap',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											maxWidth: 180,
+										}}
+									>
 										{item.certifacateName}
 									</Typography>
-								</Box>
-
-								<Box display='flex' alignItems='center' gap={1} mt={{ xs: 1, sm: 0 }}>
-									<Typography variant='body2' color='text.secondary'>
+									<Typography variant='caption' color='text.secondary'>
 										{item.year}
 										{item.month && ` / ${item.month}`}
 									</Typography>
-									{editMode && (
-										<>
-											<IconButton onClick={e => handleClick(e, index)} aria-controls={currentMenuIndex === index ? 'licenses-menu' : undefined} aria-haspopup='true' aria-expanded={currentMenuIndex === index ? 'true' : undefined}>
-												<MoreVertIcon />
-											</IconButton>
-											<Menu id='licenses-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
-												<MenuItem onClick={() => handleEdit(index)}>
-													<EditIcon sx={{ mr: 1 }} />
-													{t('edit')}
-												</MenuItem>
-												<MenuItem onClick={() => handleDelete(index)}>
-													<DeleteIcon sx={{ mr: 1 }} color='error' />
-													{t('delete')}
-												</MenuItem>
-											</Menu>
-										</>
-									)}
 								</Box>
+
+								{editMode && (
+									<IconButton size='small' onClick={e => handleClick(e, index)}>
+										<MoreVertIcon fontSize='small' />
+									</IconButton>
+								)}
 							</Box>
 						))}
 					</Box>

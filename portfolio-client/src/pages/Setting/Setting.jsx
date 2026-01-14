@@ -1,6 +1,8 @@
 import { Business, PhotoCamera, Translate as TranslateIcon, Visibility, VisibilityOff } from '@mui/icons-material'
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
+import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PersonIcon from '@mui/icons-material/Person'
 import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
@@ -12,10 +14,7 @@ import { UserContext } from '../../contexts/UserContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
 import SettingStyle from './Setting.module.css'
-
 // Custom icons import
-import IdCardIcon from '../../assets/icons/id-card-line.svg'
-import LockIcon from '../../assets/icons/lock-2-fill.svg'
 import SaveIcon from '../../assets/icons/save-3-fill.svg'
 const Setting = () => {
 	const { activeUser, updateUser } = useContext(UserContext)
@@ -461,7 +460,7 @@ const Setting = () => {
 					<Accordion>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-								<img src={IdCardIcon} alt='Personal Info' className={SettingStyle.sectionIcon} />
+								<AssignmentIndOutlinedIcon className={SettingStyle.sectionIcon} />
 								<Typography variant='h6' className={SettingStyle.sectionTitle}>
 									{t('personal_info') || '個人情報'}
 								</Typography>
@@ -632,7 +631,7 @@ const Setting = () => {
 					<Accordion>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-								<InfoOutlinedIcon className={SettingStyle.sectionIcon} style={{ color: '#655EE7' }} />
+								<InfoOutlinedIcon className={SettingStyle.sectionIcon} sx={{ color: '#5627DB' }} />
 								<Typography variant='h6' className={SettingStyle.sectionTitle}>
 									{t('additional_info')}
 								</Typography>
@@ -796,7 +795,7 @@ const Setting = () => {
 					<Accordion>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-								<img src={LockIcon} alt='Password' className={SettingStyle.sectionIcon} />
+								<HttpsOutlinedIcon className={SettingStyle.sectionIcon} />
 								<Typography variant='h6' className={SettingStyle.sectionTitle}>
 									{t('change_password') || 'パスワードの変更'}
 								</Typography>
