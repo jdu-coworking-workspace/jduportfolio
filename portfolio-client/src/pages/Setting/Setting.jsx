@@ -1,7 +1,7 @@
 import { Business, PhotoCamera, Translate as TranslateIcon, Visibility, VisibilityOff } from '@mui/icons-material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
-import InfoIcon from '@mui/icons-material/Info'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PersonIcon from '@mui/icons-material/Person'
 import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
 import { useCallback, useContext, useEffect, useState } from 'react'
@@ -12,6 +12,7 @@ import { UserContext } from '../../contexts/UserContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
 import SettingStyle from './Setting.module.css'
+
 // Custom icons import
 import IdCardIcon from '../../assets/icons/id-card-line.svg'
 import LockIcon from '../../assets/icons/lock-2-fill.svg'
@@ -631,9 +632,9 @@ const Setting = () => {
 					<Accordion>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-								<InfoIcon className={SettingStyle.sectionIcon} />
+								<InfoOutlinedIcon className={SettingStyle.sectionIcon} style={{ color: '#655EE7' }} />
 								<Typography variant='h6' className={SettingStyle.sectionTitle}>
-									Additional info
+									{t('additional_info')}
 								</Typography>
 							</Box>
 						</AccordionSummary>
@@ -642,7 +643,7 @@ const Setting = () => {
 								<Grid container spacing={3}>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											Additional Address
+											{t('additional_address')}
 										</Typography>
 										<Controller
 											name='additionalAddress'
@@ -661,7 +662,7 @@ const Setting = () => {
 									</Grid>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											Additional Address (Furigana)
+											{t('additional_address_furigana')}
 										</Typography>
 										<Controller
 											name='additionalAddressFurigana'
@@ -680,7 +681,7 @@ const Setting = () => {
 									</Grid>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											Additional Email
+											{t('additional_email')}
 										</Typography>
 										<Controller
 											name='additionalEmail'
@@ -699,7 +700,7 @@ const Setting = () => {
 									</Grid>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											Additional Index
+											{t('additional_index')}
 										</Typography>
 										<Controller
 											name='additionalIndeks'
@@ -718,7 +719,7 @@ const Setting = () => {
 									</Grid>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											Additional Phone
+											{t('additional_phone')}
 										</Typography>
 										<Controller
 											name='additionalPhone'
@@ -737,7 +738,7 @@ const Setting = () => {
 									</Grid>
 									<Grid item xs={12} sm={6}>
 										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											isMarried
+											{t('isMarried')}
 										</Typography>
 										<Controller
 											name='isMarried'
@@ -751,7 +752,7 @@ const Setting = () => {
 														label={
 															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 																<PersonIcon sx={{ fontSize: 20 }} />
-																<span>Single</span>
+																<span> {t('single')}</span>
 															</Box>
 														}
 													/>
@@ -762,7 +763,7 @@ const Setting = () => {
 														label={
 															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 																<FamilyRestroomIcon sx={{ fontSize: 20 }} />
-																<span>Married</span>
+																<span> {t('married')}</span>
 															</Box>
 														}
 													/>

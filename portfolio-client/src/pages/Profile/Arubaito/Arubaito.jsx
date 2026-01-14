@@ -84,7 +84,7 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 				}}
 			>
 				<WorkOutlineIcon sx={{ color: '#5627DB' }} />
-				{t('arubaito') || 'アルバイト'}
+				{t('arubaito')}
 				{editMode && (
 					<Button startIcon={<AddIcon />} variant='outlined' size='small' onClick={handleAdd} sx={{ ml: 2 }}>
 						{t('add')}
@@ -134,11 +134,11 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 											<Menu id='arubaito-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
 												<MenuItem onClick={() => handleEdit(index)}>
 													<EditIcon sx={{ mr: 1 }} />
-													Edit
+													{t('edit')}
 												</MenuItem>
 												<MenuItem onClick={() => handleDelete(index)}>
 													<DeleteIcon sx={{ mr: 1 }} color='error' />
-													Delete
+													{t('delete')}
 												</MenuItem>
 											</Menu>
 										</>
@@ -148,7 +148,7 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 						))}
 					</Box>
 				) : (
-					<Typography color='text.secondary'>{t('no_arubaito') || 'No part-time work records yet'}</Typography>
+					<Typography color='text.secondary'>{t('no_arubaito')}</Typography>
 				)}
 			</div>
 

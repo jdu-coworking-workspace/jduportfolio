@@ -83,7 +83,7 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 				}}
 			>
 				<WorkspacePremiumOutlinedIcon sx={{ color: '#5627DB' }} />
-				{t('licenses') || '資格・免許'}
+				{t('licenses')}
 				{editMode && (
 					<Button startIcon={<AddIcon />} variant='outlined' size='small' onClick={handleAdd} sx={{ ml: 2 }}>
 						{t('add')}
@@ -129,11 +129,11 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 											<Menu id='licenses-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
 												<MenuItem onClick={() => handleEdit(index)}>
 													<EditIcon sx={{ mr: 1 }} />
-													Edit
+													{t('edit')}
 												</MenuItem>
 												<MenuItem onClick={() => handleDelete(index)}>
 													<DeleteIcon sx={{ mr: 1 }} color='error' />
-													Delete
+													{t('delete')}
 												</MenuItem>
 											</Menu>
 										</>
@@ -143,7 +143,7 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 						))}
 					</Box>
 				) : (
-					<Typography color='text.secondary'>{t('no_licenses') || 'No licenses or certificates yet'}</Typography>
+					<Typography color='text.secondary'>{t('no_licenses')}</Typography>
 				)}
 			</div>
 
@@ -160,9 +160,9 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={resetForm}>{t('cancel') || 'Cancel'}</Button>
+					<Button onClick={resetForm}>{t('cancel')}</Button>
 					<Button onClick={handleSubmit} variant='contained' disabled={!formData.certifacateName || !formData.year}>
-						{editingIndex !== null ? t('update') || 'Update' : t('add') || 'Add'}
+						{editingIndex !== null ? t('update') : t('add')}
 					</Button>
 				</DialogActions>
 			</Dialog>

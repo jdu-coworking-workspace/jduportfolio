@@ -32,10 +32,10 @@ import { downloadCV } from '../../../lib/cv-download'
 import translations from '../../../locales/translations'
 import QA from '../../../pages/Profile/QA/QA'
 import axios from '../../../utils/axiosUtils'
-import { Education } from '../Education/Education'
-import WorkExperience from '../WorkExperience/WorkExperience'
 import Arubaito from '../Arubaito/Arubaito'
+import { Education } from '../Education/Education'
 import { Licenses } from '../Licenses/Licenses'
+import WorkExperience from '../WorkExperience/WorkExperience'
 import styles from './Top.module.css'
 const Top = () => {
 	let id
@@ -1730,7 +1730,7 @@ const Top = () => {
 							<TextField title={t('origin')} data={student.draft.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('address_furigana') || '住所（ふりがな）'} data={student.draft.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
+							<TextField title={t('address_furigana')} data={student.draft.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
 							<TextField title={t('major')} data={student.draft.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
