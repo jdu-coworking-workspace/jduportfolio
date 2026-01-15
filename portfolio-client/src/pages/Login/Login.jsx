@@ -2,6 +2,8 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import WarningIcon from '@mui/icons-material/Warning'
+import CloseIcon from '@mui/icons-material/Close'
 import { Button } from '@mui/material'
 import Cookies from 'js-cookie'
 import { useContext, useEffect, useRef, useState } from 'react'
@@ -32,6 +34,23 @@ const Login = () => {
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [isCoolingDown, setIsCoolingDown] = useState(false)
 	const cooldownTimerRef = useRef(null)
+	const [announcement, setAnnouncement] = useState(null)
+	const [showAnnouncement, setShowAnnouncement] = useState(true)
+
+	// Fetch active announcement
+	useEffect(() => {
+		const fetchAnnouncement = async () => {
+			try {
+				const response = await axios.get('/api/maintenance/active')
+				if (response.data) {
+					setAnnouncement(response.data)
+				}
+			} catch (error) {
+				console.error('Error fetching announcement:', error)
+			}
+		}
+		fetchAnnouncement()
+	}, [])
 
 	// Clear timers on unmount
 	useEffect(() => {
@@ -161,6 +180,85 @@ const Login = () => {
 						{!loginMode && <p>{t('resetPassword2')}</p>}
 					</div>
 				</div>
+				{announcement && showAnnouncement && (
+					<div
+						style={{
+							backgroundColor: '#fef3c7',
+							border: '1px solid #f59e0b',
+							borderRadius: '8px',
+							padding: '16px',
+							marginBottom: '20px',
+							position: 'relative',
+							boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+							display: 'flex',
+							alignItems: 'flex-start',
+							gap: '12px',
+						}}
+					>
+						<div
+							style={{
+								backgroundColor: '#f59e0b',
+								borderRadius: '50%',
+								width: '24px',
+								height: '24px',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								flexShrink: 0,
+								marginTop: '2px',
+							}}
+						>
+							<WarningIcon style={{ color: '#fff', fontSize: '16px' }} />
+						</div>
+						<div style={{ flex: 1 }}>
+							<div
+								style={{
+									fontWeight: 'bold',
+									color: '#92400e',
+									marginBottom: '4px',
+									fontSize: '14px',
+								}}
+							>
+								{t('warning') || 'Warning'}
+							</div>
+							<div
+								style={{
+									color: '#92400e',
+									fontSize: '14px',
+									lineHeight: '1.5',
+								}}
+							>
+								{announcement.message}
+							</div>
+						</div>
+						<button
+							onClick={() => setShowAnnouncement(false)}
+							style={{
+								position: 'absolute',
+								top: '8px',
+								right: '8px',
+								background: 'transparent',
+								border: 'none',
+								cursor: 'pointer',
+								color: '#92400e',
+								padding: '4px',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderRadius: '4px',
+								transition: 'background-color 0.2s',
+							}}
+							onMouseEnter={e => {
+								e.currentTarget.style.backgroundColor = 'rgba(146, 64, 14, 0.1)'
+							}}
+							onMouseLeave={e => {
+								e.currentTarget.style.backgroundColor = 'transparent'
+							}}
+						>
+							<CloseIcon style={{ fontSize: '18px' }} />
+						</button>
+					</div>
+				)}
 				{error && <p style={{ color: 'red' }}>{t(error) || 'Login failed!'}</p>}
 				{info && <p style={{ color: 'green' }}>{info}</p>}
 				{loginMode ? (

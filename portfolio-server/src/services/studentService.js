@@ -261,7 +261,7 @@ class StudentService {
 				filter = {}
 			}
 
-			const searchableColumns = ['email', 'first_name', 'last_name', 'self_introduction', 'hobbies', 'skills', 'it_skills', 'jlpt', 'student_id']
+			const searchableColumns = ['email', 'first_name', 'last_name', 'self_introduction', 'hobbies', 'skills', 'it_skills', 'jlpt', 'student_id', 'partner_university']
 
 			// Helper to build JSONB @> conditions for it_skills across levels
 			const buildItSkillsCondition = (names = [], match = 'any') => {
@@ -283,31 +283,63 @@ class StudentService {
 			Object.keys(filter).forEach(key => {
 				if (filter[key]) {
 					if (key === 'search') {
-						const searchValue = String(filter[key])
-						querySearch[Op.or] = searchableColumns.map(column => {
-							if (['skills', 'it_skills'].includes(column)) {
-								return {
-									[Op.or]: [
-										{
-											[column]: {
-												'上級::text': { [Op.iLike]: `%${searchValue}%` },
+						const searchValue = String(filter[key]).trim()
+
+						// If search value is purely numeric, only search student_id with prefix match
+						// This prevents "66" from matching "21" in other columns
+						if (/^\d+$/.test(searchValue)) {
+							querySearch[Op.or] = [{ student_id: { [Op.iLike]: `${searchValue}%` } }]
+						}
+						// If search value looks like a JLPT level (N1-N5), only search jlpt field with exact matching
+						// This prevents "N1" from matching "N3" or appearing in other columns
+						else if (/^N[1-5]$/i.test(searchValue)) {
+							const normalizedSearch = searchValue.toUpperCase()
+							querySearch[Op.or] = [
+								{
+									jlpt: {
+										[Op.or]: [
+											// Match "highest":"N1" (exact, with quotes)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}"%` },
+											// Match "highest":"N1", (with comma after)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}",%` },
+											// Match "highest":"N1"} (with closing brace)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}"}%` },
+										],
+									},
+								},
+							]
+						}
+						// For all other searches, search across all columns as before
+						else {
+							querySearch[Op.or] = searchableColumns.map(column => {
+								if (['skills', 'it_skills'].includes(column)) {
+									return {
+										[Op.or]: [
+											{
+												[column]: {
+													'上級::text': { [Op.iLike]: `%${searchValue}%` },
+												},
 											},
-										},
-										{
-											[column]: {
-												'中級::text': { [Op.iLike]: `%${searchValue}%` },
+											{
+												[column]: {
+													'中級::text': { [Op.iLike]: `%${searchValue}%` },
+												},
 											},
-										},
-										{
-											[column]: {
-												'初級::text': { [Op.iLike]: `%${searchValue}%` },
+											{
+												[column]: {
+													'初級::text': { [Op.iLike]: `%${searchValue}%` },
+												},
 											},
-										},
-									],
+										],
+									}
 								}
-							}
-							return { [column]: { [Op.iLike]: `%${searchValue}%` } }
-						})
+								// For student_id, use prefix match instead of substring match
+								if (column === 'student_id') {
+									return { [column]: { [Op.iLike]: `${searchValue}%` } }
+								}
+								return { [column]: { [Op.iLike]: `%${searchValue}%` } }
+							})
+						}
 					} else if (key === 'it_skills') {
 						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
 						const match = filter.it_skills_match === 'all' ? 'all' : 'any'
@@ -346,9 +378,17 @@ class StudentService {
 					} else if (['jlpt', 'jdu_japanese_certification'].includes(key)) {
 						if (Array.isArray(filter[key])) {
 							// Match only the highest level inside stored JSON string e.g. {"highest":"N5"}
+							// Use exact matching to avoid "N2" matching "N3" or "N4"
 							queryOther[Op.and].push({
 								[Op.or]: filter[key].map(level => ({
-									[key]: { [Op.iLike]: `%"highest":"${level}"%` },
+									[Op.or]: [
+										// Match "highest":"N2" (exact)
+										{ [key]: { [Op.iLike]: `%"highest":"${level}"%` } },
+										// Match "highest":"N2", (with comma)
+										{ [key]: { [Op.iLike]: `%"highest":"${level}",%` } },
+										// Match "highest":"N2"} (with closing brace)
+										{ [key]: { [Op.iLike]: `%"highest":"${level}"}%` } },
+									],
 								})),
 							})
 						}
@@ -357,6 +397,15 @@ class StudentService {
 							queryOther[Op.and].push({
 								[Op.or]: filter[key].map(level => ({
 									[key]: { [Op.iLike]: `%${level}%` },
+								})),
+							})
+						}
+					} else if (key === 'graduation_year') {
+						// Handle graduation year filter - match various formats
+						if (Array.isArray(filter[key]) && filter[key].length > 0) {
+							queryOther[Op.and].push({
+								[Op.or]: filter[key].map(yearValue => ({
+									graduation_year: { [Op.iLike]: `%${yearValue}%` },
 								})),
 							})
 						}
