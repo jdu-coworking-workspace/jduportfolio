@@ -27,6 +27,7 @@ const getInitialFilterState = () => {
 		it_skills: [],
 		jlpt: [],
 		jdu_japanese_certification: [],
+		graduation_year: [],
 		partner_university: [],
 		other_information: '',
 	}
@@ -89,6 +90,17 @@ const Student = ({ OnlyBookmarked = false }) => {
 		}
 	}, [])
 
+	// Generate graduation year options dynamically (current year to 5 years ahead)
+	const currentYear = new Date().getFullYear()
+	const graduationYearOptions = []
+	for (let i = 0; i <= 5; i++) {
+		const year = currentYear + i
+		// Generate options in both formats that might be stored in DB
+		graduationYearOptions.push(`${year}年春`)
+		graduationYearOptions.push(`${year}年秋`)
+		graduationYearOptions.push(`${year}年`)
+	}
+
 	const filterFields = [
 		{
 			key: 'it_skills',
@@ -108,6 +120,12 @@ const Student = ({ OnlyBookmarked = false }) => {
 			label: t('jdu_certification'),
 			type: 'checkbox',
 			options: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
+		},
+		{
+			key: 'graduation_year',
+			label: '卒業予定年（月）',
+			type: 'checkbox',
+			options: graduationYearOptions,
 		},
 		{
 			key: 'partner_university',

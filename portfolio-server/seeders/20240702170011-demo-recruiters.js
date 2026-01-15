@@ -8,7 +8,7 @@ module.exports = {
 		const recruiters = [
 			{
 				email: 'john.doe@example.com',
-				password: await bcrypt.hash('password123', saltRounds),
+				password: await bcrypt.hash('image.png', saltRounds),
 				company_name: 'Example Corp',
 				phone: '1234567890',
 				company_description: 'A sample company description.',

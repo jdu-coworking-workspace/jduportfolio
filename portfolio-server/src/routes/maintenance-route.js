@@ -31,6 +31,12 @@ const fs = require('fs')
  *                   type: string
  *                   description: Maintenance message in Uzbek
  */
+const MaintenanceController = require('../controllers/maintenanceController')
+
+// Public endpoint to get active announcement (for login page)
+router.get('/active', MaintenanceController.getActiveAnnouncement)
+
+// Legacy endpoint for backward compatibility (returns JSON config)
 router.get('/', (req, res) => {
 	try {
 		const configPath = path.join(__dirname, '../config/maintenance.json')
