@@ -140,9 +140,10 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		return header.keyIdentifier || `${header.id}${header.subkey || ''}`
 	}
 
-	const fetchUserData = useCallback(async () => {
-		setLoading(true)
-		try {
+	const fetchUserData = useCallback(
+		signal => {
+			setLoading(true)
+
 			const params = {
 				filter: tableProps.filter,
 				recruiterId: tableProps.recruiterId,
@@ -155,17 +156,39 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 				params.sortOrder = sortOrder
 			}
 
-			const response = await axios.get(tableProps.dataLink, { params })
-			setRows(response.data)
-		} catch (error) {
-			// Handle error silently
-		} finally {
-			setLoading(false)
-		}
-	}, [tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder])
+			// ✅ CRITICAL FIX: Use abort signal to cancel outdated requests
+			axios
+				.get(tableProps.dataLink, {
+					params,
+					signal, // ✅ Pass abort signal
+				})
+				.then(response => {
+					setRows(response.data)
+				})
+				.catch(error => {
+					// Ignore aborted requests (expected behavior)
+					if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
+						console.error('Error fetching students:', error)
+					}
+				})
+				.finally(() => {
+					setLoading(false)
+				})
+		},
+		[tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder]
+	)
 
 	useEffect(() => {
-		fetchUserData()
+		// ✅ Create AbortController for this effect
+		const controller = new AbortController()
+
+		// ✅ Call fetchUserData with abort signal
+		fetchUserData(controller.signal)
+
+		// ✅ Cleanup: abort request when component unmounts or dependencies change
+		return () => {
+			controller.abort()
+		}
 	}, [
 		fetchUserData,
 		tableProps.refreshTrigger,
