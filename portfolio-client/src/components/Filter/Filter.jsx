@@ -107,12 +107,22 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 	// Handle user-initiated changes (not initial load)
 	const userChangedFilter = useRef(false)
 
+	// ✅ CRITICAL FIX: Debounce the onFilterChange call to prevent API spam
+	const debouncedOnFilterChange = useMemo(
+		() =>
+			debounce(filterState => {
+				onFilterChange(filterState)
+			}, 500),
+		[onFilterChange]
+	)
+
 	useEffect(() => {
 		if (!isInitialMount.current && userChangedFilter.current) {
-			onFilterChange(localFilterState)
+			// ✅ Use debounced version for search field changes
+			debouncedOnFilterChange(localFilterState)
 			userChangedFilter.current = false
 		}
-	}, [localFilterState, onFilterChange])
+	}, [localFilterState, debouncedOnFilterChange])
 
 	// Memoize all potential filter options for suggestions
 	const allFilterOptions = useMemo(() => {
@@ -186,13 +196,6 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 	// Debounce input changes for performance
 	const debouncedSetInputValue = useMemo(() => debounce(value => setInputValue(value), 300), [])
 
-	// Clean up debounce on unmount
-	useEffect(() => {
-		return () => {
-			debouncedSetInputValue.cancel()
-		}
-	}, [debouncedSetInputValue])
-
 	const handleChange = useCallback((key, value) => {
 		if (!isInitialMount.current) {
 			userChangedFilter.current = true // Mark as user change
@@ -203,10 +206,20 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 		}))
 	}, [])
 
+	// Clean up debounce on unmount
+	useEffect(() => {
+		return () => {
+			debouncedSetInputValue.cancel()
+			debouncedOnFilterChange.cancel()
+		}
+	}, [debouncedSetInputValue, debouncedOnFilterChange])
+
 	const handleInputChange = useCallback(
 		e => {
 			const value = e.target.value
+			// Update local state immediately (for visual feedback)
 			handleChange('search', value)
+			// Update input value for suggestions
 			setInputValue(value)
 			debouncedSetInputValue(value)
 			setSelectedSuggestionIndex(-1)
