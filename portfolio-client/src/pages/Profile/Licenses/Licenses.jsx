@@ -1,7 +1,7 @@
-import { MoreVert as MoreVertIcon } from '@mui/icons-material'
+import { Delete as DeleteIcon, Edit as EditIcon, MoreVert as MoreVertIcon } from '@mui/icons-material'
 import AddIcon from '@mui/icons-material/Add'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, TextField, Typography } from '@mui/material'
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Menu, MenuItem, TextField, Typography } from '@mui/material'
 import * as React from 'react'
 import { useState } from 'react'
 
@@ -129,9 +129,21 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 								</Box>
 
 								{editMode && (
-									<IconButton size='small' onClick={e => handleClick(e, index)}>
-										<MoreVertIcon fontSize='small' />
-									</IconButton>
+									<>
+										<IconButton size='small' onClick={e => handleClick(e, index)} aria-controls={currentMenuIndex === index ? 'licenses-menu' : undefined} aria-haspopup='true' aria-expanded={currentMenuIndex === index ? 'true' : undefined}>
+											<MoreVertIcon fontSize='small' />
+										</IconButton>
+										<Menu id='licenses-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
+											<MenuItem onClick={() => handleEdit(index)}>
+												<EditIcon sx={{ mr: 1 }} />
+												{t('edit')}
+											</MenuItem>
+											<MenuItem onClick={() => handleDelete(index)}>
+												<DeleteIcon sx={{ mr: 1 }} color='error' />
+												{t('delete')}
+											</MenuItem>
+										</Menu>
+									</>
 								)}
 							</Box>
 						))}

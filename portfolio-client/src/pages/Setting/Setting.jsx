@@ -128,6 +128,8 @@ const Setting = () => {
 			setAvatarImage(userData.photo)
 
 			// Reset form with actual data, ensuring no undefined values
+			// Handle additional_info safely in case it's null or undefined
+			const additionalInfo = userData.additional_info || {}
 			const formData = {
 				currentPassword: '',
 				password: '',
@@ -143,12 +145,12 @@ const Setting = () => {
 				contactPhone: userData.contactPhone || '+998 90 234 56 78',
 				workingHours: userData.workingHours || '09:00 - 18:00',
 				location: userData.location || 'Tashkent, Shayhontohur district, Sebzor, 21',
-				additionalAddress: userData.additional_info.additionalAddress || '',
-				additionalAddressFurigana: userData.additional_info.additionalAddressFurigana || '',
-				additionalEmail: userData.additional_info.additionalEmail || '',
-				additionalIndeks: userData.additional_info.additionalIndeks || '',
-				additionalPhone: userData.additional_info.additionalPhone || '',
-				isMarried: userData.additional_info.isMarried || false,
+				additionalAddress: additionalInfo.additionalAddress || '',
+				additionalAddressFurigana: additionalInfo.additionalAddressFurigana || '',
+				additionalEmail: additionalInfo.additionalEmail || '',
+				additionalIndeks: additionalInfo.additionalIndeks || '',
+				additionalPhone: additionalInfo.additionalPhone || '',
+				isMarried: additionalInfo.isMarried || false,
 			}
 
 			reset(formData)
@@ -235,6 +237,14 @@ const Setting = () => {
 				contactPhone: data.contactPhone,
 				workingHours: data.workingHours,
 				location: data.location,
+				additional_info: {
+					additionalAddress: data.additionalAddress,
+					additionalAddressFurigana: data.additionalAddressFurigana,
+					additionalEmail: data.additionalEmail,
+					additionalIndeks: data.additionalIndeks,
+					additionalPhone: data.additionalPhone,
+					isMarried: data.isMarried,
+				},
 			}
 			if (data.password) {
 				updateData.password = data.password
@@ -274,6 +284,15 @@ const Setting = () => {
 					throw new Error(t('unknown_role_error'))
 			}
 			await setUser(updatedData.data)
+
+			// Update avatar image if it was uploaded
+			if (updatedData.data.photo) {
+				setAvatarImage(updatedData.data.photo)
+			}
+
+			// Clear selected file to prevent re-uploading on next save
+			setSelectedFile(null)
+
 			let tempUser = activeUser
 			tempUser.name = updatedData.data.first_name + ' ' + updatedData.data.last_name
 			tempUser.photo = updatedData.data.photo
@@ -281,6 +300,33 @@ const Setting = () => {
 			updateUser()
 			setIsEditing(false)
 			setHasUnsavedChanges(false)
+
+			// Reset form with the saved data to ensure UI shows updated values
+			const additionalInfo = updatedData.data.additional_info || {}
+			const formData = {
+				currentPassword: '',
+				password: '',
+				confirmPassword: '',
+				first_name: updatedData.data.first_name || '',
+				last_name: updatedData.data.last_name || '',
+				first_name_furigana: updatedData.data.first_name_furigana || '',
+				last_name_furigana: updatedData.data.last_name_furigana || '',
+				phone: updatedData.data.phone || '',
+				email: updatedData.data.email || '',
+				postal_code: updatedData.data.postal_code || '',
+				contactEmail: updatedData.data.contactEmail || 'test@jdu.uz',
+				contactPhone: updatedData.data.contactPhone || '+998 90 234 56 78',
+				workingHours: updatedData.data.workingHours || '09:00 - 18:00',
+				location: updatedData.data.location || 'Tashkent, Shayhontohur district, Sebzor, 21',
+				additionalAddress: additionalInfo.additionalAddress || '',
+				additionalAddressFurigana: additionalInfo.additionalAddressFurigana || '',
+				additionalEmail: additionalInfo.additionalEmail || '',
+				additionalIndeks: additionalInfo.additionalIndeks || '',
+				additionalPhone: additionalInfo.additionalPhone || '',
+				isMarried: additionalInfo.isMarried || false,
+			}
+			reset(formData)
+
 			showAlert(t('profile_update_success'), 'success')
 		} catch (error) {
 			// File upload error handling

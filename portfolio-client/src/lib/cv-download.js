@@ -79,29 +79,34 @@ export const downloadCV = async cvData => {
 4 裏面に氏名記入`
 	}
 
-	// MANZIL FURIGANA (C7)
-	sheet.getCell('C7').value = cvData.additional_info.additionalAddressFurigana
+	// Additional address furigana (C7) - Row 7: Additional address (フリガナ)
+	sheet.getCell('C7').value = cvData.additional_info?.additionalAddressFurigana || ''
 
 	// tel nomer (G7)
-	sheet.getCell('G7').value = `電話：${cvData.phone}`
+	sheet.getCell('G7').value = `電話：${cvData.additional_info?.additionalPhone || ''}`
 
-	// gmail  (G9)
-	sheet.getCell('G9').value = cvData.email
+	// Additional address email (G9) - Row 9: Additional address email
+	sheet.getCell('G9').value = cvData.additional_info?.additionalEmail || ''
 
-	// INDEKS (B8)
-	sheet.getCell('B8').value = `現住所 （〒　　　${cvData.additional_info.indeks}　　　　　　）`
-	// addres
-	sheet.getCell('B9').value = cvData.additional_info.additionalAddress
+	// Additional address index (B8) - Row 7: Additional address
+	sheet.getCell('B8').value = `現住所 （〒　　　${cvData.additional_info?.indeks || ''}　　　　　　）`
+	// Additional address (B9) - Row 7: Additional address
+	sheet.getCell('B9').value = cvData.additional_info?.additionalAddress || ''
 	// additional tel nomer (G11)
-	sheet.getCell('G11').value = `電話：${cvData.additional_info.additionalPhone}`
+	sheet.getCell('G11').value = `電話：${cvData.phone}`
 
-	// additional gmail  (G13)
-	sheet.getCell('G13').value = cvData.additional_info.additionalEmail
+	// 連絡先 email (G13) - Row 13: 連絡先 email (student's main email)
+	sheet.getCell('G13').value = cvData.email || ''
 
-	// additional INDEKS (B8)
-	sheet.getCell('B12').value = `連絡先 （〒　　　${cvData.additional_info.additionalIndeks}　　　　　　）`
-	// additional addres
-	sheet.getCell('B13').value = cvData.additional_info.additionalAddress === cvData.address ? '同上' : cvData.additional_info.additionalAddress
+	// 連絡先 furigana (C11) - Row 11: 連絡先 (フリガナ) (from 出身地 フリガナ) - Students table
+	const contactAddressFurigana = cvData.address_furigana || ''
+	sheet.getCell('C11').value = contactAddressFurigana
+	// 連絡先 index (B12) - Row 11: 連絡先 (from 出身地 postal_code) - Students table
+	const contactPostalCode = cvData.postal_code || ''
+	sheet.getCell('B12').value = `連絡先 （〒　　　${contactPostalCode}　　　　　　）`
+	// 連絡先 address (B13) - Row 13: 連絡先 (from 出身地) - Students table
+	const contactAddress = cvData.address || ''
+	sheet.getCell('B13').value = contactAddress
 	// EDUCATION (B9)
 	if (cvData.education.length > 0) {
 		cvData.education.map((item, index) => {
@@ -165,9 +170,9 @@ export const downloadCV = async cvData => {
 	sheet2.getCell('D5').value = `氏名 ${cvData.first_name} ${cvData.last_name}`
 	// bugungi sana (A4)
 	sheet2.getCell('A4').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
-	// projekt deliverables (A8)
-	if (cvData.draft.deliverables.length > 0) {
-		cvData.draft.deliverables.map((item, index) => {
+	// projekt deliverables (A8) - Students table
+	if (cvData.deliverables && cvData.deliverables.length > 0) {
+		cvData.deliverables.map((item, index) => {
 			const offset = index * 2
 
 			sheet2.getCell(`A${8 + offset}`).value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
