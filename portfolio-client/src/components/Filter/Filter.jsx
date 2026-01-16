@@ -59,14 +59,17 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 	// Track if this is the initial mount
 	const isInitialMount = useRef(true)
 
-	// IMPORTANT: Call parent immediately on mount with saved filter state
+	// ✅ CRITICAL FIX: Don't call onFilterChange on mount
+	// Parent (Student.jsx) already has correct state from localStorage
+	// Filter should only call onFilterChange when user actively changes something
 	useEffect(() => {
 		if (isInitialMount.current) {
-			// Always call parent with current state (whether empty or with filters)
-			onFilterChange(localFilterState)
 			isInitialMount.current = false
+			// ✅ NO onFilterChange call here! Parent already has correct state
+			// This prevents unnecessary state update and duplicate API requests
 		}
-	}, [localFilterState, onFilterChange])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []) // Empty deps - runs only once on mount
 
 	// Debounced save to localStorage
 	const debouncedSaveToStorage = useMemo(
