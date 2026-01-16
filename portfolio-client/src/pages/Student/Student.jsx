@@ -91,14 +91,14 @@ const Student = ({ OnlyBookmarked = false }) => {
 	}, [])
 
 	// Generate graduation year options dynamically (current year to 5 years ahead)
+	// Database stores: "2026年03月" (March/Spring) and "2026年09月" (September/Fall)
 	const currentYear = new Date().getFullYear()
 	const graduationYearOptions = []
 	for (let i = 0; i <= 5; i++) {
 		const year = currentYear + i
-		// Generate options in both formats that might be stored in DB
-		graduationYearOptions.push(`${year}年春`)
-		graduationYearOptions.push(`${year}年秋`)
-		graduationYearOptions.push(`${year}年`)
+		// Match database format: 03月 for Spring (March), 09月 for Fall (September)
+		graduationYearOptions.push(`${year}年03月`) // Spring graduation
+		graduationYearOptions.push(`${year}年09月`) // Fall graduation
 	}
 
 	const filterFields = [
