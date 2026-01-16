@@ -1,0 +1,19 @@
+{
+	"_comment": "Maintenance mode configuration",
+	"_instructions": "Set 'enabled' to true to activate custom maintenance message. Set to false for normal operation.",
+
+	"_example_custom_maintenance": "When enabled is true, users see your custom message",
+	"enabled": false,
+	"message": "システムは現在メンテナンス中です。しばらくしてから再度お試しください。",
+	"messageEn": "The system is currently under maintenance. Please try again later.",
+	"messageUz": "Tizim hozirda texnik xizmat ko'rsatish rejimida. Iltimos, keyinroq qayta urinib ko'ring.",
+	"developerMessage": "Optional: Technical details visible to users (e.g., 'Database migration in progress. ETA: 2 hours')",
+
+	"_example_scheduled_maintenance": "Example for scheduled maintenance:",
+	"_enabled": true,
+	"_message": "【定期メンテナンスのお知らせ】\n\n2026年1月16日 18:00 - 19:00\nデータベースメンテナンスを実施いたします。\n\nご迷惑をおかけして申し訳ございません。",
+	"_messageEn": "【Scheduled Maintenance Notice】\n\nDate: January 16, 2026\nTime: 18:00 - 19:00 JST\nDatabase maintenance will be performed.\n\nWe apologize for any inconvenience.",
+	"_messageUz": "【Rejalashtirilgan texnik xizmat】\n\nSana: 2026 yil 16 yanvar\nVaqt: 18:00 - 19:00 JST\nMa'lumotlar bazasi texnik xizmati amalga oshiriladi.\n\nNoqulaylik uchun uzr so'raymiz.",
+	"_developerMessage": "Database migration and index optimization. Expected duration: 1 hour."
+}
+
