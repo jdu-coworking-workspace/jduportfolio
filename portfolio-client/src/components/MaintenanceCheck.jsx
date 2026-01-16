@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
-import Maintenance from '../pages/Maintenance/Maintenance'
+import PublicMaintenancePage from './PublicMaintenancePage'
 import axios from '../utils/axiosUtils'
 
 /**
  * MaintenanceCheck component that wraps the app and checks for maintenance mode
- * If maintenance is enabled or the endpoint is unreachable, shows maintenance page
+ *
+ * Shows PublicMaintenancePage when:
+ * 1. Backend is down (ECONNREFUSED, network errors) - Local development or production
+ * 2. Maintenance mode is enabled in maintenance.json by developer
+ *
+ * Note: Uses PublicMaintenancePage (not Maintenance) because it renders outside
+ * of LanguageProvider and AlertProvider contexts
  */
 const MaintenanceCheck = ({ children }) => {
 	const [isMaintenance, setIsMaintenance] = useState(false) // false = normal/checking, true = maintenance
@@ -45,9 +51,10 @@ const MaintenanceCheck = ({ children }) => {
 		return () => clearInterval(interval)
 	}, [])
 
-	// Show maintenance page if enabled or unreachable
+	// Show PUBLIC maintenance page if enabled or unreachable
+	// This component doesn't use contexts, so it won't crash
 	if (isMaintenance) {
-		return <Maintenance />
+		return <PublicMaintenancePage />
 	}
 
 	// Normal app rendering (also shown while checking to avoid flash)
