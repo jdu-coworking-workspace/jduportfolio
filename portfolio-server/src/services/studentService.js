@@ -652,8 +652,60 @@ class StudentService {
 
 			console.log('Final student data to update:', studentData)
 
+			// CRITICAL: Merge additional_info instead of replacing it
+			// JSONB fields in Sequelize are replaced entirely, not merged
+			if (studentData.additional_info) {
+				const existingAdditionalInfo = student.additional_info || {}
+				studentData.additional_info = {
+					...existingAdditionalInfo, // Keep all existing fields
+					...studentData.additional_info, // Merge with new fields
+				}
+				console.log('Merged additional_info:', studentData.additional_info)
+			}
+
 			// Update the student with the provided data
 			await student.update(studentData)
+
+			// CRITICAL FIX: Also update draft's additional_info to keep them in sync
+			// When Settings page updates live data, draft data overwrites it on GET
+			// So we must update the draft too
+			if (studentData.additional_info) {
+				try {
+					// Find both draft and pendingDraft for this student
+					const drafts = await Draft.findAll({
+						where: {
+							student_id: student.student_id,
+							version_type: {
+								[Op.in]: ['draft', 'pending'],
+							},
+						},
+					})
+
+					for (const draft of drafts) {
+						if (draft.profile_data) {
+							// Merge additional_info in draft too
+							const existingDraftAdditionalInfo = draft.profile_data.additional_info || {}
+							const mergedAdditionalInfo = {
+								...existingDraftAdditionalInfo,
+								...studentData.additional_info,
+							}
+
+							// CRITICAL: Update the entire profile_data object to ensure Sequelize detects the change
+							// Use set() to explicitly mark the field as changed
+							draft.set('profile_data', {
+								...draft.profile_data,
+								additional_info: mergedAdditionalInfo,
+							})
+
+							await draft.save()
+							console.log(`Updated ${draft.version_type} draft additional_info:`, JSON.stringify(mergedAdditionalInfo, null, 2))
+						}
+					}
+				} catch (draftError) {
+					// Don't fail the update if draft update fails
+					console.error('Failed to update draft additional_info:', draftError)
+				}
+			}
 
 			console.log('Student updated successfully, new data:', student.dataValues)
 
@@ -678,6 +730,15 @@ class StudentService {
 				throw new Error('Student not found')
 			}
 
+			// CRITICAL: Merge additional_info instead of replacing it
+			if (studentData.additional_info) {
+				const existingAdditionalInfo = student.additional_info || {}
+				studentData.additional_info = {
+					...existingAdditionalInfo,
+					...studentData.additional_info,
+				}
+			}
+
 			// Update the student with the provided data
 			await student.update(studentData)
 
@@ -700,6 +761,15 @@ class StudentService {
 			// If student not found, throw an error
 			if (!student) {
 				throw new Error('Student not found')
+			}
+
+			// CRITICAL: Merge additional_info instead of replacing it
+			if (studentData.additional_info) {
+				const existingAdditionalInfo = student.additional_info || {}
+				studentData.additional_info = {
+					...existingAdditionalInfo,
+					...studentData.additional_info,
+				}
 			}
 
 			// Update the student with the provided data
