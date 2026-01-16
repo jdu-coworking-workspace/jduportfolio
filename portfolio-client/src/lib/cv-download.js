@@ -80,7 +80,7 @@ export const downloadCV = async cvData => {
 	}
 
 	// MANZIL FURIGANA (C7)
-	sheet.getCell('C7').value = cvData.address_furigana
+	sheet.getCell('C7').value = cvData.additional_info.additionalAddressFurigana
 
 	// tel nomer (G7)
 	sheet.getCell('G7').value = `電話：${cvData.phone}`
@@ -91,7 +91,7 @@ export const downloadCV = async cvData => {
 	// INDEKS (B8)
 	sheet.getCell('B8').value = `現住所 （〒　　　${cvData.additional_info.indeks}　　　　　　）`
 	// addres
-	sheet.getCell('B9').value = cvData.address
+	sheet.getCell('B9').value = cvData.additional_info.additionalAddress
 	// additional tel nomer (G11)
 	sheet.getCell('G11').value = `電話：${cvData.additional_info.additionalPhone}`
 
@@ -99,7 +99,7 @@ export const downloadCV = async cvData => {
 	sheet.getCell('G13').value = cvData.additional_info.additionalEmail
 
 	// additional INDEKS (B8)
-	sheet.getCell('B12').value = `現住所 （〒　　　${cvData.additional_info.additionalIndeks}　　　　　　）`
+	sheet.getCell('B12').value = `連絡先 （〒　　　${cvData.additional_info.additionalIndeks}　　　　　　）`
 	// additional addres
 	sheet.getCell('B13').value = cvData.additional_info.additionalAddress === cvData.address ? '同上' : cvData.additional_info.additionalAddress
 	// EDUCATION (B9)
