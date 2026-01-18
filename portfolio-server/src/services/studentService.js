@@ -391,10 +391,14 @@ class StudentService {
 								})
 							}
 
-							// Add "未提出" condition (null or empty)
+							// Add "未提出" condition (null, empty, or string "null")
 							if (hasNotSubmitted) {
 								conditions.push({
-									[Op.or]: [{ [key]: { [Op.is]: null } }, { [key]: { [Op.eq]: '' } }],
+									[Op.or]: [
+										{ [key]: { [Op.is]: null } }, // SQL NULL
+										{ [key]: { [Op.eq]: '' } }, // Empty string
+										{ [key]: { [Op.eq]: 'null' } }, // String "null" from JSON.stringify(null)
+									],
 								})
 							}
 
