@@ -1,5 +1,18 @@
 import { Box, Chip, Stack } from '@mui/material'
 
+// Utility function to format graduation year from date format to Japanese format
+// Input: "2026-03-30" -> Output: "2026年03月"
+const formatGraduationYear = dateStr => {
+	if (!dateStr || typeof dateStr !== 'string') return dateStr
+	// Extract year and month from date string (YYYY-MM-DD)
+	const match = dateStr.match(/^(\d{4})-(\d{2})/)
+	if (match) {
+		const [, year, month] = match
+		return `${year}年${month}月`
+	}
+	return dateStr
+}
+
 export const FilteredItems = ({ tempFilterState, setTempFilterState, onFilterChange }) => {
 	const handleDelete = (key, value) => {
 		setTempFilterState(prevState => {
@@ -68,6 +81,17 @@ export const FilteredItems = ({ tempFilterState, setTempFilterState, onFilterCha
 							label={level}
 							onDelete={() => {
 								handleDelete('partner_university', level)
+							}}
+						/>
+					))}
+				{tempFilterState.graduation_year &&
+					tempFilterState.graduation_year.map(yearValue => (
+						<Chip
+							variant='outlined'
+							key={yearValue}
+							label={formatGraduationYear(yearValue)}
+							onDelete={() => {
+								handleDelete('graduation_year', yearValue)
 							}}
 						/>
 					))}
