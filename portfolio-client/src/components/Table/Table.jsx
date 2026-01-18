@@ -9,7 +9,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PendingIcon from '@mui/icons-material/Pending'
-import { Box, Button, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
+import { Box, Button, FormControl, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Select, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
 import { atom, useAtom } from 'jotai'
 import AwardIcon from '../../assets/icons/award-line.svg'
 import DeleteIcon from '../../assets/icons/delete-bin-3-line.svg'
@@ -59,6 +59,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		deleteAction: null,
 	})
 	const [selectedChangedFields, setSelectedChangedFields] = useState(null)
+	const [headerFilterAnchor, setHeaderFilterAnchor] = useState({ field: null, element: null })
 
 	// localStorage ga saqlash
 	useEffect(() => {
@@ -81,6 +82,43 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		setSearchParams(params, { replace: true })
 	}, [page, sortBy, sortOrder, orderBy, order, setSearchParams])
 
+	// Handler for header filter dropdown
+	const handleHeaderFilterClick = (event, headerId, anchorElement = null) => {
+		event.stopPropagation()
+		// Use provided anchor element or fall back to currentTarget
+		const anchor = anchorElement || event.currentTarget
+		setHeaderFilterAnchor({ field: headerId, element: anchor })
+	}
+
+	const handleHeaderFilterClose = () => {
+		setHeaderFilterAnchor({ field: null, element: null })
+	}
+
+	const handleHeaderFilterChange = (headerId, value) => {
+		if (!tableProps.onFilterChange) return
+
+		const currentFilter = { ...tableProps.filter }
+
+		if (value === 'all' || value === '') {
+			// Remove filter for this field
+			if (Array.isArray(currentFilter[headerId])) {
+				delete currentFilter[headerId]
+			} else {
+				delete currentFilter[headerId]
+			}
+		} else {
+			// Set filter - for jlpt, partner_university, graduation_year, use array format
+			if (headerId === 'jlpt' || headerId === 'partner_university' || headerId === 'graduation_year') {
+				currentFilter[headerId] = [value]
+			} else {
+				currentFilter[headerId] = value
+			}
+		}
+
+		tableProps.onFilterChange(currentFilter)
+		handleHeaderFilterClose()
+	}
+
 	// Sort handler function
 	const handleSort = header => {
 		// Check if the header is sortable
@@ -94,7 +132,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			student_id: 'student_id',
 			age: 'age',
 			email: 'email',
-			expected_graduation_year: 'graduation_year',
+			graduation_year: 'graduation_year',
 		}
 
 		const apiSortField = sortMapping[header.id]
@@ -145,7 +183,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			setLoading(true)
 
 			const params = {
-				filter: tableProps.filter,
+				filter: tableProps.filter, // Let axios handle serialization
 				recruiterId: tableProps.recruiterId,
 				onlyBookmarked: tableProps.OnlyBookmarked,
 			}
@@ -157,9 +195,14 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			}
 
 			// ✅ CRITICAL FIX: Use abort signal to cancel outdated requests
+			// Stringify filter to ensure proper serialization for backend
+			const serializedParams = {
+				...params,
+				filter: typeof params.filter === 'object' ? JSON.stringify(params.filter) : params.filter,
+			}
 			axios
 				.get(tableProps.dataLink, {
-					params,
+					params: serializedParams,
 					signal, // ✅ Pass abort signal
 				})
 				.then(response => {
@@ -191,6 +234,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		}
 	}, [
 		fetchUserData,
+		tableProps.filter, // ✅ CRITICAL: Include filter in dependencies to trigger refetch when filter changes
 		tableProps.refreshTrigger,
 		// Remove refresher from dependencies to prevent automatic refetch
 		// refresher should only be used for manual refresh operations
@@ -389,7 +433,19 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 										color: '#333',
 									}}
 								>
-									{row.expected_graduation_year || 'N/A'}
+									{(() => {
+										// Format graduation_year from date format to Japanese format
+										// Input: "2026-03-30" -> Output: "2026年03月"
+										if (row.graduation_year) {
+											const match = String(row.graduation_year).match(/^(\d{4})-(\d{2})/)
+											if (match) {
+												const [, year, month] = match
+												return `${year}年${month}月`
+											}
+											return row.graduation_year
+										}
+										return 'N/A'
+									})()}
 								</Typography>
 							</Box>
 						</Box>
@@ -507,9 +563,30 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 									{visibleHeaders.map((header, index) => {
 										const isSortable = header.isSort === true
 										const isActiveSortColumn = orderBy === header.id
+										const isFilterable = ['jlpt', 'partner_university', 'graduation_year'].includes(header.id)
+										const isFilterOpen = headerFilterAnchor.field === header.id
+										const currentFilterValue = tableProps.filter?.[header.id]
+										const filterOptions = tableProps.filterOptions?.[header.id] || []
+										const formatFunction = tableProps.filterOptions?.[`${header.id}_format`]
+
+										// Get current selected value for display
+										let selectedValue = 'all'
+										if (currentFilterValue) {
+											if (Array.isArray(currentFilterValue) && currentFilterValue.length > 0) {
+												selectedValue = currentFilterValue[0]
+											} else if (typeof currentFilterValue === 'string') {
+												selectedValue = currentFilterValue
+											}
+										}
 
 										return (
 											<TableCell
+												ref={el => {
+													// Store reference for menu anchoring
+													if (isFilterable && el) {
+														el._headerId = header.id
+													}
+												}}
 												sx={{
 													backgroundColor: '#f7fafc',
 													borderBottom: '1px solid #e0e0e0',
@@ -517,13 +594,14 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													position: 'sticky',
 													top: 0,
 													zIndex: 10,
-													cursor: isSortable ? 'pointer' : 'default',
+													cursor: isSortable || isFilterable ? 'pointer' : 'default',
 													userSelect: 'none',
-													'&:hover': isSortable
-														? {
-																backgroundColor: '#edf2f7',
-															}
-														: {},
+													'&:hover':
+														isSortable || isFilterable
+															? {
+																	backgroundColor: '#edf2f7',
+																}
+															: {},
 													...(index === 0 && {
 														borderTopLeftRadius: '10px',
 													}),
@@ -535,7 +613,15 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 												align='center'
 												padding={'normal'}
 												sortDirection={orderBy === header.id ? order : false}
-												onClick={() => isSortable && handleSort(header)}
+												onClick={e => {
+													if (isFilterable) {
+														// Ensure we use the TableCell as anchor, not child elements
+														const cellElement = e.currentTarget
+														handleHeaderFilterClick(e, header.id, cellElement)
+													} else if (isSortable) {
+														handleSort(header)
+													}
+												}}
 											>
 												<Box
 													sx={{
@@ -546,7 +632,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													}}
 												>
 													{header.label}
-													{isSortable && (
+													{isSortable && !isFilterable && (
 														<Box
 															sx={{
 																display: 'flex',
@@ -558,6 +644,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 															{isActiveSortColumn && order === 'asc' ? <KeyboardArrowUpIcon sx={{ fontSize: '16px', color: '#2563eb' }} /> : isActiveSortColumn && order === 'desc' ? <KeyboardArrowDownIcon sx={{ fontSize: '16px', color: '#2563eb' }} /> : <KeyboardArrowUpIcon sx={{ fontSize: '16px' }} />}
 														</Box>
 													)}
+													{isFilterable && <KeyboardArrowDownIcon sx={{ fontSize: '16px', opacity: 0.5 }} />}
 												</Box>
 											</TableCell>
 										)
@@ -1137,6 +1224,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														) : (
 															'未提出'
 														)
+													) : header.id === 'graduation_year' ? (
+														// Format graduation_year from date format to Japanese format
+														// Input: "2026-03-30" -> Output: "2026年03月"
+														(() => {
+															if (row[header.id]) {
+																const match = String(row[header.id]).match(/^(\d{4})-(\d{2})/)
+																if (match) {
+																	const [, year, month] = match
+																	return `${year}年${month}月`
+																}
+																return row[header.id]
+															}
+															return 'N/A'
+														})()
 													) : row[header.id] ? (
 														<>
 															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : row[header.id] ? row[header.id] : 'N/A'}
@@ -1283,6 +1384,55 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 			{/* Changed Fields Modal */}
 			<ChangedFieldsModal open={Boolean(selectedChangedFields)} onClose={() => setSelectedChangedFields(null)} data={selectedChangedFields} />
+
+			{/* Header Filter Menu - Single menu for all filterable headers */}
+			{headerFilterAnchor.field &&
+				headerFilterAnchor.element &&
+				(() => {
+					const headerId = headerFilterAnchor.field
+					const currentFilterValue = tableProps.filter?.[headerId]
+					const filterOptions = tableProps.filterOptions?.[headerId] || []
+					const formatFunction = tableProps.filterOptions?.[`${headerId}_format`]
+
+					// Get current selected value for display
+					let selectedValue = 'all'
+					if (currentFilterValue) {
+						if (Array.isArray(currentFilterValue) && currentFilterValue.length > 0) {
+							selectedValue = currentFilterValue[0]
+						} else if (typeof currentFilterValue === 'string') {
+							selectedValue = currentFilterValue
+						}
+					}
+
+					return (
+						<Menu
+							anchorEl={headerFilterAnchor.element}
+							open={Boolean(headerFilterAnchor.element)}
+							onClose={handleHeaderFilterClose}
+							anchorOrigin={{
+								vertical: 'bottom',
+								horizontal: 'left',
+							}}
+							transformOrigin={{
+								vertical: 'top',
+								horizontal: 'left',
+							}}
+						>
+							<MenuItem selected={selectedValue === 'all'} onClick={() => handleHeaderFilterChange(headerId, 'all')}>
+								{t('all') || '全て'}
+							</MenuItem>
+							{filterOptions.map(option => {
+								const displayValue = formatFunction ? formatFunction(option) : option
+								const isSelected = selectedValue === option
+								return (
+									<MenuItem key={option} selected={isSelected} onClick={() => handleHeaderFilterChange(headerId, option)}>
+										{displayValue}
+									</MenuItem>
+								)
+							})}
+						</Menu>
+					)
+				})()}
 		</Box>
 	)
 }

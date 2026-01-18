@@ -91,14 +91,28 @@ const Student = ({ OnlyBookmarked = false }) => {
 	}, [])
 
 	// Generate graduation year options dynamically (current year to 5 years ahead)
-	// Database stores: "2026年03月" (March/Spring) and "2026年09月" (September/Fall)
+	// Database stores dates in format: "2026-03-30", "2026-09-30", etc.
+	// Filter options use date format internally, but display in Japanese format (2026年03月)
 	const currentYear = new Date().getFullYear()
 	const graduationYearOptions = []
 	for (let i = 0; i <= 5; i++) {
 		const year = currentYear + i
-		// Match database format: 03月 for Spring (March), 09月 for Fall (September)
-		graduationYearOptions.push(`${year}年03月`) // Spring graduation
-		graduationYearOptions.push(`${year}年09月`) // Fall graduation
+		// Generate date strings for March 30th and September 30th
+		graduationYearOptions.push(`${year}-03-30`) // Spring graduation (March)
+		graduationYearOptions.push(`${year}-09-30`) // Fall graduation (September)
+	}
+
+	// Utility function to format graduation year from date format to Japanese format
+	// Input: "2026-03-30" -> Output: "2026年03月"
+	const formatGraduationYear = dateStr => {
+		if (!dateStr || typeof dateStr !== 'string') return dateStr
+		// Extract year and month from date string (YYYY-MM-DD)
+		const match = dateStr.match(/^(\d{4})-(\d{2})/)
+		if (match) {
+			const [, year, month] = match
+			return `${year}年${month}月`
+		}
+		return dateStr
 	}
 
 	const filterFields = [
@@ -126,6 +140,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			label: '卒業予定年（月）',
 			type: 'checkbox',
 			options: graduationYearOptions,
+			displayFormat: formatGraduationYear, // Format for display: "2026-03-30" -> "2026年03月"
 		},
 		{
 			key: 'partner_university',
@@ -216,7 +231,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			isJSON: false,
 		},
 		{
-			id: 'expected_graduation_year',
+			id: 'graduation_year',
 			numeric: true,
 			disablePadding: false,
 			label: '卒業予定年（月）',
@@ -240,6 +255,14 @@ const Student = ({ OnlyBookmarked = false }) => {
 		filter: filterState,
 		recruiterId: recruiterId,
 		OnlyBookmarked: OnlyBookmarked,
+		onFilterChange: handleFilterChange, // Pass filter change handler to Table
+		// Pass filter options for header dropdowns
+		filterOptions: {
+			jlpt: ['N1', 'N2', 'N3', 'N4', 'N5', '未提出'],
+			partner_university: ['東京通信大学', '産業能率大学', '新潟産業大学', '京都橘大学', '大手前大学', '自由が丘産能短期大学', '40単位モデル'],
+			graduation_year: graduationYearOptions,
+			graduation_year_format: formatGraduationYear,
+		},
 	}
 
 	return (

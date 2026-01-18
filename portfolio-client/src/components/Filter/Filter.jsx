@@ -26,7 +26,8 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 				const validatedState = { ...filterState }
 
 				// Collect allowed keys: field keys + any matchModeKey defined on fields
-				const allowedKeys = new Set(fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean)))
+				// Always include 'search' as it's a special field not in the fields array
+				const allowedKeys = new Set(['search', ...fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean))])
 
 				Object.keys(parsedState).forEach(key => {
 					if (allowedKeys.has(key) && parsedState[key] !== undefined) {
@@ -111,19 +112,24 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 	const userChangedFilter = useRef(false)
 
 	// ✅ CRITICAL FIX: Debounce the onFilterChange call to prevent API spam
+	// Reduced debounce time to 300ms for better responsiveness
 	const debouncedOnFilterChange = useMemo(
 		() =>
 			debounce(filterState => {
 				onFilterChange(filterState)
-			}, 500),
+				userChangedFilter.current = false // Reset flag after debounce completes
+			}, 300),
 		[onFilterChange]
 	)
 
 	useEffect(() => {
 		if (!isInitialMount.current && userChangedFilter.current) {
 			// ✅ Use debounced version for search field changes
-			debouncedOnFilterChange(localFilterState)
-			userChangedFilter.current = false
+			// Cancel any pending debounced calls and schedule new one with latest state
+			debouncedOnFilterChange.cancel()
+			// Create a fresh copy to ensure we're using the latest state
+			const currentState = { ...localFilterState }
+			debouncedOnFilterChange(currentState)
 		}
 	}, [localFilterState, debouncedOnFilterChange])
 
@@ -443,22 +449,25 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 										{t('selected') || 'Selected'} ({value.length})
 									</span>
 									<div className={style.selectedChips}>
-										{value.map(sel => (
-											<span
-												key={sel}
-												className={style.chip}
-												onClick={() =>
-													handleTempFilterChange(
-														field.key,
-														value.filter(v => v !== sel)
-													)
-												}
-												title={sel}
-											>
-												{sel}
-												<span className={style.chipClose}>×</span>
-											</span>
-										))}
+										{value.map(sel => {
+											const displayValue = field.displayFormat ? field.displayFormat(sel) : sel
+											return (
+												<span
+													key={sel}
+													className={style.chip}
+													onClick={() =>
+														handleTempFilterChange(
+															field.key,
+															value.filter(v => v !== sel)
+														)
+													}
+													title={displayValue}
+												>
+													{displayValue}
+													<span className={style.chipClose}>×</span>
+												</span>
+											)
+										})}
 									</div>
 								</div>
 							)}
@@ -468,6 +477,7 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 									<List height={320} itemCount={filtered.length} itemSize={32} width={'100%'}>
 										{({ index, style: rowStyle }) => {
 											const option = filtered[index]
+											const displayValue = field.displayFormat ? field.displayFormat(option) : option
 											return (
 												<div
 													style={{
@@ -487,7 +497,7 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 															}}
 															className={style.checkbox}
 														/>
-														<span>{option}</span>
+														<span>{displayValue}</span>
 													</label>
 												</div>
 											)
@@ -496,20 +506,23 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 								</div>
 							) : (
 								<div className={style.checkboxGroupGrid}>
-									{filtered.map(option => (
-										<label key={option} className={style.checkboxLabel}>
-											<input
-												type='checkbox'
-												checked={value.includes(option)}
-												onChange={e => {
-													const newValue = e.target.checked ? [...value, option] : value.filter(v => v !== option)
-													handleTempFilterChange(field.key, newValue)
-												}}
-												className={style.checkbox}
-											/>
-											<span>{option}</span>
-										</label>
-									))}
+									{filtered.map(option => {
+										const displayValue = field.displayFormat ? field.displayFormat(option) : option
+										return (
+											<label key={option} className={style.checkboxLabel}>
+												<input
+													type='checkbox'
+													checked={value.includes(option)}
+													onChange={e => {
+														const newValue = e.target.checked ? [...value, option] : value.filter(v => v !== option)
+														handleTempFilterChange(field.key, newValue)
+													}}
+													className={style.checkbox}
+												/>
+												<span>{displayValue}</span>
+											</label>
+										)
+									})}
 								</div>
 							)}
 						</div>
