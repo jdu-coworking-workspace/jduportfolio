@@ -60,7 +60,7 @@ class StaffController {
 
 	static async getAllStaff(req, res) {
 		try {
-			const filter = req.query.filter || {}
+			const filter = req.query.filter ? JSON.parse(req.query.filter) : {}
 			const staffList = await StaffService.getAllStaff(filter)
 			res.json(staffList)
 		} catch (error) {
