@@ -1,13 +1,14 @@
 import EmailIcon from '@mui/icons-material/Email'
 import { Avatar, Box, IconButton } from '@mui/material'
 import PropTypes from 'prop-types'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import ArrowGoBackIcon from '../../../assets/icons/arrow-go-back-line.svg'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
+import ProfileMarkdownBlock from './ProfileMarkdownBlock'
 
 const StudentProfile = ({ userId = 0 }) => {
 	const { studentId } = useParams()
@@ -50,6 +51,28 @@ const StudentProfile = ({ userId = 0 }) => {
 	const [student, setStudent] = useState(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState(null)
+
+	const shouldShowAiMarkdown = useMemo(() => {
+		if (role !== 'Student') {
+			return false
+		}
+
+		const searchParams = new URLSearchParams(location.search)
+		const queryValue = searchParams.get('aiMarkdown')
+		const normalizedQuery = queryValue ? queryValue.toLowerCase() : null
+		const enabledByQuery = normalizedQuery === '1' || normalizedQuery === 'true' || normalizedQuery === 'yes'
+		const enabledByHash = location.hash?.toLowerCase().includes('aimarkdown')
+
+		return enabledByQuery || enabledByHash
+	}, [location.hash, location.search, role])
+
+	const markdownRevealUrl = useMemo(() => {
+		const params = new URLSearchParams(location.search)
+		params.set('aiMarkdown', '1')
+		const searchString = params.toString()
+
+		return `${location.pathname}?${searchString}${location.hash || ''}`
+	}, [location.hash, location.pathname, location.search])
 
 	useEffect(() => {
 		// Wait for context initialization before attempting to fetch
@@ -276,6 +299,14 @@ const StudentProfile = ({ userId = 0 }) => {
 					</Box>
 				</Box>
 			</Box>
+			{role === 'Student' && !shouldShowAiMarkdown && (
+				<Box className={styles.markdownHint}>
+					<span>Need an AI-friendly export? </span>
+					<a href={markdownRevealUrl}>Open the Markdown view</a>
+					<span> to reveal the copy block.</span>
+				</Box>
+			)}
+			{shouldShowAiMarkdown && <ProfileMarkdownBlock student={student} />}
 			<Outlet />
 		</Box>
 	)
