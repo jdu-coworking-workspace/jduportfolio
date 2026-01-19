@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Maintenance from '../pages/Maintenance/Maintenance'
+import MaintenancePage from './MaintenancePage'
 import axios from '../utils/axiosUtils'
 
 /**
@@ -8,6 +8,7 @@ import axios from '../utils/axiosUtils'
  */
 const MaintenanceCheck = ({ children }) => {
 	const [isMaintenance, setIsMaintenance] = useState(false) // false = normal/checking, true = maintenance
+	const [maintenanceMessage, setMaintenanceMessage] = useState({})
 
 	useEffect(() => {
 		const checkMaintenance = async () => {
@@ -17,6 +18,11 @@ const MaintenanceCheck = ({ children }) => {
 
 				// If maintenance is enabled, show maintenance page
 				if (data.enabled) {
+					setMaintenanceMessage({
+						message: data.message,
+						messageEn: data.messageEn,
+						messageUz: data.messageUz,
+					})
 					setIsMaintenance(true)
 				} else {
 					setIsMaintenance(false)
@@ -30,6 +36,14 @@ const MaintenanceCheck = ({ children }) => {
 				// Only show maintenance page if it's a server/network error (backend might be down)
 				// For other errors, assume normal operation
 				if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED' || error.response?.status === 500 || error.response?.status === 502 || error.response?.status === 503 || error.response?.status === 504) {
+					// Try to get message from error response (503 returns maintenance message)
+					if (error.response?.data?.maintenance) {
+						setMaintenanceMessage({
+							message: error.response.data.message,
+							messageEn: error.response.data.messageEn,
+							messageUz: error.response.data.messageUz,
+						})
+					}
 					setIsMaintenance(true)
 				} else {
 					setIsMaintenance(false)
@@ -47,7 +61,7 @@ const MaintenanceCheck = ({ children }) => {
 
 	// Show maintenance page if enabled or unreachable
 	if (isMaintenance) {
-		return <Maintenance />
+		return <MaintenancePage {...maintenanceMessage} />
 	}
 
 	// Normal app rendering (also shown while checking to avoid flash)

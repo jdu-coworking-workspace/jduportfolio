@@ -1,5 +1,5 @@
 {
-	"enabled": false,
+	"enabled": true,
 	"message": "システムは現在メンテナンス中です。しばらくしてから再度お試しください。",
 	"messageEn": "The system is currently under maintenance. Please try again later.",
 	"messageUz": "Tizim hozirda texnik xizmat ko'rsatish rejimida. Iltimos, keyinroq qayta urinib ko'ring."
