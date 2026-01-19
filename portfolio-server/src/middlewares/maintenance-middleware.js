@@ -6,8 +6,8 @@ const fs = require('fs')
  * Excludes the /api/maintenance endpoint itself to allow frontend to check status
  */
 const maintenanceMiddleware = (req, res, next) => {
-	// Allow the maintenance endpoint itself to be accessed
-	if (req.path === '/api/maintenance' || req.path.startsWith('/api/maintenance/')) {
+	// Allow the maintenance endpoint itself and admin endpoint to be accessed
+	if (req.path === '/api/maintenance' || req.path.startsWith('/api/maintenance/') || req.path.startsWith('/api/maintenance-admin')) {
 		return next()
 	}
 
