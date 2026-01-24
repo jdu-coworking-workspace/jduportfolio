@@ -25,6 +25,7 @@ const getInitialFilterState = () => {
 	const defaultState = {
 		search: '',
 		it_skills: [],
+		language_skills: [],
 		jlpt: [],
 		jdu_japanese_certification: [],
 		graduation_year: [],
@@ -52,7 +53,11 @@ const Student = ({ OnlyBookmarked = false }) => {
 	// Initial filter state - localStorage dan olish
 	const initialFilterState = getInitialFilterState()
 
-	const [filterState, setFilterState] = useState(initialFilterState)
+	const [filterState, setFilterState] = useState({
+		...initialFilterState,
+		language_skills: initialFilterState.language_skills || [],
+		language_skills_match: initialFilterState.language_skills_match || 'any',
+	})
 	const [viewMode, setViewMode] = useState(getInitialViewMode()) // localStorage dan olish
 	const [updatedBookmark, setUpdatedBookmark] = useState({
 		studentId: null,
@@ -70,6 +75,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	}, [viewMode])
 
 	const [itSkillOptions, setItSkillOptions] = useState(['JS', 'Python', 'Java', 'SQL'])
+	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -85,6 +91,25 @@ const Student = ({ OnlyBookmarked = false }) => {
 			}
 		}
 		fetchItSkills()
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		const fetchLanguageSkills = async () => {
+			try {
+				const res = await axios.get('/api/skills')
+				if (!cancelled) {
+					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+					if (names.length > 0) setLanguageSkillOptions(names)
+				}
+			} catch {
+				// fallback silently
+			}
+		}
+		fetchLanguageSkills()
 		return () => {
 			cancelled = true
 		}
@@ -122,6 +147,13 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'checkbox',
 			options: itSkillOptions,
 			matchModeKey: 'it_skills_match',
+		},
+		{
+			key: 'language_skills',
+			label: t('language_skills') || 'Language Skills',
+			type: 'checkbox',
+			options: languageSkillOptions,
+			matchModeKey: 'language_skills_match',
 		},
 		{
 			key: 'jlpt',

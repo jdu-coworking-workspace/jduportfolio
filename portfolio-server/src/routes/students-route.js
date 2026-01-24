@@ -99,6 +99,27 @@ router.get('/ids', StudentController.getStudentIds)
 
 /**
  * @swagger
+ * /api/students/language-skills:
+ *   get:
+ *     tags: [Students]
+ *     summary: Get all unique language skills from students
+ *     responses:
+ *       200:
+ *         description: List of unique language skills
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ */
+router.get('/language-skills', StudentController.getLanguageSkills)
+
+/**
+ * @swagger
  * /api/students/{id}:
  *   get:
  *     tags: [Students]

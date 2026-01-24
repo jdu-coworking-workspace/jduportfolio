@@ -32,6 +32,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const userId = JSON.parse(sessionStorage.getItem('loginUser')).id
 
 	const [itSkillOptions, setItSkillOptions] = useState(['JS', 'Python', 'Java', 'SQL'])
+	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -52,6 +53,25 @@ const Student = ({ OnlyBookmarked = false }) => {
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		const fetchLanguageSkills = async () => {
+			try {
+				const res = await axios.get('/api/skills')
+				if (!cancelled) {
+					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+					if (names.length > 0) setLanguageSkillOptions(names)
+				}
+			} catch {
+				// fallback silently
+			}
+		}
+		fetchLanguageSkills()
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
 	const filterProps = [
 		//{
 		//  key: "semester",
@@ -66,6 +86,14 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'checkbox',
 			options: itSkillOptions,
 			matchModeKey: 'it_skills_match',
+			minWidth: '160px',
+		},
+		{
+			key: 'language_skills',
+			label: t('language_skills') || 'Language Skills',
+			type: 'checkbox',
+			options: languageSkillOptions,
+			matchModeKey: 'language_skills_match',
 			minWidth: '160px',
 		},
 		{

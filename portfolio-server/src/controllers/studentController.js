@@ -19,6 +19,17 @@ class StudentController {
 		}
 	}
 
+	// Get all unique language skills
+	static async getLanguageSkills(req, res, next) {
+		try {
+			const requesterRole = req.user?.userType || null
+			const languageSkills = await StudentService.getLanguageSkills(requesterRole)
+			res.status(200).json(languageSkills)
+		} catch (error) {
+			next(error)
+		}
+	}
+
 	// Webhook handler for Kintone events
 	static async webhookHandler(req, res) {
 		try {
