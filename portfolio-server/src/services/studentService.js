@@ -264,6 +264,7 @@ class StudentService {
 			const searchableColumns = ['email', 'first_name', 'last_name', 'skills', 'it_skills', 'jlpt', 'student_id', 'partner_university']
 
 			// Helper to build JSONB @> conditions for it_skills across levels
+			// Only checks Student.it_skills (public data only)
 			const buildItSkillsCondition = (names = [], match = 'any') => {
 				const lvls = ['上級', '中級', '初級']
 				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
@@ -273,8 +274,40 @@ class StudentService {
 					// JSON array string for [{"name":"<n>"}]
 					const json = JSON.stringify([{ name: String(n) }])
 					const esc = sequelize.escape(json) // safe string with quotes
-					const levelExpr = lvls.map(l => `(("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
+					// Check Student.it_skills only (public data), handle NULL values
+					const levelExpr = lvls.map(l => `("Student"."it_skills" IS NOT NULL AND ("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
 					return `(${levelExpr})`
+				})
+				const joiner = match === 'all' ? ' AND ' : ' OR '
+				return `(${perSkill.join(joiner)})`
+			}
+
+			// Helper to build conditions for language_skills (TEXT field containing JSON string)
+			// Handles both formats:
+			// 1. Old seeder format (plain text): "English (TOEIC 800), Korean (TOPIK 4)"
+			// 2. Correct format (JSON string): [{"name":"中国語","level":"#ffeb3b","color":"#5627DB"}]
+			// Only checks Student.language_skills (public data only)
+			const buildLanguageSkillsCondition = (names = [], match = 'any') => {
+				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
+				if (safeNames.length === 0) return null
+
+				const perSkill = safeNames.map(n => {
+					// Escape the skill name for SQL LIKE pattern matching
+					const escapedName = String(n).replace(/[%_\\]/g, '\\$&')
+					// Match both formats:
+					// 1. Plain text format (old seeder): "Japanese (JLPT N2), English (IELTS 6.5)" - search for language name
+					// 2. JSON string format (correct): [{"name":"中国語",...}] - search for JSON pattern with "name" field
+					// Only check Student.language_skills (public data), handle NULL values
+					return `(
+						"Student"."language_skills" IS NOT NULL 
+						AND (
+							"Student"."language_skills"::text LIKE '%${escapedName}%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}",%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}",%'
+						)
+					)`
 				})
 				const joiner = match === 'all' ? ' AND ' : ' OR '
 				return `(${perSkill.join(joiner)})`
@@ -339,6 +372,13 @@ class StudentService {
 						if (expr) {
 							queryOther[Op.and].push(sequelize.literal(expr))
 						}
+					} else if (key === 'language_skills') {
+						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
+						const match = filter.language_skills_match === 'all' ? 'all' : 'any'
+						const expr = buildLanguageSkillsCondition(values, match)
+						if (expr) {
+							queryOther[Op.and].push(sequelize.literal(expr))
+						}
 					} else if (key === 'skills') {
 						queryOther[Op.and].push({
 							[Op.or]: [
@@ -355,6 +395,9 @@ class StudentService {
 						})
 					} else if (key === 'it_skills_match') {
 						// handled together with it_skills
+						return
+					} else if (key === 'language_skills_match') {
+						// handled together with language_skills
 						return
 					} else if (key === 'partner_university_credits') {
 						const credits = Number(filter[key])
@@ -524,7 +567,7 @@ class StudentService {
 				const studentJson = student.toJSON()
 				if (studentJson.draft && studentJson.draft.profile_data && studentJson.draft.status !== 'draft') {
 					const draftData = studentJson.draft.profile_data
-					const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'hobbies_description', 'special_skills_description', 'other_information', 'it_skills', 'skills']
+					const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'hobbies_description', 'special_skills_description', 'other_information', 'it_skills', 'skills', 'language_skills']
 					fieldsToMerge.forEach(field => {
 						if (draftData[field] !== undefined) {
 							studentJson[field] = draftData[field]
@@ -1051,6 +1094,51 @@ class StudentService {
 				name: `${student.first_name} ${student.last_name}`,
 				display: `${student.student_id} - ${student.first_name} ${student.last_name}`,
 			}))
+		} catch (error) {
+			throw error
+		}
+	}
+
+	static async getLanguageSkills(requesterRole = null) {
+		try {
+			const normalizedRole = (requesterRole || '').toLowerCase()
+			let whereClause = { active: true }
+
+			// Recruiters should only see public (visible) students
+			if (normalizedRole === 'recruiter') {
+				whereClause.visibility = true
+			}
+
+			const students = await Student.findAll({
+				where: whereClause,
+				attributes: ['language_skills'],
+			})
+
+			const uniqueSkills = new Set()
+
+			students.forEach(student => {
+				if (student.language_skills) {
+					try {
+						// Parse JSON string to array
+						const skills = typeof student.language_skills === 'string' ? JSON.parse(student.language_skills) : student.language_skills
+						if (Array.isArray(skills)) {
+							skills.forEach(skill => {
+								if (skill && skill.name) {
+									uniqueSkills.add(skill.name)
+								}
+							})
+						}
+					} catch (error) {
+						// Skip invalid JSON
+						console.warn('Invalid language_skills JSON:', student.language_skills)
+					}
+				}
+			})
+
+			// Convert Set to sorted array of objects
+			return Array.from(uniqueSkills)
+				.sort()
+				.map(name => ({ name }))
 		} catch (error) {
 			throw error
 		}

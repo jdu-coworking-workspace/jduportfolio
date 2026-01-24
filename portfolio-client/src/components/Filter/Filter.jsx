@@ -4,7 +4,7 @@ import WindowIcon from '@mui/icons-material/Window'
 import { Button } from '@mui/material'
 import { debounce } from 'lodash'
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { FixedSizeList as List } from 'react-window'
 import SearchIcon from '../../assets/icons/search-line.svg'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -12,165 +12,642 @@ import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
 import style from './Filter.module.css'
 import { FilteredItems } from './FilteredItems'
-const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode = 'grid', onViewModeChange, persistKey = 'filter-state', disableStudentIdSearch = false, showFilteredItems = true, showCardFormatButton = true }) => {
-	const { language } = useLanguage()
-	const t = key => translations[language][key] || key
 
-	// Load initial state ONCE with validation
-	const getInitialState = useCallback(() => {
-		try {
-			const saved = localStorage.getItem(persistKey)
-			if (saved) {
-				const parsedState = JSON.parse(saved)
-				// Validate saved state against current fields
-				const validatedState = { ...filterState }
+// ============================================================================
+// TYPE DEFINITIONS (JSDoc)
+// ============================================================================
 
-				// Collect allowed keys: field keys + any matchModeKey defined on fields
-				// Always include 'search' as it's a special field not in the fields array
-				const allowedKeys = new Set(['search', ...fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean))])
+/**
+ * @typedef {'checkbox' | 'radio' | 'select' | 'text'} FieldType
+ */
 
-				Object.keys(parsedState).forEach(key => {
-					if (allowedKeys.has(key) && parsedState[key] !== undefined) {
-						validatedState[key] = parsedState[key]
-					}
-				})
+/**
+ * @typedef {Object} FilterField
+ * @property {string} key - Unique identifier for the field
+ * @property {string} label - Display label for the field
+ * @property {FieldType} type - Type of filter input
+ * @property {string[]} [options] - Available options for checkbox/radio/select
+ * @property {string} [matchModeKey] - Key for match mode (any/all) storage
+ * @property {(value: string) => string} [displayFormat] - Custom display formatter
+ */
 
-				return validatedState
+/**
+ * @typedef {Object} FilterStateValue
+ * @property {string | string[]} value - The filter value
+ */
+
+/**
+ * @typedef {Record<string, string | string[]>} FilterState
+ */
+
+/**
+ * @typedef {Object} Suggestion
+ * @property {string} label - Display label
+ * @property {string} field - Associated field key
+ * @property {string} type - Suggestion type
+ * @property {string} [value] - Optional value override
+ */
+
+/**
+ * @typedef {'grid' | 'table' | 'list'} ViewMode
+ */
+
+/**
+ * @typedef {Object} FilterProps
+ * @property {FilterField[]} fields - Filter field configurations
+ * @property {FilterState} filterState - Initial filter state
+ * @property {(state: FilterState) => void} onFilterChange - Callback when filters change
+ * @property {() => void} [onGridViewClick] - Legacy grid view callback
+ * @property {ViewMode} [viewMode] - Current view mode
+ * @property {(mode: ViewMode) => void} [onViewModeChange] - View mode change callback
+ * @property {string} [persistKey] - LocalStorage key for persistence
+ * @property {boolean} [disableStudentIdSearch] - Disable student ID API search
+ * @property {boolean} [showFilteredItems] - Show filtered items display
+ * @property {boolean} [showCardFormatButton] - Show view mode toggle button
+ */
+
+// ============================================================================
+// ACTION TYPES
+// ============================================================================
+
+/** @enum {string} */
+const ActionType = Object.freeze({
+	SET_FILTER_VALUE: 'SET_FILTER_VALUE',
+	SET_FILTER_STATE: 'SET_FILTER_STATE',
+	SET_INPUT_VALUE: 'SET_INPUT_VALUE',
+	SET_SUGGESTIONS: 'SET_SUGGESTIONS',
+	SET_SHOW_SUGGESTIONS: 'SET_SHOW_SUGGESTIONS',
+	SET_SELECTED_SUGGESTION_INDEX: 'SET_SELECTED_SUGGESTION_INDEX',
+	SET_SHOW_FILTER_MODAL: 'SET_SHOW_FILTER_MODAL',
+	SET_TEMP_FILTER_STATE: 'SET_TEMP_FILTER_STATE',
+	SET_TEMP_FILTER_VALUE: 'SET_TEMP_FILTER_VALUE',
+	SET_CHECKBOX_SEARCH: 'SET_CHECKBOX_SEARCH',
+	CLEAR_ALL_FILTERS: 'CLEAR_ALL_FILTERS',
+	APPLY_TEMP_FILTERS: 'APPLY_TEMP_FILTERS',
+	OPEN_FILTER_MODAL: 'OPEN_FILTER_MODAL',
+	CLOSE_FILTER_MODAL: 'CLOSE_FILTER_MODAL',
+})
+
+// ============================================================================
+// ACTION CREATORS
+// ============================================================================
+
+/**
+ * @typedef {Object} SetFilterValueAction
+ * @property {typeof ActionType.SET_FILTER_VALUE} type
+ * @property {{ key: string, value: string | string[] }} payload
+ */
+
+/**
+ * @typedef {Object} SetFilterStateAction
+ * @property {typeof ActionType.SET_FILTER_STATE} type
+ * @property {FilterState} payload
+ */
+
+/**
+ * @typedef {Object} SetInputValueAction
+ * @property {typeof ActionType.SET_INPUT_VALUE} type
+ * @property {string} payload
+ */
+
+/**
+ * @typedef {Object} SetSuggestionsAction
+ * @property {typeof ActionType.SET_SUGGESTIONS} type
+ * @property {Suggestion[]} payload
+ */
+
+/**
+ * @typedef {Object} SetShowSuggestionsAction
+ * @property {typeof ActionType.SET_SHOW_SUGGESTIONS} type
+ * @property {boolean} payload
+ */
+
+/**
+ * @typedef {Object} SetSelectedSuggestionIndexAction
+ * @property {typeof ActionType.SET_SELECTED_SUGGESTION_INDEX} type
+ * @property {number} payload
+ */
+
+/**
+ * @typedef {Object} SetShowFilterModalAction
+ * @property {typeof ActionType.SET_SHOW_FILTER_MODAL} type
+ * @property {boolean} payload
+ */
+
+/**
+ * @typedef {Object} SetTempFilterStateAction
+ * @property {typeof ActionType.SET_TEMP_FILTER_STATE} type
+ * @property {FilterState} payload
+ */
+
+/**
+ * @typedef {Object} SetTempFilterValueAction
+ * @property {typeof ActionType.SET_TEMP_FILTER_VALUE} type
+ * @property {{ key: string, value: string | string[] }} payload
+ */
+
+/**
+ * @typedef {Object} SetCheckboxSearchAction
+ * @property {typeof ActionType.SET_CHECKBOX_SEARCH} type
+ * @property {{ key: string, value: string }} payload
+ */
+
+/**
+ * @typedef {Object} ClearAllFiltersAction
+ * @property {typeof ActionType.CLEAR_ALL_FILTERS} type
+ * @property {{ clearedState: FilterState }} payload
+ */
+
+/**
+ * @typedef {Object} ApplyTempFiltersAction
+ * @property {typeof ActionType.APPLY_TEMP_FILTERS} type
+ */
+
+/**
+ * @typedef {Object} OpenFilterModalAction
+ * @property {typeof ActionType.OPEN_FILTER_MODAL} type
+ */
+
+/**
+ * @typedef {Object} CloseFilterModalAction
+ * @property {typeof ActionType.CLOSE_FILTER_MODAL} type
+ */
+
+/**
+ * @typedef {SetFilterValueAction | SetFilterStateAction | SetInputValueAction | SetSuggestionsAction | SetShowSuggestionsAction | SetSelectedSuggestionIndexAction | SetShowFilterModalAction | SetTempFilterStateAction | SetTempFilterValueAction | SetCheckboxSearchAction | ClearAllFiltersAction | ApplyTempFiltersAction | OpenFilterModalAction | CloseFilterModalAction} FilterAction
+ */
+
+// ============================================================================
+// STATE INTERFACE
+// ============================================================================
+
+/**
+ * @typedef {Object} FilterReducerState
+ * @property {FilterState} filterState - Current active filter state
+ * @property {string} inputValue - Search input value
+ * @property {Suggestion[]} suggestions - Current suggestions list
+ * @property {boolean} showSuggestions - Whether to show suggestions dropdown
+ * @property {number} selectedSuggestionIndex - Currently selected suggestion index
+ * @property {boolean} showFilterModal - Whether filter modal is open
+ * @property {FilterState} tempFilterState - Temporary filter state for modal
+ * @property {Map<string, string>} checkboxSearchMap - Search terms for checkbox lists
+ */
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates a Set from an array for O(1) lookups
+ * @template T
+ * @param {T[]} arr - Array to convert
+ * @returns {Set<T>} Set of values
+ */
+const createLookupSet = arr => new Set(arr)
+
+/**
+ * Checks if a value is empty (null, undefined, empty string, or empty array)
+ * @param {unknown} value - Value to check
+ * @returns {boolean} True if value is empty
+ */
+const isEmpty = value => {
+	if (value === null || value === undefined || value === '') return true
+	if (Array.isArray(value)) return value.length === 0
+	return false
+}
+
+/**
+ * Checks if filter state has any non-empty values
+ * @param {FilterState} state - Filter state to check
+ * @returns {boolean} True if state has any values
+ */
+const hasAnyFilterValue = state => {
+	return Object.values(state).some(value => !isEmpty(value))
+}
+
+/**
+ * Filters and validates saved state against current fields
+ * @param {FilterState} savedState - State from localStorage
+ * @param {FilterState} defaultState - Default filter state
+ * @param {Set<string>} allowedKeys - Set of valid keys
+ * @returns {FilterState} Validated filter state
+ */
+const validateSavedState = (savedState, defaultState, allowedKeys) => {
+	/** @type {FilterState} */
+	const validatedState = { ...defaultState }
+
+	for (const key of Object.keys(savedState)) {
+		if (allowedKeys.has(key) && savedState[key] !== undefined) {
+			validatedState[key] = savedState[key]
+		}
+	}
+
+	return validatedState
+}
+
+/**
+ * Loads and validates filter state from localStorage
+ * @param {string} persistKey - Storage key
+ * @param {FilterState} defaultState - Default filter state
+ * @param {FilterField[]} fields - Field configurations
+ * @returns {FilterState} Loaded or default state
+ */
+const loadPersistedState = (persistKey, defaultState, fields) => {
+	console.log('[Filter] 📥 Loading persisted state:', { persistKey })
+	try {
+		const saved = localStorage.getItem(persistKey)
+		if (!saved) {
+			console.log('[Filter] No saved state found, using defaults')
+			return defaultState
+		}
+
+		const parsedState = JSON.parse(saved)
+		console.log('[Filter] Parsed saved state:', parsedState)
+
+		const allowedKeys = createLookupSet(['search', ...fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean))])
+
+		const validatedState = validateSavedState(parsedState, defaultState, allowedKeys)
+		console.log('[Filter] ✅ Validated state loaded:', validatedState)
+		return validatedState
+	} catch (error) {
+		console.warn('[Filter] ❌ Error loading filter state from localStorage:', error)
+		localStorage.removeItem(persistKey)
+		return defaultState
+	}
+}
+
+/**
+ * Saves filter state to localStorage (only non-empty values)
+ * @param {string} persistKey - Storage key
+ * @param {FilterState} state - State to save
+ * @returns {void}
+ */
+const saveToStorage = (persistKey, state) => {
+	console.log('[Filter] 💾 Attempting to save state:', { persistKey, state })
+	try {
+		/** @type {FilterState} */
+		const stateToSave = {}
+
+		for (const [key, value] of Object.entries(state)) {
+			if (!isEmpty(value)) {
+				stateToSave[key] = value
 			}
-		} catch (error) {
-			console.warn('Error loading filter state from localStorage:', error)
-			localStorage.removeItem(persistKey) // Clear corrupted data
 		}
-		return filterState
-	}, [persistKey, filterState, fields])
 
-	const [localFilterState, setLocalFilterState] = useState(getInitialState)
-	const [inputValue, setInputValue] = useState(() => getInitialState().search || '')
-	const [noMatches, setNoMatches] = useState(false)
-	const [showSuggestions, setShowSuggestions] = useState(false)
-	const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
-
-	// Filter modal state
-	const [showFilterModal, setShowFilterModal] = useState(false)
-	const [tempFilterState, setTempFilterState] = useState(getInitialState)
-
-	// Local search strings for big checkbox lists
-	const [checkboxSearchMap, setCheckboxSearchMap] = useState({})
-
-	// Track if this is the initial mount
-	const isInitialMount = useRef(true)
-
-	// ✅ CRITICAL FIX: Don't call onFilterChange on mount
-	// Parent (Student.jsx) already has correct state from localStorage
-	// Filter should only call onFilterChange when user actively changes something
-	useEffect(() => {
-		if (isInitialMount.current) {
-			isInitialMount.current = false
-			// ✅ NO onFilterChange call here! Parent already has correct state
-			// This prevents unnecessary state update and duplicate API requests
+		if (Object.keys(stateToSave).length > 0) {
+			localStorage.setItem(persistKey, JSON.stringify(stateToSave))
+			console.log('[Filter] ✅ State saved to localStorage:', stateToSave)
+		} else {
+			localStorage.removeItem(persistKey)
+			console.log('[Filter] 🗑️ Cleared empty state from localStorage')
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []) // Empty deps - runs only once on mount
+	} catch (error) {
+		console.warn('[Filter] ❌ Error saving filter state to localStorage:', error)
+	}
+}
 
-	// Debounced save to localStorage
-	const debouncedSaveToStorage = useMemo(
-		() =>
-			debounce(state => {
-				try {
-					// Only save non-empty values
-					const stateToSave = Object.entries(state).reduce((acc, [key, value]) => {
-						if (value && value !== '' && !(Array.isArray(value) && value.length === 0)) {
-							acc[key] = value
-						}
-						return acc
-					}, {})
+/**
+ * Creates cleared filter state based on field configurations
+ * @param {FilterField[]} fields - Field configurations
+ * @returns {FilterState} Cleared state
+ */
+const createClearedState = fields => {
+	/** @type {FilterState} */
+	const clearedState = { search: '' }
 
-					if (Object.keys(stateToSave).length > 0) {
-						localStorage.setItem(persistKey, JSON.stringify(stateToSave))
-					} else {
-						localStorage.removeItem(persistKey)
-					}
-				} catch (error) {
-					console.warn('Error saving filter state to localStorage:', error)
-				}
-			}, 500),
-		[persistKey]
-	)
+	for (const field of fields) {
+		clearedState[field.key] = field.type === 'checkbox' ? [] : ''
+		if (field.matchModeKey) {
+			clearedState[field.matchModeKey] = 'any'
+		}
+	}
 
-	// Save to localStorage when state changes (but not on initial load)
+	return clearedState
+}
+
+/**
+ * Filters and sorts checkbox options with selected-first ordering
+ * @param {string[]} options - All options
+ * @param {Set<string>} selectedSet - Set of selected values
+ * @param {string} searchTerm - Search filter term
+ * @returns {string[]} Filtered and sorted options
+ */
+const filterAndSortCheckboxOptions = (options, selectedSet, searchTerm) => {
+	const normalizedSearch = searchTerm.toLowerCase()
+
+	// Filter first if search term exists
+	const filtered = searchTerm ? options.filter(o => String(o).toLowerCase().includes(normalizedSearch)) : options
+
+	// Sort: selected first, then alphabetically
+	return [...filtered].sort((a, b) => {
+		const aSelected = selectedSet.has(a)
+		const bSelected = selectedSet.has(b)
+
+		if (aSelected !== bSelected) {
+			return aSelected ? -1 : 1
+		}
+		return String(a).localeCompare(String(b))
+	})
+}
+
+// ============================================================================
+// REDUCER
+// ============================================================================
+
+/**
+ * Filter component reducer
+ * @param {FilterReducerState} state - Current state
+ * @param {FilterAction} action - Action to process
+ * @returns {FilterReducerState} New state
+ */
+const filterReducer = (state, action) => {
+	console.log('[Filter] 🔄 Reducer action dispatched:', action.type, action.payload)
+
+	switch (action.type) {
+		case ActionType.SET_FILTER_VALUE: {
+			const nextState = {
+				...state,
+				filterState: {
+					...state.filterState,
+					[action.payload.key]: action.payload.value,
+				},
+			}
+			console.log('[Filter] Updated filter value:', {
+				key: action.payload.key,
+				value: action.payload.value,
+			})
+			return nextState
+		}
+
+		case ActionType.SET_FILTER_STATE:
+			console.log('[Filter] Setting entire filter state:', action.payload)
+			return {
+				...state,
+				filterState: action.payload,
+			}
+
+		case ActionType.SET_INPUT_VALUE:
+			console.log('[Filter] Input value changed:', action.payload)
+			return {
+				...state,
+				inputValue: action.payload,
+			}
+
+		case ActionType.SET_SUGGESTIONS:
+			console.log('[Filter] Suggestions updated:', {
+				count: action.payload.length,
+				suggestions: action.payload.slice(0, 5),
+			})
+			return {
+				...state,
+				suggestions: action.payload,
+			}
+
+		case ActionType.SET_SHOW_SUGGESTIONS:
+			console.log('[Filter] Show suggestions:', action.payload)
+			return {
+				...state,
+				showSuggestions: action.payload,
+			}
+
+		case ActionType.SET_SELECTED_SUGGESTION_INDEX:
+			console.log('[Filter] Selected suggestion index:', action.payload)
+			return {
+				...state,
+				selectedSuggestionIndex: action.payload,
+			}
+
+		case ActionType.SET_SHOW_FILTER_MODAL:
+			console.log('[Filter] Filter modal visibility:', action.payload)
+			return {
+				...state,
+				showFilterModal: action.payload,
+			}
+
+		case ActionType.SET_TEMP_FILTER_STATE:
+			console.log('[Filter] Temp filter state set:', action.payload)
+			return {
+				...state,
+				tempFilterState: action.payload,
+			}
+
+		case ActionType.SET_TEMP_FILTER_VALUE: {
+			const nextState = {
+				...state,
+				tempFilterState: {
+					...state.tempFilterState,
+					[action.payload.key]: action.payload.value,
+				},
+			}
+			console.log('[Filter] Temp filter value updated:', {
+				key: action.payload.key,
+				value: action.payload.value,
+			})
+			return nextState
+		}
+
+		case ActionType.SET_CHECKBOX_SEARCH: {
+			const newMap = new Map(state.checkboxSearchMap)
+			newMap.set(action.payload.key, action.payload.value)
+			console.log('[Filter] Checkbox search updated:', {
+				field: action.payload.key,
+				searchTerm: action.payload.value,
+			})
+			return {
+				...state,
+				checkboxSearchMap: newMap,
+			}
+		}
+
+		case ActionType.CLEAR_ALL_FILTERS:
+			console.log('[Filter] 🗑️ Clearing all filters')
+			return {
+				...state,
+				filterState: action.payload.clearedState,
+				tempFilterState: action.payload.clearedState,
+				inputValue: '',
+				checkboxSearchMap: new Map(),
+			}
+
+		case ActionType.APPLY_TEMP_FILTERS:
+			console.log('[Filter] ✅ Applying temp filters:', state.tempFilterState)
+			return {
+				...state,
+				filterState: state.tempFilterState,
+				showFilterModal: false,
+			}
+
+		case ActionType.OPEN_FILTER_MODAL:
+			console.log('[Filter] 🔍 Opening filter modal')
+			return {
+				...state,
+				showFilterModal: true,
+				tempFilterState: state.filterState,
+			}
+
+		case ActionType.CLOSE_FILTER_MODAL:
+			console.log('[Filter] ❌ Closing filter modal')
+			return {
+				...state,
+				showFilterModal: false,
+			}
+
+		default:
+			console.warn('[Filter] ⚠️ Unknown action type:', action.type)
+			return state
+	}
+}
+
+/**
+ * Creates initial reducer state
+ * @param {Object} params - Initialization parameters
+ * @param {FilterState} params.filterState - Initial filter state
+ * @param {string} params.persistKey - Storage key
+ * @param {FilterField[]} params.fields - Field configurations
+ * @returns {FilterReducerState} Initial state
+ */
+const createInitialState = ({ filterState, persistKey, fields }) => {
+	console.log('[Filter] 🚀 Creating initial state:', { persistKey, fieldCount: fields.length })
+	const loadedState = loadPersistedState(persistKey, filterState, fields)
+
+	const initialState = {
+		filterState: loadedState,
+		inputValue: loadedState.search || '',
+		suggestions: [],
+		showSuggestions: false,
+		selectedSuggestionIndex: -1,
+		showFilterModal: false,
+		tempFilterState: loadedState,
+		checkboxSearchMap: new Map(),
+	}
+
+	console.log('[Filter] Initial state created:', initialState)
+	return initialState
+}
+
+// ============================================================================
+// CUSTOM HOOKS
+// ============================================================================
+
+/**
+ * Hook for debounced storage persistence
+ * @param {FilterState} filterState - State to persist
+ * @param {string} persistKey - Storage key
+ * @param {React.MutableRefObject<boolean>} isInitialMount - Initial mount ref
+ * @returns {void}
+ */
+const useStoragePersistence = (filterState, persistKey, isInitialMount) => {
+	const debouncedSave = useMemo(() => debounce(state => saveToStorage(persistKey, state), 500), [persistKey])
+
 	useEffect(() => {
 		if (!isInitialMount.current) {
-			debouncedSaveToStorage(localFilterState)
+			debouncedSave(filterState)
 		}
+		return () => debouncedSave.cancel()
+	}, [filterState, debouncedSave, isInitialMount])
+}
 
-		return () => {
-			debouncedSaveToStorage.cancel()
-		}
-	}, [localFilterState, debouncedSaveToStorage])
-
-	// Handle user-initiated changes (not initial load)
-	const userChangedFilter = useRef(false)
-
-	// ✅ CRITICAL FIX: Debounce the onFilterChange call to prevent API spam
-	// Reduced debounce time to 300ms for better responsiveness
-	const debouncedOnFilterChange = useMemo(
+/**
+ * Hook for debounced filter change callback
+ * @param {(state: FilterState) => void} onFilterChange - Change callback
+ * @param {FilterState} filterState - Current filter state
+ * @param {React.MutableRefObject<boolean>} isInitialMount - Initial mount ref
+ * @param {React.MutableRefObject<boolean>} userChangedFilter - User change flag
+ * @returns {{ triggerChange: () => void, cancelPending: () => void }}
+ */
+const useDebouncedFilterChange = (onFilterChange, filterState, isInitialMount, userChangedFilter) => {
+	const debouncedChange = useMemo(
 		() =>
-			debounce(filterState => {
-				onFilterChange(filterState)
-				userChangedFilter.current = false // Reset flag after debounce completes
+			debounce(state => {
+				onFilterChange(state)
+				userChangedFilter.current = false
 			}, 300),
-		[onFilterChange]
+		[onFilterChange, userChangedFilter]
 	)
 
 	useEffect(() => {
 		if (!isInitialMount.current && userChangedFilter.current) {
-			// ✅ Use debounced version for search field changes
-			// Cancel any pending debounced calls and schedule new one with latest state
-			debouncedOnFilterChange.cancel()
-			// Create a fresh copy to ensure we're using the latest state
-			const currentState = { ...localFilterState }
-			debouncedOnFilterChange(currentState)
+			debouncedChange.cancel()
+			debouncedChange({ ...filterState })
 		}
-	}, [localFilterState, debouncedOnFilterChange])
+	}, [filterState, debouncedChange, isInitialMount, userChangedFilter])
 
-	// Memoize all potential filter options for suggestions
-	const allFilterOptions = useMemo(() => {
-		if (!fields || fields.length === 0) return []
+	useEffect(() => {
+		return () => debouncedChange.cancel()
+	}, [debouncedChange])
 
-		const options = []
-		fields.forEach(field => {
-			if (field.options) {
-				field.options.forEach(option => {
-					options.push({
+	return {
+		triggerChange: () => debouncedChange({ ...filterState }),
+		cancelPending: () => debouncedChange.cancel(),
+	}
+}
+
+/**
+ * Hook for building filter options lookup
+ * @param {FilterField[]} fields - Field configurations
+ * @returns {{ optionsMap: Map<string, Set<string>>, allOptions: Suggestion[] }}
+ */
+const useFilterOptionsLookup = fields => {
+	return useMemo(() => {
+		/** @type {Map<string, Set<string>>} */
+		const optionsMap = new Map()
+		/** @type {Suggestion[]} */
+		const allOptions = []
+
+		for (const field of fields) {
+			if (field.options && Array.isArray(field.options)) {
+				const optionSet = createLookupSet(field.options)
+				optionsMap.set(field.key, optionSet)
+
+				for (const option of field.options) {
+					allOptions.push({
 						label: option,
 						field: field.key,
 						type: field.type,
 					})
-				})
+				}
 			}
-		})
-		return options
+		}
+
+		return { optionsMap, allOptions }
 	}, [fields])
+}
 
-	// Create suggestions based on input
-	const [suggestions, setSuggestions] = useState([])
+/**
+ * Hook for suggestion fetching and filtering
+ * @param {string} inputValue - Current input value
+ * @param {Suggestion[]} allOptions - All static options
+ * @param {boolean} disableStudentIdSearch - Disable API search
+ * @param {(action: FilterAction) => void} dispatch - Dispatch function
+ * @returns {void}
+ */
+const useSuggestionFetching = (inputValue, allOptions, disableStudentIdSearch, dispatch) => {
+	const abortControllerRef = useRef(/** @type {AbortController | null} */ (null))
 
-	// Function to fetch student ID suggestions
 	const fetchStudentIdSuggestions = useCallback(
-		async searchTerm => {
+		async (/** @type {string} */ searchTerm) => {
 			if (!searchTerm.trim() || disableStudentIdSearch) return []
 
+			// Cancel previous request
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort()
+			}
+			abortControllerRef.current = new AbortController()
+
 			try {
-				const response = await axios.get(`/api/students/ids?search=${encodeURIComponent(searchTerm)}`)
-				const data = response.data
-				return data.map(student => ({
+				const response = await axios.get(`/api/students/ids?search=${encodeURIComponent(searchTerm)}`, { signal: abortControllerRef.current.signal })
+
+				console.log('[Filter] 📡 Student ID suggestions received:', response.data)
+				return response.data.map((/** @type {{ display: string, student_id: string }} */ student) => ({
 					label: student.display,
 					field: 'search',
 					type: 'student_id',
 					value: student.student_id,
 				}))
 			} catch (error) {
-				console.error('Error fetching student ID suggestions:', error)
+				if (error.name !== 'CanceledError') {
+					console.error('Error fetching student ID suggestions:', error)
+				}
 				return []
 			}
 		},
@@ -179,259 +656,436 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 
 	useEffect(() => {
 		if (!inputValue.trim()) {
-			setSuggestions([])
-			setShowSuggestions(false)
+			dispatch({ type: ActionType.SET_SUGGESTIONS, payload: [] })
+			dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
 			return
 		}
 
-		const getSuggestions = async () => {
-			// Get static filter suggestions
-			const staticSuggestions = allFilterOptions.filter(option => option.label.toLowerCase().includes(inputValue.toLowerCase()))
+		const normalizedInput = inputValue.toLowerCase()
 
-			// Get dynamic student ID suggestions
+		const getSuggestions = async () => {
+			// Filter static suggestions using optimized string matching
+			const staticSuggestions = allOptions.filter(option => option.label.toLowerCase().includes(normalizedInput))
+
+			// Fetch dynamic student ID suggestions
 			const studentIdSuggestions = await fetchStudentIdSuggestions(inputValue)
 
-			// Combine both types of suggestions
+			// Combine and dispatch
 			const combinedSuggestions = [...staticSuggestions, ...studentIdSuggestions]
-
-			setSuggestions(combinedSuggestions)
-			setNoMatches(inputValue.trim().length > 0 && combinedSuggestions.length === 0)
-			setShowSuggestions(true)
+			dispatch({ type: ActionType.SET_SUGGESTIONS, payload: combinedSuggestions })
+			dispatch({
+				type: ActionType.SET_SHOW_SUGGESTIONS,
+				payload: combinedSuggestions.length > 0,
+			})
 		}
 
 		getSuggestions()
-	}, [inputValue, allFilterOptions, fetchStudentIdSuggestions])
 
-	// Debounce input changes for performance
-	const debouncedSetInputValue = useMemo(() => debounce(value => setInputValue(value), 300), [])
-
-	const handleChange = useCallback((key, value) => {
-		if (!isInitialMount.current) {
-			userChangedFilter.current = true // Mark as user change
+		// Cleanup
+		return () => {
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort()
+			}
 		}
-		setLocalFilterState(prevState => ({
-			...prevState,
-			[key]: value,
-		}))
+	}, [inputValue, allOptions, fetchStudentIdSuggestions, dispatch])
+}
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+/**
+ * Virtualized checkbox list row renderer
+ * @param {Object} props - Row props
+ * @param {number} props.index - Row index
+ * @param {React.CSSProperties} props.style - Row style
+ * @param {Object} props.data - Row data
+ * @param {string[]} props.data.options - Options list
+ * @param {Set<string>} props.data.selectedSet - Selected values set
+ * @param {FilterField} props.data.field - Field configuration
+ * @param {(key: string, value: string[]) => void} props.data.onToggle - Toggle callback
+ * @returns {JSX.Element}
+ */
+const VirtualizedCheckboxRow = ({ index, style: rowStyle, data }) => {
+	const { options, selectedSet, field, onToggle } = data
+	const option = options[index]
+	const isSelected = selectedSet.has(option)
+	const displayValue = field.displayFormat ? field.displayFormat(option) : option
+
+	const handleChange = useCallback(
+		(/** @type {React.ChangeEvent<HTMLInputElement>} */ e) => {
+			const newValue = e.target.checked ? [...selectedSet, option] : [...selectedSet].filter(v => v !== option)
+			onToggle(field.key, newValue)
+		},
+		[selectedSet, option, field.key, onToggle]
+	)
+
+	return (
+		<div style={{ ...rowStyle, display: 'flex', alignItems: 'center' }}>
+			<label className={style.checkboxLabel} style={{ width: '100%', margin: 0 }}>
+				<input type='checkbox' checked={isSelected} onChange={handleChange} className={style.checkbox} />
+				<span>{displayValue}</span>
+			</label>
+		</div>
+	)
+}
+
+VirtualizedCheckboxRow.propTypes = {
+	index: PropTypes.number.isRequired,
+	style: PropTypes.object.isRequired,
+	data: PropTypes.shape({
+		options: PropTypes.array.isRequired,
+		selectedSet: PropTypes.instanceOf(Set).isRequired,
+		field: PropTypes.object.isRequired,
+		onToggle: PropTypes.func.isRequired,
+	}).isRequired,
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+/**
+ * Advanced filter component with search, suggestions, and modal filtering
+ * @param {FilterProps} props - Component props
+ * @returns {JSX.Element}
+ */
+const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGridViewClick, viewMode = 'grid', onViewModeChange, persistKey = 'filter-state', disableStudentIdSearch = false, showFilteredItems = true, showCardFormatButton = true }) => {
+	const { language } = useLanguage()
+
+	/**
+	 * Translation helper with fallback
+	 * @param {string} key - Translation key
+	 * @returns {string} Translated string
+	 */
+	const t = useCallback((/** @type {string} */ key) => translations[language]?.[key] ?? key, [language])
+
+	// ========================================================================
+	// STATE MANAGEMENT
+	// ========================================================================
+
+	const [state, dispatch] = useReducer(filterReducer, { filterState: initialFilterState, persistKey, fields }, createInitialState)
+
+	const { filterState, inputValue, suggestions, showSuggestions, selectedSuggestionIndex, showFilterModal, tempFilterState, checkboxSearchMap } = state
+
+	// ========================================================================
+	// REFS
+	// ========================================================================
+
+	/** @type {React.MutableRefObject<boolean>} */
+	const isInitialMount = useRef(true)
+	/** @type {React.MutableRefObject<boolean>} */
+	const userChangedFilter = useRef(false)
+
+	// ========================================================================
+	// CUSTOM HOOKS
+	// ========================================================================
+
+	const { allOptions } = useFilterOptionsLookup(fields)
+
+	useStoragePersistence(filterState, persistKey, isInitialMount)
+
+	useDebouncedFilterChange(onFilterChange, filterState, isInitialMount, userChangedFilter)
+
+	useSuggestionFetching(inputValue, allOptions, disableStudentIdSearch, dispatch)
+
+	// ========================================================================
+	// EFFECTS
+	// ========================================================================
+
+	// Mark initial mount as complete
+	useEffect(() => {
+		if (isInitialMount.current) {
+			isInitialMount.current = false
+		}
 	}, [])
 
-	// Clean up debounce on unmount
-	useEffect(() => {
-		return () => {
-			debouncedSetInputValue.cancel()
-			debouncedOnFilterChange.cancel()
+	// ========================================================================
+	// MEMOIZED VALUES
+	// ========================================================================
+
+	/**
+	 * Set of allowed field keys for validation
+	 */
+	const allowedFieldKeys = useMemo(() => createLookupSet(['search', ...fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean))]), [fields])
+
+	/**
+	 * Whether current filter state has any values
+	 */
+	const hasActiveFilters = useMemo(() => hasAnyFilterValue(filterState), [filterState])
+
+	// ========================================================================
+	// EVENT HANDLERS
+	// ========================================================================
+
+	/**
+	 * Handles filter value changes
+	 */
+	const handleFilterChange = useCallback((/** @type {string} */ key, /** @type {string | string[]} */ value) => {
+		if (!isInitialMount.current) {
+			userChangedFilter.current = true
 		}
-	}, [debouncedSetInputValue, debouncedOnFilterChange])
+		dispatch({ type: ActionType.SET_FILTER_VALUE, payload: { key, value } })
+	}, [])
 
+	/**
+	 * Handles search input changes
+	 */
 	const handleInputChange = useCallback(
-		e => {
+		(/** @type {React.ChangeEvent<HTMLInputElement>} */ e) => {
 			const value = e.target.value
-			// Update local state immediately (for visual feedback)
-			handleChange('search', value)
-			// Update input value for suggestions
-			setInputValue(value)
-			debouncedSetInputValue(value)
-			setSelectedSuggestionIndex(-1)
+			handleFilterChange('search', value)
+			dispatch({ type: ActionType.SET_INPUT_VALUE, payload: value })
+			dispatch({ type: ActionType.SET_SELECTED_SUGGESTION_INDEX, payload: -1 })
 		},
-		[handleChange, debouncedSetInputValue]
+		[handleFilterChange]
 	)
 
+	/**
+	 * Handles suggestion selection
+	 */
 	const handleSuggestionClick = useCallback(
-		suggestion => {
+		(/** @type {Suggestion} */ suggestion) => {
 			if (suggestion.type === 'student_id') {
-				// For student ID suggestions, set the search field with the student ID
-				handleChange('search', suggestion.value)
-				setInputValue(suggestion.value)
+				const value = suggestion.value ?? suggestion.label
+				handleFilterChange('search', value)
+				dispatch({ type: ActionType.SET_INPUT_VALUE, payload: value })
 			} else if (suggestion.type === 'checkbox') {
-				// Toggle selection for checkbox-type suggestions
-				const current = Array.isArray(localFilterState[suggestion.field]) ? localFilterState[suggestion.field] : []
-				const exists = current.includes(suggestion.label)
+				const current = Array.isArray(filterState[suggestion.field]) ? /** @type {string[]} */ (filterState[suggestion.field]) : []
+				const currentSet = createLookupSet(current)
+				const exists = currentSet.has(suggestion.label)
 				const next = exists ? current.filter(v => v !== suggestion.label) : [...current, suggestion.label]
-				handleChange(suggestion.field, next)
-				setInputValue('')
+				handleFilterChange(suggestion.field, next)
+				dispatch({ type: ActionType.SET_INPUT_VALUE, payload: '' })
 			} else {
-				// For regular filter suggestions
-				handleChange(suggestion.field, suggestion.label)
-				setInputValue(suggestion.label)
+				handleFilterChange(suggestion.field, suggestion.label)
+				dispatch({ type: ActionType.SET_INPUT_VALUE, payload: suggestion.label })
 			}
-			setShowSuggestions(false)
+			dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
 		},
-		[handleChange, localFilterState]
+		[filterState, handleFilterChange]
 	)
 
+	/**
+	 * Handles keyboard navigation in suggestions
+	 */
 	const handleInputKeyDown = useCallback(
-		e => {
+		(/** @type {React.KeyboardEvent<HTMLInputElement>} */ e) => {
 			if (!showSuggestions || suggestions.length === 0) return
 
 			switch (e.key) {
 				case 'ArrowDown':
 					e.preventDefault()
-					setSelectedSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0))
+					dispatch({
+						type: ActionType.SET_SELECTED_SUGGESTION_INDEX,
+						payload: selectedSuggestionIndex < suggestions.length - 1 ? selectedSuggestionIndex + 1 : 0,
+					})
 					break
+
 				case 'ArrowUp':
 					e.preventDefault()
-					setSelectedSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1))
+					dispatch({
+						type: ActionType.SET_SELECTED_SUGGESTION_INDEX,
+						payload: selectedSuggestionIndex > 0 ? selectedSuggestionIndex - 1 : suggestions.length - 1,
+					})
 					break
+
 				case 'Enter':
 					e.preventDefault()
 					if (selectedSuggestionIndex >= 0) {
 						handleSuggestionClick(suggestions[selectedSuggestionIndex])
 					} else {
-						// Submit form directly instead of calling handleSubmit
 						userChangedFilter.current = true
-						onFilterChange(localFilterState)
-						setShowSuggestions(false)
+						onFilterChange(filterState)
+						dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
 					}
 					break
+
 				case 'Escape':
-					setShowSuggestions(false)
-					setSelectedSuggestionIndex(-1)
+					dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
+					dispatch({ type: ActionType.SET_SELECTED_SUGGESTION_INDEX, payload: -1 })
 					break
 			}
 		},
-		[showSuggestions, suggestions, selectedSuggestionIndex, handleSuggestionClick, onFilterChange, localFilterState]
+		[showSuggestions, suggestions, selectedSuggestionIndex, handleSuggestionClick, onFilterChange, filterState]
 	)
 
+	/**
+	 * Handles form submission
+	 */
 	const handleSubmit = useCallback(
-		e => {
+		(/** @type {React.FormEvent<HTMLFormElement>} */ e) => {
 			e.preventDefault()
 			userChangedFilter.current = true
-			onFilterChange(localFilterState)
-			setShowSuggestions(false)
+			onFilterChange(filterState)
+			dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
 		},
-		[localFilterState, onFilterChange]
+		[filterState, onFilterChange]
 	)
 
+	/**
+	 * Toggles view mode between grid and table
+	 */
 	const handleViewModeToggle = useCallback(() => {
+		/** @type {ViewMode} */
 		const newMode = viewMode === 'table' || viewMode === 'list' ? 'grid' : 'table'
-		onViewModeChange && onViewModeChange(newMode)
+		onViewModeChange?.(newMode)
 	}, [viewMode, onViewModeChange])
 
+	/**
+	 * Handles input focus
+	 */
 	const handleInputFocus = useCallback(() => {
 		if (suggestions.length > 0) {
-			setShowSuggestions(true)
+			dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: true })
 		}
 	}, [suggestions.length])
 
+	/**
+	 * Handles input blur with delay for click handling
+	 */
 	const handleInputBlur = useCallback(() => {
 		setTimeout(() => {
-			setShowSuggestions(false)
-			setSelectedSuggestionIndex(-1)
+			dispatch({ type: ActionType.SET_SHOW_SUGGESTIONS, payload: false })
+			dispatch({ type: ActionType.SET_SELECTED_SUGGESTION_INDEX, payload: -1 })
 		}, 150)
 	}, [])
 
-	// Filter modal functions
+	// ========================================================================
+	// MODAL HANDLERS
+	// ========================================================================
+
+	/**
+	 * Opens filter modal
+	 */
 	const handleFilterClick = useCallback(() => {
-		setTempFilterState(localFilterState)
-		setShowFilterModal(true)
-	}, [localFilterState])
+		dispatch({ type: ActionType.OPEN_FILTER_MODAL })
+	}, [])
 
+	/**
+	 * Closes filter modal
+	 */
 	const handleFilterModalClose = useCallback(() => {
-		setShowFilterModal(false)
+		dispatch({ type: ActionType.CLOSE_FILTER_MODAL })
 	}, [])
 
-	const handleTempFilterChange = useCallback((key, value) => {
-		setTempFilterState(prevState => ({
-			...prevState,
-			[key]: value,
-		}))
+	/**
+	 * Handles temporary filter value changes in modal
+	 */
+	const handleTempFilterChange = useCallback((/** @type {string} */ key, /** @type {string | string[]} */ value) => {
+		dispatch({ type: ActionType.SET_TEMP_FILTER_VALUE, payload: { key, value } })
 	}, [])
 
+	/**
+	 * Applies temporary filters from modal
+	 */
 	const handleFilterApply = useCallback(() => {
 		userChangedFilter.current = true
-		setLocalFilterState(tempFilterState)
-		setShowFilterModal(false)
-	}, [tempFilterState])
+		dispatch({ type: ActionType.APPLY_TEMP_FILTERS })
+	}, [])
 
+	/**
+	 * Clears all filters
+	 */
 	const handleFilterClear = useCallback(() => {
-		const clearedState = fields.reduce(
-			(acc, field) => {
-				if (field.type === 'checkbox') {
-					acc[field.key] = []
-				} else {
-					acc[field.key] = ''
-				}
-				return acc
-			},
-			{ search: '' }
-		)
-
-		// Reset match mode keys (if any) to 'any'
-		fields.forEach(f => {
-			if (f.matchModeKey) {
-				clearedState[f.matchModeKey] = 'any'
-			}
-		})
-
+		const clearedState = createClearedState(fields)
 		userChangedFilter.current = true
-		setTempFilterState(clearedState)
-		setLocalFilterState(clearedState)
-		setInputValue('')
+		dispatch({ type: ActionType.CLEAR_ALL_FILTERS, payload: { clearedState } })
 
-		// Clear from localStorage
 		try {
 			localStorage.removeItem(persistKey)
 		} catch (error) {
 			console.warn('Error clearing filter state from localStorage:', error)
 		}
 	}, [fields, persistKey])
-	const hasAnyValue = obj => {
-		return Object.values(obj).some(value => {
-			if (Array.isArray(value)) return value.length > 0
-			return value !== '' && value !== null && value !== undefined
-		})
-	}
+
+	// ========================================================================
+	// FILTER FIELD RENDERER
+	// ========================================================================
+
+	/**
+	 * Renders a filter field based on its type
+	 * @param {FilterField} field - Field configuration
+	 * @returns {JSX.Element | null}
+	 */
 	const renderFilterField = useCallback(
-		field => {
-			const value = tempFilterState[field.key] || (field.type === 'checkbox' ? [] : '')
+		(/** @type {FilterField} */ field) => {
+			const value = tempFilterState[field.key] ?? (field.type === 'checkbox' ? [] : '')
 
 			switch (field.type) {
 				case 'checkbox': {
-					const searchTerm = checkboxSearchMap[field.key] || ''
+					const searchTerm = checkboxSearchMap.get(field.key) ?? ''
 					const optionsArray = Array.isArray(field.options) ? field.options : []
-					// Selected-first order, then alpha
-					const ordered = [...optionsArray].sort((a, b) => {
-						const sa = value.includes(a) ? -1 : 1
-						const sb = value.includes(b) ? -1 : 1
-						if (sa !== sb) return sa - sb
-						return String(a).localeCompare(String(b))
-					})
-					const filtered = searchTerm ? ordered.filter(o => String(o).toLowerCase().includes(searchTerm.toLowerCase())) : ordered
+					const selectedArray = Array.isArray(value) ? value : []
+					const selectedSet = createLookupSet(selectedArray)
 
-					const onSearchChange = e =>
-						setCheckboxSearchMap(prev => ({
-							...prev,
-							[field.key]: e.target.value,
-						}))
+					// Optimized filtering and sorting
+					const filteredOptions = filterAndSortCheckboxOptions(optionsArray, selectedSet, searchTerm)
 
+					/**
+					 * Handles checkbox search input
+					 */
+					const onSearchChange = (/** @type {React.ChangeEvent<HTMLInputElement>} */ e) => {
+						dispatch({
+							type: ActionType.SET_CHECKBOX_SEARCH,
+							payload: { key: field.key, value: e.target.value },
+						})
+					}
+
+					/**
+					 * Selects all filtered options
+					 */
 					const selectAllFiltered = () => {
-						const merged = Array.from(new Set([...(value || []), ...filtered]))
+						const merged = Array.from(new Set([...selectedArray, ...filteredOptions]))
 						handleTempFilterChange(field.key, merged)
 					}
 
+					/**
+					 * Clears all filtered options
+					 */
 					const clearFiltered = () => {
-						const remaining = (value || []).filter(v => !filtered.includes(v))
+						const filteredSet = createLookupSet(filteredOptions)
+						const remaining = selectedArray.filter(v => !filteredSet.has(v))
 						handleTempFilterChange(field.key, remaining)
+					}
+
+					/**
+					 * Handles individual checkbox toggle
+					 */
+					const handleCheckboxToggle = (/** @type {string} */ key, /** @type {string[]} */ newValue) => {
+						handleTempFilterChange(key, newValue)
+					}
+
+					// Virtualization data for large lists
+					const itemData = {
+						options: filteredOptions,
+						selectedSet,
+						field,
+						onToggle: handleCheckboxToggle,
 					}
 
 					return (
 						<div key={field.key} className={style.filterGroup}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
-							{/* Optional match mode toggle for multi-select fields */}
+
+							{/* Match mode toggle for multi-select */}
 							{field.matchModeKey && (
 								<div className={style.radioGroup} style={{ marginBottom: 8 }}>
 									<label className={style.radioLabel}>
-										<input type='radio' name={`${field.matchModeKey}`} value='any' checked={(tempFilterState[field.matchModeKey] || 'any') === 'any'} onChange={() => handleTempFilterChange(field.matchModeKey, 'any')} className={style.radio} />
+										<input type='radio' name={field.matchModeKey} value='any' checked={(tempFilterState[field.matchModeKey] || 'any') === 'any'} onChange={() => handleTempFilterChange(field.matchModeKey, 'any')} className={style.radio} />
 										<span>{t('any') || 'Any'}</span>
 									</label>
 									<label className={style.radioLabel}>
-										<input type='radio' name={`${field.matchModeKey}`} value='all' checked={(tempFilterState[field.matchModeKey] || 'any') === 'all'} onChange={() => handleTempFilterChange(field.matchModeKey, 'all')} className={style.radio} />
+										<input type='radio' name={field.matchModeKey} value='all' checked={(tempFilterState[field.matchModeKey] || 'any') === 'all'} onChange={() => handleTempFilterChange(field.matchModeKey, 'all')} className={style.radio} />
 										<span>{t('all') || 'All'}</span>
 									</label>
 								</div>
 							)}
-							{/* Search for long lists */}
+
+							{/* Search for large option lists */}
 							{optionsArray.length > 10 && <input type='text' className={style.checkboxSearch} placeholder={t('search_items') || 'Search...'} value={searchTerm} onChange={onSearchChange} />}
+
+							{/* Bulk actions for large lists */}
 							{optionsArray.length > 10 && (
 								<div className={style.checkboxActions}>
 									<button type='button' onClick={selectAllFiltered}>
@@ -442,14 +1096,15 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 									</button>
 								</div>
 							)}
-							{/* Selected chips */}
-							{Array.isArray(value) && value.length > 0 && (
+
+							{/* Selected items chips */}
+							{selectedArray.length > 0 && (
 								<div className={style.selectedChipsRow}>
 									<span className={style.selectedChipsTitle}>
-										{t('selected') || 'Selected'} ({value.length})
+										{t('selected') || 'Selected'} ({selectedArray.length})
 									</span>
 									<div className={style.selectedChips}>
-										{value.map(sel => {
+										{selectedArray.map(sel => {
 											const displayValue = field.displayFormat ? field.displayFormat(sel) : sel
 											return (
 												<span
@@ -458,7 +1113,7 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 													onClick={() =>
 														handleTempFilterChange(
 															field.key,
-															value.filter(v => v !== sel)
+															selectedArray.filter(v => v !== sel)
 														)
 													}
 													title={displayValue}
@@ -471,50 +1126,27 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 									</div>
 								</div>
 							)}
-							{/* Virtualized list for very large sets */}
-							{filtered.length > 120 ? (
+
+							{/* Virtualized list for very large option sets */}
+							{filteredOptions.length > 120 ? (
 								<div style={{ height: 320 }}>
-									<List height={320} itemCount={filtered.length} itemSize={32} width={'100%'}>
-										{({ index, style: rowStyle }) => {
-											const option = filtered[index]
-											const displayValue = field.displayFormat ? field.displayFormat(option) : option
-											return (
-												<div
-													style={{
-														...rowStyle,
-														display: 'flex',
-														alignItems: 'center',
-													}}
-													key={option}
-												>
-													<label className={style.checkboxLabel} style={{ width: '100%', margin: 0 }}>
-														<input
-															type='checkbox'
-															checked={value.includes(option)}
-															onChange={e => {
-																const newValue = e.target.checked ? [...value, option] : value.filter(v => v !== option)
-																handleTempFilterChange(field.key, newValue)
-															}}
-															className={style.checkbox}
-														/>
-														<span>{displayValue}</span>
-													</label>
-												</div>
-											)
-										}}
+									<List height={320} itemCount={filteredOptions.length} itemSize={32} width='100%' itemData={itemData}>
+										{VirtualizedCheckboxRow}
 									</List>
 								</div>
 							) : (
 								<div className={style.checkboxGroupGrid}>
-									{filtered.map(option => {
+									{filteredOptions.map(option => {
 										const displayValue = field.displayFormat ? field.displayFormat(option) : option
+										const isSelected = selectedSet.has(option)
+
 										return (
 											<label key={option} className={style.checkboxLabel}>
 												<input
 													type='checkbox'
-													checked={value.includes(option)}
+													checked={isSelected}
 													onChange={e => {
-														const newValue = e.target.checked ? [...value, option] : value.filter(v => v !== option)
+														const newValue = e.target.checked ? [...selectedArray, option] : selectedArray.filter(v => v !== option)
 														handleTempFilterChange(field.key, newValue)
 													}}
 													className={style.checkbox}
@@ -534,7 +1166,7 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 						<div key={field.key} className={style.filterGroup}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
 							<div className={style.radioGroup}>
-								{field.options.map(option => (
+								{field.options?.map(option => (
 									<label key={option} className={style.radioLabel}>
 										<input type='radio' name={field.key} value={option} checked={value === option} onChange={e => handleTempFilterChange(field.key, e.target.value)} className={style.radio} />
 										<span>{option}</span>
@@ -548,9 +1180,9 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 					return (
 						<div key={field.key} className={style.filterGroup}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
-							<select value={value} onChange={e => handleTempFilterChange(field.key, e.target.value)} className={style.select}>
+							<select value={typeof value === 'string' ? value : ''} onChange={e => handleTempFilterChange(field.key, e.target.value)} className={style.select}>
 								<option value=''>{t('all') || '全て'}</option>
-								{field.options.map(option => (
+								{field.options?.map(option => (
 									<option key={option} value={option}>
 										{option}
 									</option>
@@ -563,8 +1195,12 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 					return null
 			}
 		},
-		[tempFilterState, handleTempFilterChange, t, fields, checkboxSearchMap]
+		[tempFilterState, handleTempFilterChange, t, checkboxSearchMap]
 	)
+
+	// ========================================================================
+	// RENDER
+	// ========================================================================
 
 	return (
 		<>
@@ -573,27 +1209,8 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 					<div className={style.inputWrapper}>
 						<div className={style.searchInputContainer}>
 							<img src={SearchIcon} alt='Search' className={style.inputSearchIcon} />
-							<input type='text' value={localFilterState.search || ''} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onFocus={handleInputFocus} onBlur={handleInputBlur} placeholder={t('search_placeholder') || '名前、ID、大学で学生を検索します...'} className={style.modernSearchInput} aria-label={t('search_filters')} autoComplete='off' />
+							<input type='text' value={filterState.search || ''} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onFocus={handleInputFocus} onBlur={handleInputBlur} placeholder={t('search_placeholder') || '名前、ID、大学で学生を検索します...'} className={style.modernSearchInput} aria-label={t('search_filters')} autoComplete='off' />
 						</div>
-
-						{/* {showSuggestions && (
-							<div className={style.suggestionsDropdown}>
-								{suggestions.length > 0 ? (
-									<ul className={style.suggestionsList}>
-										{suggestions.map((suggestion, index) => (
-											<li key={`${suggestion.field}-${suggestion.label}`} className={`${style.suggestionItem} ${index === selectedSuggestionIndex ? style.suggestionItemSelected : ''}`} onClick={() => handleSuggestionClick(suggestion)} onMouseEnter={() => setSelectedSuggestionIndex(index)}>
-												<span className={style.suggestionLabel}>{suggestion.label}</span>
-												<span className={style.suggestionField}>in {suggestion.field}</span>
-											</li>
-										))}
-									</ul>
-								) : noMatches ? (
-									<div className={style.noOptions}>{t('no_matches_found') || 'No matches found'}</div>
-								) : (
-									<div className={style.noOptions}>{t('start_typing') || 'Start typing to see suggestions'}</div>
-								)}
-							</div>
-						)} */}
 					</div>
 				</div>
 
@@ -607,17 +1224,20 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 							{viewMode === 'grid' ? <FormatListBulletedIcon /> : <WindowIcon />}
 						</Button>
 					)}
-					<Button type='button' variant={hasAnyValue(localFilterState) ? 'contained' : 'outlined'} onClick={handleFilterClick} sx={{ minWidth: '45px', padding: '8px', height: '43px' }}>
+					<Button type='button' variant={hasActiveFilters ? 'contained' : 'outlined'} onClick={handleFilterClick} sx={{ minWidth: '45px', padding: '8px', height: '43px' }}>
 						<FilterAltOutlinedIcon />
 					</Button>
 				</div>
 			</form>
 
-			{/* filtered Items Display */}
+			{/* Filtered Items Display */}
 			{showFilteredItems && (
 				<FilteredItems
-					tempFilterState={localFilterState}
-					setTempFilterState={setLocalFilterState}
+					tempFilterState={filterState}
+					setTempFilterState={newState => {
+						userChangedFilter.current = true
+						dispatch({ type: ActionType.SET_FILTER_STATE, payload: newState })
+					}}
 					onFilterChange={newState => {
 						userChangedFilter.current = true
 						onFilterChange(newState)
@@ -628,10 +1248,12 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 			{/* Filter Modal */}
 			{showFilterModal && (
 				<div className={style.filterModalOverlay} onClick={handleFilterModalClose}>
-					<div className={style.filterModal} onClick={e => e.stopPropagation()}>
+					<div className={style.filterModal} onClick={e => e.stopPropagation()} role='dialog' aria-modal='true' aria-labelledby='filter-modal-title'>
 						<div className={style.filterModalHeader}>
-							<h3 className={style.filterModalTitle}>{t('filter')}</h3>
-							<button onClick={handleFilterModalClose} className={style.filterModalCloseButton}>
+							<h3 id='filter-modal-title' className={style.filterModalTitle}>
+								{t('filter')}
+							</h3>
+							<button onClick={handleFilterModalClose} className={style.filterModalCloseButton} aria-label='Close filter modal'>
 								×
 							</button>
 						</div>
@@ -653,15 +1275,30 @@ const Filter = ({ fields, filterState, onFilterChange, onGridViewClick, viewMode
 	)
 }
 
+// ============================================================================
+// PROP TYPES
+// ============================================================================
+
 Filter.propTypes = {
-	fields: PropTypes.array.isRequired,
+	fields: PropTypes.arrayOf(
+		PropTypes.shape({
+			key: PropTypes.string.isRequired,
+			label: PropTypes.string.isRequired,
+			type: PropTypes.oneOf(['checkbox', 'radio', 'select', 'text']).isRequired,
+			options: PropTypes.arrayOf(PropTypes.string),
+			matchModeKey: PropTypes.string,
+			displayFormat: PropTypes.func,
+		})
+	).isRequired,
 	filterState: PropTypes.object.isRequired,
 	onFilterChange: PropTypes.func.isRequired,
 	onGridViewClick: PropTypes.func,
-	viewMode: PropTypes.string,
+	viewMode: PropTypes.oneOf(['grid', 'table', 'list']),
 	onViewModeChange: PropTypes.func,
 	persistKey: PropTypes.string,
 	disableStudentIdSearch: PropTypes.bool,
+	showFilteredItems: PropTypes.bool,
+	showCardFormatButton: PropTypes.bool,
 }
 
 export default Filter
