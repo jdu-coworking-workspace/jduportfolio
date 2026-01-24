@@ -151,7 +151,16 @@ class DraftController {
 			})
 
 			if (status.toLowerCase() === 'approved') {
-				await Student.update(draft.profile_data, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...draft.profile_data }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: draft.student_id },
 				})
 
