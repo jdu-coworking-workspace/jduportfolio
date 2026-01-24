@@ -263,7 +263,7 @@ class StudentService {
 
 			const searchableColumns = ['email', 'first_name', 'last_name', 'skills', 'it_skills', 'jlpt', 'student_id', 'partner_university']
 
-			// Helper to build JSONB @> conditions for it_skills across levels
+			// Helper to build JSONB conditions for it_skills across levels (case-insensitive)
 			// Only checks Student.it_skills (public data only)
 			const buildItSkillsCondition = (names = [], match = 'any') => {
 				const lvls = ['上級', '中級', '初級']
@@ -271,11 +271,21 @@ class StudentService {
 				if (safeNames.length === 0) return null
 
 				const perSkill = safeNames.map(n => {
-					// JSON array string for [{"name":"<n>"}]
-					const json = JSON.stringify([{ name: String(n) }])
-					const esc = sequelize.escape(json) // safe string with quotes
-					// Check Student.it_skills only (public data), handle NULL values
-					const levelExpr = lvls.map(l => `("Student"."it_skills" IS NOT NULL AND ("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
+					const skillName = String(n).toLowerCase()
+					const escapedName = skillName.replace(/'/g, "''") // Escape single quotes for SQL
+					// Use jsonb_array_elements to iterate over array elements and compare case-insensitively
+					const levelExpr = lvls
+						.map(
+							l => `(
+						"Student"."it_skills" IS NOT NULL 
+						AND EXISTS (
+							SELECT 1 
+							FROM jsonb_array_elements("Student"."it_skills"->'${l}') AS elem
+							WHERE LOWER(elem->>'name') = '${escapedName}'
+						)
+					)`
+						)
+						.join(' OR ')
 					return `(${levelExpr})`
 				})
 				const joiner = match === 'all' ? ' AND ' : ' OR '

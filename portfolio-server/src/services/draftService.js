@@ -83,7 +83,7 @@ class DraftService {
 			let queryOther = {}
 			queryOther[Op.and] = []
 
-			// Helper to build JSONB @> conditions for it_skills across levels
+			// Helper to build JSONB conditions for it_skills across levels (case-insensitive)
 			// Only checks Student.it_skills (public data only)
 			const buildItSkillsCondition = (names = [], match = 'any') => {
 				const lvls = ['上級', '中級', '初級']
@@ -91,10 +91,21 @@ class DraftService {
 				if (safeNames.length === 0) return null
 
 				const perSkill = safeNames.map(n => {
-					const json = JSON.stringify([{ name: String(n) }])
-					const esc = sequelize.escape(json)
-					// Check Student.it_skills only (public data), handle NULL values
-					const levelExpr = lvls.map(l => `("Student"."it_skills" IS NOT NULL AND ("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
+					const skillName = String(n).toLowerCase()
+					const escapedName = skillName.replace(/'/g, "''") // Escape single quotes for SQL
+					// Use jsonb_array_elements to iterate over array elements and compare case-insensitively
+					const levelExpr = lvls
+						.map(
+							l => `(
+					"Student"."it_skills" IS NOT NULL 
+					AND EXISTS (
+						SELECT 1 
+						FROM jsonb_array_elements("Student"."it_skills"->'${l}') AS elem
+						WHERE LOWER(elem->>'name') = '${escapedName}'
+					)
+				)`
+						)
+						.join(' OR ')
 					return `(${levelExpr})`
 				})
 				const joiner = match === 'all' ? ' AND ' : ' OR '
@@ -393,7 +404,16 @@ class DraftService {
 
 			// If profile is public and no fresh student submission, auto-update live
 			if (shouldAutoApprove) {
-				await Student.update(newProfileData, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...newProfileData }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: studentId },
 				})
 			}
@@ -413,7 +433,16 @@ class DraftService {
 
 			// Auto-approve only if no fresh submission exists
 			if (shouldAutoApprove) {
-				await Student.update(newProfileData, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...newProfileData }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: studentId },
 				})
 			}
@@ -566,8 +595,17 @@ class DraftService {
 
 		// On approval, promote pending to live
 		if (status.toLowerCase() === 'approved') {
+			// Serialize fields that are TEXT in Student table but stored as objects in Draft
+			const sanitizedProfileData = { ...draft.profile_data }
+			const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+			textFields.forEach(field => {
+				if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+					sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+				}
+			})
+
 			// Update live profile (Student table)
-			await Student.update(draft.profile_data, {
+			await Student.update(sanitizedProfileData, {
 				where: { student_id: draft.student_id },
 			})
 
