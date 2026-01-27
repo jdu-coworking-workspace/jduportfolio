@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from '../../utils/axiosUtils'
 
@@ -20,6 +20,7 @@ import translations from '../../locales/translations'
 import ChangedFieldsModal from '../ChangedFieldsModal/ChangedFieldsModal'
 import UserAvatar from './Avatar/UserAvatar'
 import { getComparator, stableSort } from './TableUtils'
+import { tableScrollPositionAtom } from '../../atoms/store'
 // localStorage dan qiymat o'qish yoki default qiymat
 const getInitialRowsPerPage = () => {
 	try {
@@ -34,6 +35,7 @@ const getInitialRowsPerPage = () => {
 const rowsPerPageAtom = atom(getInitialRowsPerPage())
 
 const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
+	const studentTableRef = useRef(null)
 	const { language } = useLanguage()
 	const t = key => translations[language][key] || keyski
 
@@ -49,6 +51,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const [selected, _setSelected] = useState([])
 	const [page, setPage] = useState(parseInt(searchParams.get('page') || '0', 10))
 	const [rowsPerPage, setRowsPerPage] = useAtom(rowsPerPageAtom)
+	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [rows, setRows] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [_refresher, setRefresher] = useState(0)
@@ -82,6 +85,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		setSearchParams(params, { replace: true })
 	}, [page, sortBy, sortOrder, orderBy, order, setSearchParams])
 
+	useEffect(() => {
+		if (tableScrollPosition && studentTableRef.current) {
+			setTimeout(() => {
+				studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+			}, 90)
+		}
+
+		// Save scroll position on unmount
+		return () => {
+			if (studentTableRef.current) {
+				setTableScrollPosition(studentTableRef.current.scrollTop)
+			}
+		}
+	}, [])
 	// Handler for header filter dropdown
 	const handleHeaderFilterClick = (event, headerId, anchorElement = null) => {
 		event.stopPropagation()
@@ -530,6 +547,10 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					}}
 				>
 					<TableContainer
+						ref={studentTableRef}
+						onScroll={event => {
+							setTableScrollPosition(event.target.scrollTop)
+						}}
 						sx={{
 							minHeight: visibleRows.length > 0 ? 'auto' : '300px',
 							maxHeight: {
