@@ -183,12 +183,18 @@ class StudentController {
 			const { sortBy, sortOrder } = req.query
 			const sortOptions = { sortBy, sortOrder }
 
+			// Pagination parametrlari
+			const page = req.query.page ? parseInt(req.query.page, 10) : undefined
+			const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined
+			const isPaginated = page !== undefined && limit !== undefined
+			const pagination = isPaginated ? { page, limit, offset: (page - 1) * limit } : {}
+
 			if (userType === 'Recruiter' && !recruiterId) {
 				console.log('Recruiter user but no recruiterId provided, returning empty result')
-				return res.status(200).json([])
+				return res.status(200).json(isPaginated ? { data: [], pagination: { page: 1, limit: limit || 50, total: 0, totalPages: 0 } } : [])
 			}
 
-			const students = await StudentService.getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions)
+			const result = await StudentService.getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions, pagination)
 
 			// Set cache control headers to prevent 304 responses
 			res.set({
@@ -197,12 +203,30 @@ class StudentController {
 				Expires: '0',
 			})
 
-			res.status(200).json(students)
+			// Pagination bo'lsa, yangi format; aks holda eski format
+			if (isPaginated) {
+				res.status(200).json({
+					data: result.students,
+					pagination: {
+						page: page,
+						limit: limit,
+						total: result.total,
+						totalPages: Math.ceil(result.total / limit),
+					},
+				})
+			} else {
+				res.status(200).json(result)
+			}
 		} catch (error) {
 			console.error('Error in getAllStudents controller:', error.message, error.stack)
 
-			// Return empty array instead of 500 error for better UX
-			res.status(200).json([])
+			// Return empty array/object instead of 500 error for better UX
+			const isPaginated = req.query.page !== undefined && req.query.limit !== undefined
+			if (isPaginated) {
+				res.status(200).json({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } })
+			} else {
+				res.status(200).json([])
+			}
 		}
 	}
 
