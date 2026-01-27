@@ -9,7 +9,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PendingIcon from '@mui/icons-material/Pending'
-import { Box, Button, FormControl, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Select, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
+import { Box, Button, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
 import { atom, useAtom } from 'jotai'
 import AwardIcon from '../../assets/icons/award-line.svg'
 import DeleteIcon from '../../assets/icons/delete-bin-3-line.svg'
@@ -35,7 +35,7 @@ const rowsPerPageAtom = atom(getInitialRowsPerPage())
 
 const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const { language } = useLanguage()
-	const t = key => translations[language][key] || key
+	const t = key => translations[language][key] || keyski
 
 	const role = sessionStorage.getItem('role')
 
@@ -206,6 +206,12 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					signal, // ✅ Pass abort signal
 				})
 				.then(response => {
+					const filteredRows = response.data.map(r => ({
+						student_id: r.student_id,
+						id: r.id,
+						isCurrent: false,
+					}))
+					localStorage.setItem('visibleRowsStudentIds', JSON.stringify(filteredRows))
 					setRows(response.data)
 				})
 				.catch(error => {
@@ -679,7 +685,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														if (header.type === 'delete_icon') {
 															return
 														}
-
+														const studentIds = localStorage.getItem('visibleRowsStudentIds')
+														if (studentIds) {
+															const parsedIds = JSON.parse(studentIds)
+															// Update isCurrent flags
+															localStorage.setItem(
+																'visibleRowsStudentIds',
+																JSON.stringify(
+																	parsedIds.map(item => ({
+																		...item,
+																		isCurrent: item.student_id === row.student_id,
+																	}))
+																)
+															)
+														}
 														// Find the avatar header to get the profile navigation function
 														const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 														if (avatarHeader && avatarHeader.onClickAction) {

@@ -1,18 +1,20 @@
+import ArrowBackIosNewOutlinedIcon from '@mui/icons-material/ArrowBackIosNewOutlined'
 import EmailIcon from '@mui/icons-material/Email'
-import { Avatar, Box, IconButton } from '@mui/material'
+import { Avatar, Box, Button } from '@mui/material'
+import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
 import { useContext, useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
-import ArrowGoBackIcon from '../../../assets/icons/arrow-go-back-line.svg'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
-
 const StudentProfile = ({ userId = 0 }) => {
+	const [visibleRowsStudentIds, setVisibleRowsStudentIds] = useState([])
+	const [step, setStep] = useState(1)
 	const { studentId } = useParams()
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
-	const t = translations[language] || translations.en
+	const t = key => translations[language][key] || key
 	const role = contextRole || sessionStorage.getItem('role')
 
 	// Helper function to get student_id from login user data
@@ -95,6 +97,23 @@ const StudentProfile = ({ userId = 0 }) => {
 			navigate(-1)
 		}
 	}
+	useEffect(() => {
+		const studentIdsString = localStorage.getItem('visibleRowsStudentIds')
+		if (!studentIdsString) return
+
+		setVisibleRowsStudentIds(JSON.parse(studentIdsString))
+	}, [])
+	const handleNextClick = () => {
+		const isRootPath = location.pathname.endsWith('/top')
+		if (!isRootPath) return
+
+		setStep(step + 1)
+		const currentIndex = visibleRowsStudentIds.findIndex(i => i.isCurrent)
+		const next = visibleRowsStudentIds[currentIndex + step]
+		if (!next) return
+		const nextStudentId = next.student_id
+		navigate(`/student/profile/${nextStudentId}/top`)
+	}
 
 	const calculateAge = birthDateString => {
 		const today = new Date()
@@ -171,31 +190,17 @@ const StudentProfile = ({ userId = 0 }) => {
 		>
 			<Box className={styles.topControlButtons}>
 				{role !== 'Student' && (
-					<IconButton
-						onClick={handleBackClick}
-						sx={{
-							'&:hover': {
-								backgroundColor: 'transparent',
-							},
-							'&:focus': {
-								backgroundColor: 'transparent',
-							},
-							padding: '12px',
-							backgroundColor: 'rgba(86, 39, 219, 0.1)',
-							borderRadius: '50%',
-							margin: '32px 0 32px 0',
-						}}
-					>
-						<img
-							src={ArrowGoBackIcon}
-							alt='戻る'
-							style={{
-								width: '24px',
-								height: '24px',
-								filter: 'brightness(0) saturate(100%) invert(24%) sepia(84%) saturate(2270%) hue-rotate(249deg) brightness(95%) contrast(96%)',
-							}}
-						/>
-					</IconButton>
+					<>
+						<Button onClick={handleBackClick} className={styles.topBtn}>
+							<ArrowBackIosNewOutlinedIcon />
+							{t('back')}
+						</Button>
+
+						<Button disabled={visibleRowsStudentIds.length <= 0 || visibleRowsStudentIds.findIndex(ids => ids.isCurrent) + step >= visibleRowsStudentIds.length} onClick={handleNextClick} className={styles.topBtn}>
+							{t('next')}
+							<ArrowBackIosNewOutlinedIcon sx={{ transform: 'rotate(180deg)' }} />
+						</Button>
+					</>
 				)}
 			</Box>
 			<Box className={styles.container}>
