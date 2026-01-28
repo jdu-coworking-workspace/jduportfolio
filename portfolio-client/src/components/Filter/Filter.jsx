@@ -253,21 +253,17 @@ const validateSavedState = (savedState, defaultState, allowedKeys) => {
  * @returns {FilterState} Loaded or default state
  */
 const loadPersistedState = (persistKey, defaultState, fields) => {
-	console.log('[Filter] 📥 Loading persisted state:', { persistKey })
 	try {
 		const saved = localStorage.getItem(persistKey)
 		if (!saved) {
-			console.log('[Filter] No saved state found, using defaults')
 			return defaultState
 		}
 
 		const parsedState = JSON.parse(saved)
-		console.log('[Filter] Parsed saved state:', parsedState)
 
 		const allowedKeys = createLookupSet(['search', ...fields.flatMap(f => [f.key, f.matchModeKey].filter(Boolean))])
 
 		const validatedState = validateSavedState(parsedState, defaultState, allowedKeys)
-		console.log('[Filter] ✅ Validated state loaded:', validatedState)
 		return validatedState
 	} catch (error) {
 		console.warn('[Filter] ❌ Error loading filter state from localStorage:', error)
@@ -283,7 +279,6 @@ const loadPersistedState = (persistKey, defaultState, fields) => {
  * @returns {void}
  */
 const saveToStorage = (persistKey, state) => {
-	console.log('[Filter] 💾 Attempting to save state:', { persistKey, state })
 	try {
 		/** @type {FilterState} */
 		const stateToSave = {}
@@ -296,10 +291,8 @@ const saveToStorage = (persistKey, state) => {
 
 		if (Object.keys(stateToSave).length > 0) {
 			localStorage.setItem(persistKey, JSON.stringify(stateToSave))
-			console.log('[Filter] ✅ State saved to localStorage:', stateToSave)
 		} else {
 			localStorage.removeItem(persistKey)
-			console.log('[Filter] 🗑️ Cleared empty state from localStorage')
 		}
 	} catch (error) {
 		console.warn('[Filter] ❌ Error saving filter state to localStorage:', error)
@@ -361,8 +354,6 @@ const filterAndSortCheckboxOptions = (options, selectedSet, searchTerm) => {
  * @returns {FilterReducerState} New state
  */
 const filterReducer = (state, action) => {
-	console.log('[Filter] 🔄 Reducer action dispatched:', action.type, action.payload)
-
 	switch (action.type) {
 		case ActionType.SET_FILTER_VALUE: {
 			const nextState = {
@@ -372,60 +363,47 @@ const filterReducer = (state, action) => {
 					[action.payload.key]: action.payload.value,
 				},
 			}
-			console.log('[Filter] Updated filter value:', {
-				key: action.payload.key,
-				value: action.payload.value,
-			})
+
 			return nextState
 		}
 
 		case ActionType.SET_FILTER_STATE:
-			console.log('[Filter] Setting entire filter state:', action.payload)
 			return {
 				...state,
 				filterState: action.payload,
 			}
 
 		case ActionType.SET_INPUT_VALUE:
-			console.log('[Filter] Input value changed:', action.payload)
 			return {
 				...state,
 				inputValue: action.payload,
 			}
 
 		case ActionType.SET_SUGGESTIONS:
-			console.log('[Filter] Suggestions updated:', {
-				count: action.payload.length,
-				suggestions: action.payload.slice(0, 5),
-			})
 			return {
 				...state,
 				suggestions: action.payload,
 			}
 
 		case ActionType.SET_SHOW_SUGGESTIONS:
-			console.log('[Filter] Show suggestions:', action.payload)
 			return {
 				...state,
 				showSuggestions: action.payload,
 			}
 
 		case ActionType.SET_SELECTED_SUGGESTION_INDEX:
-			console.log('[Filter] Selected suggestion index:', action.payload)
 			return {
 				...state,
 				selectedSuggestionIndex: action.payload,
 			}
 
 		case ActionType.SET_SHOW_FILTER_MODAL:
-			console.log('[Filter] Filter modal visibility:', action.payload)
 			return {
 				...state,
 				showFilterModal: action.payload,
 			}
 
 		case ActionType.SET_TEMP_FILTER_STATE:
-			console.log('[Filter] Temp filter state set:', action.payload)
 			return {
 				...state,
 				tempFilterState: action.payload,
@@ -439,20 +417,14 @@ const filterReducer = (state, action) => {
 					[action.payload.key]: action.payload.value,
 				},
 			}
-			console.log('[Filter] Temp filter value updated:', {
-				key: action.payload.key,
-				value: action.payload.value,
-			})
+
 			return nextState
 		}
 
 		case ActionType.SET_CHECKBOX_SEARCH: {
 			const newMap = new Map(state.checkboxSearchMap)
 			newMap.set(action.payload.key, action.payload.value)
-			console.log('[Filter] Checkbox search updated:', {
-				field: action.payload.key,
-				searchTerm: action.payload.value,
-			})
+
 			return {
 				...state,
 				checkboxSearchMap: newMap,
@@ -460,7 +432,6 @@ const filterReducer = (state, action) => {
 		}
 
 		case ActionType.CLEAR_ALL_FILTERS:
-			console.log('[Filter] 🗑️ Clearing all filters')
 			return {
 				...state,
 				filterState: action.payload.clearedState,
@@ -470,7 +441,6 @@ const filterReducer = (state, action) => {
 			}
 
 		case ActionType.APPLY_TEMP_FILTERS:
-			console.log('[Filter] ✅ Applying temp filters:', state.tempFilterState)
 			return {
 				...state,
 				filterState: state.tempFilterState,
@@ -478,7 +448,6 @@ const filterReducer = (state, action) => {
 			}
 
 		case ActionType.OPEN_FILTER_MODAL:
-			console.log('[Filter] 🔍 Opening filter modal')
 			return {
 				...state,
 				showFilterModal: true,
@@ -486,7 +455,6 @@ const filterReducer = (state, action) => {
 			}
 
 		case ActionType.CLOSE_FILTER_MODAL:
-			console.log('[Filter] ❌ Closing filter modal')
 			return {
 				...state,
 				showFilterModal: false,
@@ -507,7 +475,6 @@ const filterReducer = (state, action) => {
  * @returns {FilterReducerState} Initial state
  */
 const createInitialState = ({ filterState, persistKey, fields }) => {
-	console.log('[Filter] 🚀 Creating initial state:', { persistKey, fieldCount: fields.length })
 	const loadedState = loadPersistedState(persistKey, filterState, fields)
 
 	const initialState = {
@@ -521,7 +488,6 @@ const createInitialState = ({ filterState, persistKey, fields }) => {
 		checkboxSearchMap: new Map(),
 	}
 
-	console.log('[Filter] Initial state created:', initialState)
 	return initialState
 }
 
@@ -637,7 +603,6 @@ const useSuggestionFetching = (inputValue, allOptions, disableStudentIdSearch, d
 			try {
 				const response = await axios.get(`/api/students/ids?search=${encodeURIComponent(searchTerm)}`, { signal: abortControllerRef.current.signal })
 
-				console.log('[Filter] 📡 Student ID suggestions received:', response.data)
 				return response.data.map((/** @type {{ display: string, student_id: string }} */ student) => ({
 					label: student.display,
 					field: 'search',

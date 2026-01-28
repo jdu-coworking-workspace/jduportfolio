@@ -88,10 +88,11 @@ const StudentProfile = ({ userId = 0 }) => {
 	const handleBackClick = () => {
 		const isRootPath = location.pathname.endsWith('/top')
 		if (isRootPath) {
+			const page = location.state?.fromPage || 0
 			if (location.pathname.startsWith('/checkprofile')) {
 				navigate('/checkprofile')
 			} else {
-				navigate('/student')
+				navigate(`/student?page=${page}`)
 			}
 		} else {
 			navigate(-1)
