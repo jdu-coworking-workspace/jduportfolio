@@ -201,7 +201,11 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const navigate = useNavigate()
 
 	const navigateToProfile = student => {
-		navigate(`profile/${student.student_id}`)
+		navigate(`profile/${student.student_id}/top`, {
+			state: {
+				fromPage: new URLSearchParams(location.search).get('page') || '1',
+			},
+		})
 	}
 
 	const addToBookmark = async student => {
