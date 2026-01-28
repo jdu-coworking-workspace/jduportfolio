@@ -89,10 +89,20 @@ const StudentProfile = ({ userId = 0 }) => {
 		const isRootPath = location.pathname.endsWith('/top')
 		if (isRootPath) {
 			const page = location.state?.fromPage || 0
+			const sortBy = location.state?.sortBy || ''
+			const sortOrder = location.state?.sortOrder || ''
+
 			if (location.pathname.startsWith('/checkprofile')) {
 				navigate('/checkprofile')
 			} else {
-				navigate(`/student?page=${page}`)
+				// Build URL with all preserved state
+				const params = new URLSearchParams()
+				if (page > 0) params.set('page', page.toString())
+				if (sortBy) params.set('sortBy', sortBy)
+				if (sortOrder) params.set('sortOrder', sortOrder)
+
+				const queryString = params.toString()
+				navigate(`/student${queryString ? `?${queryString}` : ''}`)
 			}
 		} else {
 			navigate(-1)

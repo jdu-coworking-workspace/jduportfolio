@@ -200,10 +200,13 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const navigate = useNavigate()
 
-	const navigateToProfile = student => {
+	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
 		navigate(`profile/${student.student_id}/top`, {
 			state: {
-				fromPage: new URLSearchParams(location.search).get('page') || '1',
+				fromPage: currentPage || 0,
+				sortBy: currentSortBy || '',
+				sortOrder: currentSortOrder || '',
+				returnPath: '/student',
 			},
 		})
 	}
