@@ -85,20 +85,6 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		setSearchParams(params, { replace: true })
 	}, [page, sortBy, sortOrder, orderBy, order, setSearchParams])
 
-	useEffect(() => {
-		if (tableScrollPosition && studentTableRef.current) {
-			setTimeout(() => {
-				studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
-			}, 90)
-		}
-
-		// Save scroll position on unmount
-		return () => {
-			if (studentTableRef.current) {
-				setTableScrollPosition(studentTableRef.current.scrollTop)
-			}
-		}
-	}, [])
 	// Handler for header filter dropdown
 	const handleHeaderFilterClick = (event, headerId, anchorElement = null) => {
 		event.stopPropagation()
@@ -282,6 +268,18 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const isSelected = id => selected.indexOf(id) !== -1
 
 	const visibleRows = stableSort(rows, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+
+	useEffect(() => {
+		if (visibleRows.length <= 0) return
+		if (tableScrollPosition && studentTableRef.current && viewMode === 'table') {
+			studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+		}
+		return () => {
+			if (studentTableRef.current) {
+				setTableScrollPosition(studentTableRef.current.scrollTop)
+			}
+		}
+	}, [visibleRows.length, viewMode])
 
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
