@@ -48,6 +48,27 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const [orderBy, setOrderBy] = useState(searchParams.get('orderBy') || '')
 	const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || '')
 	const [sortOrder, setSortOrder] = useState(searchParams.get('sortOrder') || '')
+
+	// Initialize from URL params on mount if they exist
+	useEffect(() => {
+		const urlSortBy = searchParams.get('sortBy')
+		const urlSortOrder = searchParams.get('sortOrder')
+		const urlOrderBy = searchParams.get('orderBy')
+		const urlOrder = searchParams.get('order')
+
+		if (urlSortBy && urlSortBy !== sortBy) {
+			setSortBy(urlSortBy)
+		}
+		if (urlSortOrder && urlSortOrder !== sortOrder) {
+			setSortOrder(urlSortOrder)
+		}
+		if (urlOrderBy && urlOrderBy !== orderBy) {
+			setOrderBy(urlOrderBy)
+		}
+		if (urlOrder && urlOrder !== order) {
+			setOrder(urlOrder)
+		}
+	}, []) // Only run on mount
 	const [selected, _setSelected] = useState([])
 	const [page, setPage] = useState(parseInt(searchParams.get('page') || '0', 10))
 	const [rowsPerPage, setRowsPerPage] = useAtom(rowsPerPageAtom)
@@ -73,6 +94,28 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			// Silently fail if localStorage is not available
 		}
 	}, [rowsPerPage])
+
+	// Sync sortBy/sortOrder (backend) with order/orderBy (frontend) - keep them in sync
+	useEffect(() => {
+		if (sortBy) {
+			// Map backend sort field names to frontend column IDs
+			const reverseMap = {
+				name: 'first_name',
+				student_id: 'student_id',
+				age: 'age',
+				graduation_year: 'graduation_year',
+				email: 'email',
+			}
+			const mappedOrderBy = reverseMap[sortBy]
+			if (mappedOrderBy && mappedOrderBy !== orderBy) {
+				setOrderBy(mappedOrderBy)
+			}
+			const mappedOrder = sortOrder?.toLowerCase() || 'asc'
+			if (mappedOrder !== order) {
+				setOrder(mappedOrder)
+			}
+		}
+	}, [sortBy, sortOrder])
 
 	// Sync state to URL params
 	useEffect(() => {
@@ -288,20 +331,40 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 	const isSelected = id => selected.indexOf(id) !== -1
 
-	// Server-side pagination: backend allaqachon pagination qilgan, slice kerak emas
-	const visibleRows = stableSort(rows, getComparator(order, orderBy))
+	// Server-side pagination: backend allaqachon pagination qilgan, frontend sorting kerak emas
+	// Backend already sorts data based on sortBy/sortOrder, no need to sort again on frontend
+	const visibleRows = rows
 
+	// Scroll to specific student row instead of just position
 	useEffect(() => {
-		if (visibleRows.length <= 0) return
-		if (tableScrollPosition && studentTableRef.current && viewMode === 'table') {
+		if (visibleRows.length <= 0 || viewMode !== 'table') return
+
+		// Try to scroll to the current student if marked in localStorage
+		const currentStudentIds = JSON.parse(localStorage.getItem('visibleRowsStudentIds') || '[]')
+		const currentStudent = currentStudentIds.find(s => s.isCurrent)
+
+		if (currentStudent && studentTableRef.current) {
+			// Small delay to ensure DOM is fully rendered
+			setTimeout(() => {
+				const rowElement = document.querySelector(`[data-student-id="${currentStudent.student_id}"]`)
+				if (rowElement) {
+					rowElement.scrollIntoView({ behavior: 'auto', block: 'center' })
+				} else if (tableScrollPosition) {
+					// Fallback to scroll position if student row not found
+					studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+				}
+			}, 100)
+		} else if (tableScrollPosition && studentTableRef.current) {
+			// No current student marked, use saved scroll position
 			studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
 		}
+
 		return () => {
 			if (studentTableRef.current) {
 				setTableScrollPosition(studentTableRef.current.scrollTop)
 			}
 		}
-	}, [visibleRows.length, viewMode])
+	}, [visibleRows.length, viewMode, tableScrollPosition, setTableScrollPosition])
 
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
@@ -313,9 +376,25 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 	// Grid view da profile click handler
 	const handleProfileClickInGrid = row => {
+		// Mark current student in localStorage
+		const studentIds = localStorage.getItem('visibleRowsStudentIds')
+		if (studentIds) {
+			const parsedIds = JSON.parse(studentIds)
+			localStorage.setItem(
+				'visibleRowsStudentIds',
+				JSON.stringify(
+					parsedIds.map(item => ({
+						...item,
+						isCurrent: item.student_id === row.student_id,
+					}))
+				)
+			)
+		}
+
 		const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 		if (avatarHeader && avatarHeader.onClickAction) {
-			avatarHeader.onClickAction(row)
+			// Pass current pagination and sorting state to navigation handler
+			avatarHeader.onClickAction(row, page, sortBy, sortOrder)
 		}
 	}
 
@@ -708,6 +787,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 											tabIndex={-1}
 											key={row.id}
 											selected={isSelected(row.id)}
+											data-student-id={row.student_id}
 											sx={{
 												cursor: 'pointer',
 												backgroundColor: '#ffffff',
@@ -743,9 +823,10 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														// Find the avatar header to get the profile navigation function
 														const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 														if (avatarHeader && avatarHeader.onClickAction) {
-															avatarHeader.onClickAction(row)
+															// Pass current pagination and sorting state to navigation handler
+															avatarHeader.onClickAction(row, page, sortBy, sortOrder)
 														} else if (header.onClickAction) {
-															header.onClickAction(row)
+															header.onClickAction(row, page, sortBy, sortOrder)
 														}
 													}}
 													sx={{

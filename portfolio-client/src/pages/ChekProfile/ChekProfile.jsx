@@ -162,8 +162,16 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const navigate = useNavigate()
 
-	const navigateToProfile = student => {
-		navigate(`profile/${student.student_id}/top`, { state: { student } })
+	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
+		navigate(`profile/${student.student_id}/top`, {
+			state: {
+				student,
+				fromPage: currentPage || 0,
+				sortBy: currentSortBy || '',
+				sortOrder: currentSortOrder || '',
+				returnPath: '/checkprofile',
+			},
+		})
 	}
 
 	const updateDraftStatus = async (draftId, status) => {
