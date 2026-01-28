@@ -26,7 +26,7 @@ const getChangedKeys = (newData, oldData) => {
 }
 
 class DraftService {
-	static async getAll(filter) {
+	static async getAll(filter, pagination = {}) {
 		try {
 			console.log('DraftService.getAll called with filter:', JSON.stringify(filter, null, 2))
 
@@ -278,7 +278,9 @@ class DraftService {
 			console.log('Final query object:', JSON.stringify(query, null, 2))
 			console.log('Combined filters:', allFilters)
 
-			const students = await Student.findAll({
+			// Pagination parametrlari
+			const isPaginated = pagination.limit !== undefined && pagination.offset !== undefined
+			const queryOptions = {
 				where: query,
 				attributes: {
 					include: ['credit_details'], // Explicitly include credit_details field
@@ -310,17 +312,37 @@ class DraftService {
 						],
 					},
 				],
-			})
+				...(isPaginated && { limit: pagination.limit, offset: pagination.offset }),
+				distinct: true, // For accurate count with JOINs
+			}
 
-			// Map pendingDraft to draft for backward compatibility with frontend
-			return students.map(student => {
-				const studentJson = student.toJSON()
-				return {
-					...studentJson,
-					draft: studentJson.pendingDraft,
-					pendingDraft: undefined,
-				}
-			})
+			// Pagination bo'lsa findAndCountAll, aks holda findAll
+			if (isPaginated) {
+				const { count, rows: students } = await Student.findAndCountAll(queryOptions)
+
+				// Map pendingDraft to draft for backward compatibility with frontend
+				const mappedStudents = students.map(student => {
+					const studentJson = student.toJSON()
+					return {
+						...studentJson,
+						draft: studentJson.pendingDraft,
+						pendingDraft: undefined,
+					}
+				})
+				return { students: mappedStudents, total: count }
+			} else {
+				const students = await Student.findAll(queryOptions)
+
+				// Map pendingDraft to draft for backward compatibility with frontend
+				return students.map(student => {
+					const studentJson = student.toJSON()
+					return {
+						...studentJson,
+						draft: studentJson.pendingDraft,
+						pendingDraft: undefined,
+					}
+				})
+			}
 		} catch (error) {
 			console.error('DraftService.getAll error:', error)
 			console.error('Error message:', error.message)

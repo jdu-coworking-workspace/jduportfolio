@@ -239,9 +239,13 @@ class StudentService {
 	// 	}
 	// }
 
-	static async getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions = {}) {
+	static async getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions = {}, pagination = {}) {
 		try {
 			const normalizedUserType = (userType || '').toLowerCase()
+
+			// Pagination parametrlari
+			const { page, limit, offset } = pagination
+			const isPaginated = page !== undefined && limit !== undefined
 			// 1. FILTRLASH MANTIG'I (o'zgarishsiz qoladi)
 			const semesterMapping = {
 				'1年生': ['1', '2'],
@@ -558,19 +562,44 @@ class StudentService {
 				attributes.include = [[sequelize.literal(`EXISTS (SELECT 1 FROM "Bookmarks" AS "Bookmark" WHERE "Bookmark"."studentId" = "Student"."id" AND "Bookmark"."recruiterId" = ${sequelize.escape(recruiterId)})`), 'isBookmarked']]
 			}
 
-			const students = await Student.findAll({
-				where: query,
-				attributes,
-				include: [
-					{
-						model: Draft,
-						as: 'draft',
-						attributes: ['id', 'status', 'profile_data'],
-						required: false,
-					},
-				],
-				order: order, // <<<<<<<<<<<<<<<< SARALASH SHU YERDA QO'LLANILADI
-			})
+			// Pagination uchun findAndCountAll, aks holda findAll
+			let students
+			let totalCount = 0
+
+			if (isPaginated) {
+				const result = await Student.findAndCountAll({
+					where: query,
+					attributes,
+					include: [
+						{
+							model: Draft,
+							as: 'draft',
+							attributes: ['id', 'status', 'profile_data'],
+							required: false,
+						},
+					],
+					order: order,
+					limit: limit,
+					offset: offset,
+					distinct: true, // JOIN bilan to'g'ri hisoblash uchun
+				})
+				students = result.rows
+				totalCount = result.count
+			} else {
+				students = await Student.findAll({
+					where: query,
+					attributes,
+					include: [
+						{
+							model: Draft,
+							as: 'draft',
+							attributes: ['id', 'status', 'profile_data'],
+							required: false,
+						},
+					],
+					order: order,
+				})
+			}
 
 			// 4. DRAFT MA'LUMOTLARINI BIRLASHTIRISH (o'zgarishsiz qoladi)
 			const studentsWithDraftData = students.map(student => {
@@ -587,9 +616,21 @@ class StudentService {
 				return studentJson
 			})
 
+			// Pagination bo'lsa, object qaytarish; aks holda eski format (array)
+			if (isPaginated) {
+				return {
+					students: studentsWithDraftData,
+					total: totalCount,
+				}
+			}
+
 			return studentsWithDraftData
 		} catch (error) {
 			console.error('Error in getAllStudents:', error.message, error.stack)
+			// Pagination bo'lsa, object qaytarish; aks holda eski format (array)
+			if (pagination.page !== undefined && pagination.limit !== undefined) {
+				return { students: [], total: 0 }
+			}
 			return []
 		}
 	}

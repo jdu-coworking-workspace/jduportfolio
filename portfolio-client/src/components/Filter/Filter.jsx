@@ -1247,8 +1247,8 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 
 			{/* Filter Modal */}
 			{showFilterModal && (
-				<div className={style.filterModalOverlay} onClick={handleFilterModalClose}>
-					<div className={style.filterModal} onClick={e => e.stopPropagation()} role='dialog' aria-modal='true' aria-labelledby='filter-modal-title'>
+				<div className={style.filterModalOverlay} onMouseDown={handleFilterModalClose}>
+					<div className={style.filterModal} onMouseDown={e => e.stopPropagation()} role='dialog' aria-modal='true' aria-labelledby='filter-modal-title'>
 						<div className={style.filterModalHeader}>
 							<h3 id='filter-modal-title' className={style.filterModalTitle}>
 								{t('filter')}

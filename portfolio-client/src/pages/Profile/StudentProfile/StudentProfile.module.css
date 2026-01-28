@@ -7,7 +7,24 @@
 	border-top-left-radius: 10px;
 	border-top-right-radius: 10px;
 }
-
+.topControlButtons {
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+.topControlButtons .topBtn {
+	padding: 12px;
+	background-color: rgba(86, 39, 219, 0.1);
+	border-radius: 20px;
+	margin: 32px 0;
+	font-size: 16px;
+	color: #3c1b9a;
+	text-transform: none;
+}
+.topControlButtons .topBtn:focus {
+	background-color: transparent;
+}
 .avatarContainer {
 	display: flex;
 	align-items: center;
@@ -85,11 +102,6 @@
 	display: flex;
 	justify-content: center;
 }
-
-.uniLabelSpacer {
-	/* empty cell to align second line under value */
-}
-
 .uniValueLine {
 	color: #000;
 	word-break: break-word;

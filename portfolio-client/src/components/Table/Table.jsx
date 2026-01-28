@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from '../../utils/axiosUtils'
 
@@ -9,7 +9,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PendingIcon from '@mui/icons-material/Pending'
-import { Box, Button, FormControl, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Select, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
+import { Box, Button, Grid, IconButton, LinearProgress, Menu, MenuItem, Modal, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from '@mui/material'
 import { atom, useAtom } from 'jotai'
 import AwardIcon from '../../assets/icons/award-line.svg'
 import DeleteIcon from '../../assets/icons/delete-bin-3-line.svg'
@@ -20,6 +20,7 @@ import translations from '../../locales/translations'
 import ChangedFieldsModal from '../ChangedFieldsModal/ChangedFieldsModal'
 import UserAvatar from './Avatar/UserAvatar'
 import { getComparator, stableSort } from './TableUtils'
+import { tableScrollPositionAtom } from '../../atoms/store'
 // localStorage dan qiymat o'qish yoki default qiymat
 const getInitialRowsPerPage = () => {
 	try {
@@ -34,8 +35,9 @@ const getInitialRowsPerPage = () => {
 const rowsPerPageAtom = atom(getInitialRowsPerPage())
 
 const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
+	const studentTableRef = useRef(null)
 	const { language } = useLanguage()
-	const t = key => translations[language][key] || key
+	const t = key => translations[language][key] || keyski
 
 	const role = sessionStorage.getItem('role')
 
@@ -49,7 +51,9 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const [selected, _setSelected] = useState([])
 	const [page, setPage] = useState(parseInt(searchParams.get('page') || '0', 10))
 	const [rowsPerPage, setRowsPerPage] = useAtom(rowsPerPageAtom)
+	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [rows, setRows] = useState([])
+	const [totalCount, setTotalCount] = useState(0) // Server-side pagination uchun
 	const [loading, setLoading] = useState(false)
 	const [_refresher, setRefresher] = useState(0)
 	const [anchorEls, setAnchorEls] = useState({})
@@ -82,6 +86,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		setSearchParams(params, { replace: true })
 	}, [page, sortBy, sortOrder, orderBy, order, setSearchParams])
 
+	useEffect(() => {
+		if (tableScrollPosition && studentTableRef.current) {
+			setTimeout(() => {
+				studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+			}, 90)
+		}
+
+		// Save scroll position on unmount
+		return () => {
+			if (studentTableRef.current) {
+				setTableScrollPosition(studentTableRef.current.scrollTop)
+			}
+		}
+	}, [])
 	// Handler for header filter dropdown
 	const handleHeaderFilterClick = (event, headerId, anchorElement = null) => {
 		event.stopPropagation()
@@ -186,6 +204,9 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 				filter: tableProps.filter, // Let axios handle serialization
 				recruiterId: tableProps.recruiterId,
 				onlyBookmarked: tableProps.OnlyBookmarked,
+				// Server-side pagination parametrlari
+				page: page + 1, // MUI 0-indexed, backend 1-indexed
+				limit: rowsPerPage,
 			}
 
 			// Add sorting parameters if they exist
@@ -206,7 +227,19 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					signal, // ✅ Pass abort signal
 				})
 				.then(response => {
-					setRows(response.data)
+					// Server-side pagination: yangi format { data: [], pagination: {} }
+					// Backward compatible: eski format [] ham qo'llab-quvvatlanadi
+					const students = Array.isArray(response.data) ? response.data : response.data.data
+					const total = Array.isArray(response.data) ? response.data.length : response.data.pagination?.total || 0
+
+					const filteredRows = students.map(r => ({
+						student_id: r.student_id,
+						id: r.id,
+						isCurrent: false,
+					}))
+					localStorage.setItem('visibleRowsStudentIds', JSON.stringify(filteredRows))
+					setRows(students)
+					setTotalCount(total)
 				})
 				.catch(error => {
 					// Ignore aborted requests (expected behavior)
@@ -218,7 +251,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					setLoading(false)
 				})
 		},
-		[tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder]
+		[tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder, page, rowsPerPage]
 	)
 
 	useEffect(() => {
@@ -236,8 +269,8 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		fetchUserData,
 		tableProps.filter, // ✅ CRITICAL: Include filter in dependencies to trigger refetch when filter changes
 		tableProps.refreshTrigger,
-		// Remove refresher from dependencies to prevent automatic refetch
-		// refresher should only be used for manual refresh operations
+		page, // Server-side pagination uchun
+		rowsPerPage, // Server-side pagination uchun
 	])
 
 	useEffect(() => {
@@ -245,6 +278,17 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			setRows(prevData => prevData.map(data => (data.id === updatedBookmark.studentId ? { ...data, isBookmarked: !data.isBookmarked } : data)))
 		}
 	}, [updatedBookmark])
+
+	// Filter o'zgarganda page'ni 0 ga reset qilish
+	// Bu mavjud bo'lmagan page so'rashdan saqlaydi
+	const prevFilterRef = useRef(tableProps.filter)
+	useEffect(() => {
+		// Filter o'zgarganini tekshirish
+		if (JSON.stringify(prevFilterRef.current) !== JSON.stringify(tableProps.filter)) {
+			setPage(0)
+			prevFilterRef.current = tableProps.filter
+		}
+	}, [tableProps.filter])
 
 	const handleChangePage = (event, newPage) => {
 		setPage(newPage)
@@ -258,7 +302,8 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 	const isSelected = id => selected.indexOf(id) !== -1
 
-	const visibleRows = stableSort(rows, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+	// Server-side pagination: backend allaqachon pagination qilgan, slice kerak emas
+	const visibleRows = stableSort(rows, getComparator(order, orderBy))
 
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
@@ -460,7 +505,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		<TablePagination
 			rowsPerPageOptions={[5, 10, 25, 50, 100]}
 			component='div'
-			count={rows.length}
+			count={totalCount || rows.length}
 			rowsPerPage={rowsPerPage}
 			page={page}
 			onPageChange={handleChangePage}
@@ -524,6 +569,10 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					}}
 				>
 					<TableContainer
+						ref={studentTableRef}
+						onScroll={event => {
+							setTableScrollPosition(event.target.scrollTop)
+						}}
 						sx={{
 							minHeight: visibleRows.length > 0 ? 'auto' : '300px',
 							maxHeight: {
@@ -679,7 +728,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														if (header.type === 'delete_icon') {
 															return
 														}
-
+														const studentIds = localStorage.getItem('visibleRowsStudentIds')
+														if (studentIds) {
+															const parsedIds = JSON.parse(studentIds)
+															// Update isCurrent flags
+															localStorage.setItem(
+																'visibleRowsStudentIds',
+																JSON.stringify(
+																	parsedIds.map(item => ({
+																		...item,
+																		isCurrent: item.student_id === row.student_id,
+																	}))
+																)
+															)
+														}
 														// Find the avatar header to get the profile navigation function
 														const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 														if (avatarHeader && avatarHeader.onClickAction) {
