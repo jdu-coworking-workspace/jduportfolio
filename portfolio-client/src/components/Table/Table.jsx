@@ -305,6 +305,18 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	// Server-side pagination: backend allaqachon pagination qilgan, slice kerak emas
 	const visibleRows = stableSort(rows, getComparator(order, orderBy))
 
+	useEffect(() => {
+		if (visibleRows.length <= 0) return
+		if (tableScrollPosition && studentTableRef.current && viewMode === 'table') {
+			studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+		}
+		return () => {
+			if (studentTableRef.current) {
+				setTableScrollPosition(studentTableRef.current.scrollTop)
+			}
+		}
+	}, [visibleRows.length, viewMode])
+
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
 		const bookmarkHeader = tableProps.headers.find(h => h.type === 'bookmark')
