@@ -15,25 +15,22 @@ const formatGraduationYear = dateStr => {
 
 export const FilteredItems = ({ tempFilterState, setTempFilterState, onFilterChange }) => {
 	const handleDelete = (key, value) => {
-		setTempFilterState(prevState => {
-			let newState
-			if (Array.isArray(prevState[key])) {
-				const updatedField = prevState[key].filter(item => item !== value)
-				newState = {
-					...prevState,
-					[key]: updatedField,
-				}
-			} else {
-				newState = {
-					...prevState,
-					[key]: '',
-				}
+		const prev = tempFilterState
+		let newState
+
+		if (Array.isArray(prev[key])) {
+			newState = {
+				...prev,
+				[key]: prev[key].filter(item => item !== value),
 			}
-			if (onFilterChange) {
-				onFilterChange(newState)
+		} else {
+			newState = {
+				...prev,
+				[key]: '',
 			}
-			return newState
-		})
+		}
+
+		setTempFilterState(newState)
 	}
 	return (
 		<Box sx={{ my: 2 }}>
