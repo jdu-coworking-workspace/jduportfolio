@@ -565,6 +565,8 @@ Please make sure that your profile does not fall under any of the prohibited act
 		no_data_found: 'No data found.',
 		next: 'Next',
 		expectedGraduationYearMonth: 'Expected Graduation Month',
+		number_of_applications: 'Number of Applications',
+		changed_elements: 'Changed Elements',
 	},
 	ja: {
 		tagline: '一行PR',
@@ -1141,6 +1143,8 @@ Please make sure that your profile does not fall under any of the prohibited act
 		no_data_found: 'データが見つかりませんでした',
 		next: '次へ',
 		expectedGraduationYearMonth: '卒業予定年（月）',
+		number_of_applications: '申請回数',
+		changed_elements: '変更項目',
 	},
 	uz: {
 		tagline: 'Bir jumlalik PR',
@@ -1701,6 +1705,8 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		no_data_found: "Hech qanday ma'lumot topilmadi",
 		next: 'Keyingi',
 		expectedGraduationYearMonth: 'Kutilayotgan bitirish yili/oyi',
+		number_of_applications: 'Arizalar soni',
+		changed_elements: 'Oʻzgartirilgan elementlar',
 	},
 	ru: {
 		rank: 'Ранг',
@@ -2232,6 +2238,8 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		no_data_found: 'Ничего не найдено',
 		next: 'Далее',
 		expectedGraduationYearMonth: 'Ожидаемый год/месяц выпуска',
+		number_of_applications: 'Количество заявок',
+		changed_elements: 'Измененные элементы',
 	},
 }
 
