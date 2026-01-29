@@ -311,7 +311,7 @@ const createClearedState = fields => {
 	for (const field of fields) {
 		clearedState[field.key] = field.type === 'checkbox' ? [] : ''
 		if (field.matchModeKey) {
-			clearedState[field.matchModeKey] = 'any'
+			clearedState[field.matchModeKey] = null
 		}
 	}
 
@@ -1037,12 +1037,12 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 							{field.matchModeKey && (
 								<div className={style.radioGroup} style={{ marginBottom: 8 }}>
 									<label className={style.radioLabel}>
-										<input type='radio' name={field.matchModeKey} value='any' checked={(tempFilterState[field.matchModeKey] || 'any') === 'any'} onChange={() => handleTempFilterChange(field.matchModeKey, 'any')} className={style.radio} />
-										<span>{t('any') || 'Any'}</span>
+										<input type='radio' name={field.matchModeKey} value='any' checked={tempFilterState[field.matchModeKey] === 'any'} onChange={() => handleTempFilterChange(field.matchModeKey, 'any')} className={style.radio} />
+										<span>{t('any')}</span>
 									</label>
 									<label className={style.radioLabel}>
-										<input type='radio' name={field.matchModeKey} value='all' checked={(tempFilterState[field.matchModeKey] || 'any') === 'all'} onChange={() => handleTempFilterChange(field.matchModeKey, 'all')} className={style.radio} />
-										<span>{t('all') || 'All'}</span>
+										<input type='radio' name={field.matchModeKey} value='all' checked={tempFilterState[field.matchModeKey] === 'all'} onChange={() => handleTempFilterChange(field.matchModeKey, 'all')} className={style.radio} />
+										<span>{t('all')}</span>
 									</label>
 								</div>
 							)}

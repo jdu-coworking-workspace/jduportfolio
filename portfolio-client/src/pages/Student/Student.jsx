@@ -56,7 +56,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const [filterState, setFilterState] = useState({
 		...initialFilterState,
 		language_skills: initialFilterState.language_skills || [],
-		language_skills_match: initialFilterState.language_skills_match || 'any',
+		language_skills_match: initialFilterState.language_skills_match || '',
 	})
 	const [viewMode, setViewMode] = useState(getInitialViewMode()) // localStorage dan olish
 	const [updatedBookmark, setUpdatedBookmark] = useState({
@@ -150,7 +150,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		},
 		{
 			key: 'language_skills',
-			label: t('language_skills') || 'Language Skills',
+			label: t('languageSkills'),
 			type: 'checkbox',
 			options: languageSkillOptions,
 			matchModeKey: 'language_skills_match',
