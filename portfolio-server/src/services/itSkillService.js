@@ -12,7 +12,7 @@ class ItSkillService {
 		} catch (error) {
 			// Unikal nom xatoligini ushlash
 			if (error.name === 'SequelizeUniqueConstraintError') {
-				throw new Error(`'${skillData.name}' nomli ko'nikma allaqachon mavjud.`)
+				throw new Error(`'${skillData.name}' already exists.`)
 			}
 			throw error
 		}

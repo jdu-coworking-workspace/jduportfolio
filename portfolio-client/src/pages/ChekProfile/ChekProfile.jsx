@@ -90,7 +90,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		},
 		{
 			key: 'language_skills',
-			label: t('language_skills') || 'Language Skills',
+			label: t('languageSkills'),
 			type: 'checkbox',
 			options: languageSkillOptions,
 			matchModeKey: 'language_skills_match',
