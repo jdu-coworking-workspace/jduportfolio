@@ -8,6 +8,8 @@ import Table from '../../components/Table/Table'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
+import { useAtom } from 'jotai'
+import { studentsBackPageAtom } from '../../atoms/store'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -48,6 +50,7 @@ const getInitialFilterState = () => {
 
 const Student = ({ OnlyBookmarked = false }) => {
 	const { language } = useLanguage()
+	const [studentsBackPage, setStudentsBackPage] = useAtom(studentsBackPageAtom)
 	const t = key => translations[language][key] || key
 
 	// Initial filter state - localStorage dan olish
@@ -201,14 +204,8 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const navigate = useNavigate()
 
 	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
-		navigate(`profile/${student.student_id}/top`, {
-			state: {
-				fromPage: currentPage || 0,
-				sortBy: currentSortBy || '',
-				sortOrder: currentSortOrder || '',
-				returnPath: '/student',
-			},
-		})
+		setStudentsBackPage(currentPage || 0)
+		navigate(`profile/${student.student_id}/top`)
 	}
 
 	const addToBookmark = async student => {

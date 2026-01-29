@@ -9,9 +9,10 @@ import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
-import { tableScrollPositionAtom } from '../../../atoms/store'
+import { studentsBackPageAtom, tableScrollPositionAtom } from '../../../atoms/store'
 const StudentProfile = ({ userId = 0 }) => {
 	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
+	const [studentsBackPage] = useAtom(studentsBackPageAtom)
 	const [visibleRowsStudentIds, setVisibleRowsStudentIds] = useState([])
 	const [step, setStep] = useState(1)
 	const { studentId } = useParams()
@@ -90,21 +91,10 @@ const StudentProfile = ({ userId = 0 }) => {
 	const handleBackClick = () => {
 		const isRootPath = location.pathname.endsWith('/top')
 		if (isRootPath) {
-			const page = location.state?.fromPage || 0
-			const sortBy = location.state?.sortBy || ''
-			const sortOrder = location.state?.sortOrder || ''
-
 			if (location.pathname.startsWith('/checkprofile')) {
 				navigate('/checkprofile')
 			} else {
-				// Build URL with all preserved state
-				const params = new URLSearchParams()
-				if (page > 0) params.set('page', page.toString())
-				if (sortBy) params.set('sortBy', sortBy)
-				if (sortOrder) params.set('sortOrder', sortOrder)
-
-				const queryString = params.toString()
-				navigate(`/student${queryString ? `?${queryString}` : ''}`)
+				navigate(`/student?page=${studentsBackPage ?? ''}`)
 			}
 		} else {
 			navigate(-1)
