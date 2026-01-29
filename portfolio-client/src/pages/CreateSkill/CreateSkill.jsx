@@ -2,9 +2,19 @@ import { useState, useEffect } from 'react'
 import axios from '../../utils/axiosUtils'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
-import { Container, Typography, Box, Button, TextField, Card, CardContent, Chip, Grid, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar, InputAdornment, CircularProgress, Paper } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, Palette as PaletteIcon, Code as CodeIcon } from '@mui/icons-material'
+import { Container, Typography, Box, Button, TextField, Card, CardContent, Chip, Grid, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar, InputAdornment, CircularProgress, Paper, Tooltip, List, ListItem, ListItemText, Divider } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, Palette as PaletteIcon, Code as CodeIcon, FormatListBulleted as FormatListBulletedIcon, Window as WindowIcon } from '@mui/icons-material'
 import './CreateSkill.css'
+
+// Helper function to get initial view mode from localStorage
+const getInitialViewMode = key => {
+	try {
+		const saved = localStorage.getItem(key)
+		return saved || 'card'
+	} catch (error) {
+		return 'card'
+	}
+}
 
 export const CreateSkill = () => {
 	//TABS
@@ -21,6 +31,10 @@ export const CreateSkill = () => {
 	const [searchTerm, setSearchTerm] = useState('')
 	const [filteredSkills, setFilteredSkills] = useState([])
 	const [filteredLanguageSkills, setFilteredLanguageSkills] = useState([])
+
+	// View mode states
+	const [itSkillsViewMode, setItSkillsViewMode] = useState(() => getInitialViewMode('adminItSkillsViewMode'))
+	const [languageSkillsViewMode, setLanguageSkillsViewMode] = useState(() => getInitialViewMode('adminLanguageSkillsViewMode'))
 
 	// Form states
 	const [formData, setFormData] = useState({ name: '', color: '#4caf50' })
@@ -85,6 +99,24 @@ export const CreateSkill = () => {
 			setFilteredLanguageSkills(languageSkills)
 		}
 	}, [searchTerm, skills, languageSkills])
+
+	// Save IT Skills view mode to localStorage
+	useEffect(() => {
+		try {
+			localStorage.setItem('adminItSkillsViewMode', itSkillsViewMode)
+		} catch (error) {
+			console.error('Error saving itSkillsViewMode to localStorage:', error)
+		}
+	}, [itSkillsViewMode])
+
+	// Save Language Skills view mode to localStorage
+	useEffect(() => {
+		try {
+			localStorage.setItem('adminLanguageSkillsViewMode', languageSkillsViewMode)
+		} catch (error) {
+			console.error('Error saving languageSkillsViewMode to localStorage:', error)
+		}
+	}, [languageSkillsViewMode])
 
 	// Initial load
 	useEffect(() => {
@@ -299,9 +331,35 @@ export const CreateSkill = () => {
 			</Box>
 			{tabsIndex === 'it_skills' ? (
 				<Box>
-					<Typography variant='h5' sx={{ mb: 3, fontWeight: 600 }}>
-						{t('itSkills')} ({filteredSkills.length})
-					</Typography>
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+						<Typography variant='h5' sx={{ fontWeight: 600 }}>
+							{t('itSkills')} ({filteredSkills.length})
+						</Typography>
+						<Box sx={{ display: 'flex', gap: 0.5 }}>
+							<Tooltip title={itSkillsViewMode === 'list' ? t('currentView') || 'List View' : t('switchToList') || 'Switch to List View'}>
+								<IconButton
+									onClick={() => setItSkillsViewMode('list')}
+									sx={{
+										color: itSkillsViewMode === 'list' ? '#5627DB' : 'gray',
+										'&:hover': { color: '#5627DB' },
+									}}
+								>
+									<FormatListBulletedIcon />
+								</IconButton>
+							</Tooltip>
+							<Tooltip title={itSkillsViewMode === 'card' ? t('currentView') || 'Card View' : t('switchToCard') || 'Switch to Card View'}>
+								<IconButton
+									onClick={() => setItSkillsViewMode('card')}
+									sx={{
+										color: itSkillsViewMode === 'card' ? '#5627DB' : 'gray',
+										'&:hover': { color: '#5627DB' },
+									}}
+								>
+									<WindowIcon />
+								</IconButton>
+							</Tooltip>
+						</Box>
+					</Box>
 
 					{loading ? (
 						<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -314,6 +372,72 @@ export const CreateSkill = () => {
 								{searchTerm ? t('no_skills_found') : t('no_skills_available')}
 							</Typography>
 							<Typography color='text.secondary'>{searchTerm ? t('try_adjusting_search') : t('start_adding_skill')}</Typography>
+						</Paper>
+					) : itSkillsViewMode === 'list' ? (
+						<Paper elevation={2} sx={{ borderRadius: 2 }}>
+							<List>
+								{filteredSkills.map((skill, index) => (
+									<Box key={skill.id}>
+										<ListItem
+											sx={{
+												py: 2,
+												px: 3,
+												'&:hover': {
+													bgcolor: '#f5f5f5',
+												},
+											}}
+										>
+											<Box
+												sx={{
+													width: 16,
+													height: 16,
+													borderRadius: '50%',
+													backgroundColor: skill.color,
+													mr: 2,
+													flexShrink: 0,
+												}}
+											/>
+											<ListItemText
+												primary={skill.name}
+												secondary={skill.color}
+												primaryTypographyProps={{
+													fontWeight: 600,
+													fontSize: '1rem',
+												}}
+												secondaryTypographyProps={{
+													fontFamily: 'monospace',
+													color: skill.color,
+												}}
+											/>
+											<Box sx={{ display: 'flex', gap: 1 }}>
+												<IconButton
+													size='small'
+													onClick={() => startEdit(skill)}
+													sx={{
+														bgcolor: '#e3f2fd',
+														color: '#1976d2',
+														'&:hover': { bgcolor: '#bbdefb' },
+													}}
+												>
+													<EditIcon fontSize='small' />
+												</IconButton>
+												<IconButton
+													size='small'
+													onClick={() => setDeleteConfirm({ open: true, skillId: skill.id })}
+													sx={{
+														bgcolor: '#ffebee',
+														color: '#d32f2f',
+														'&:hover': { bgcolor: '#ffcdd2' },
+													}}
+												>
+													<DeleteIcon fontSize='small' />
+												</IconButton>
+											</Box>
+										</ListItem>
+										{index < filteredSkills.length - 1 && <Divider />}
+									</Box>
+								))}
+							</List>
 						</Paper>
 					) : (
 						<Grid container spacing={2}>
@@ -398,9 +522,35 @@ export const CreateSkill = () => {
 				</Box>
 			) : (
 				<Box>
-					<Typography variant='h5' sx={{ mb: 3, fontWeight: 600 }}>
-						{t('languageSkills')} ({filteredLanguageSkills.length})
-					</Typography>
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+						<Typography variant='h5' sx={{ fontWeight: 600 }}>
+							{t('languageSkills')} ({filteredLanguageSkills.length})
+						</Typography>
+						<Box sx={{ display: 'flex', gap: 0.5 }}>
+							<Tooltip title={languageSkillsViewMode === 'list' ? t('currentView') || 'List View' : t('switchToList') || 'Switch to List View'}>
+								<IconButton
+									onClick={() => setLanguageSkillsViewMode('list')}
+									sx={{
+										color: languageSkillsViewMode === 'list' ? '#5627DB' : 'gray',
+										'&:hover': { color: '#5627DB' },
+									}}
+								>
+									<FormatListBulletedIcon />
+								</IconButton>
+							</Tooltip>
+							<Tooltip title={languageSkillsViewMode === 'card' ? t('currentView') || 'Card View' : t('switchToCard') || 'Switch to Card View'}>
+								<IconButton
+									onClick={() => setLanguageSkillsViewMode('card')}
+									sx={{
+										color: languageSkillsViewMode === 'card' ? '#5627DB' : 'gray',
+										'&:hover': { color: '#5627DB' },
+									}}
+								>
+									<WindowIcon />
+								</IconButton>
+							</Tooltip>
+						</Box>
+					</Box>
 
 					{loading ? (
 						<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -413,6 +563,57 @@ export const CreateSkill = () => {
 								{searchTerm ? t('no_skills_found') : t('no_skills_available')}
 							</Typography>
 							<Typography color='text.secondary'>{searchTerm ? t('try_adjusting_search') : t('start_adding_language_skill')}</Typography>
+						</Paper>
+					) : languageSkillsViewMode === 'list' ? (
+						<Paper elevation={2} sx={{ borderRadius: 2 }}>
+							<List>
+								{filteredLanguageSkills.map((skill, index) => (
+									<Box key={skill.id}>
+										<ListItem
+											sx={{
+												py: 2,
+												px: 3,
+												'&:hover': {
+													bgcolor: '#f5f5f5',
+												},
+											}}
+										>
+											<ListItemText
+												primary={skill.name}
+												primaryTypographyProps={{
+													fontWeight: 600,
+													fontSize: '1rem',
+												}}
+											/>
+											<Box sx={{ display: 'flex', gap: 1 }}>
+												<IconButton
+													size='small'
+													onClick={() => startEdit(skill)}
+													sx={{
+														bgcolor: '#e3f2fd',
+														color: '#1976d2',
+														'&:hover': { bgcolor: '#bbdefb' },
+													}}
+												>
+													<EditIcon fontSize='small' />
+												</IconButton>
+												<IconButton
+													size='small'
+													onClick={() => setDeleteConfirm({ open: true, skillId: skill.id })}
+													sx={{
+														bgcolor: '#ffebee',
+														color: '#d32f2f',
+														'&:hover': { bgcolor: '#ffcdd2' },
+													}}
+												>
+													<DeleteIcon fontSize='small' />
+												</IconButton>
+											</Box>
+										</ListItem>
+										{index < filteredLanguageSkills.length - 1 && <Divider />}
+									</Box>
+								))}
+							</List>
 						</Paper>
 					) : (
 						<Grid container spacing={2}>
