@@ -474,14 +474,15 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 		} catch (error) {
 			const status = error?.response?.status
 			const serverMsg = error?.response?.data?.error
-			if (status === 400) {
-				// Prefer localized, student-friendly message for validation errors
+			// Always prefer server's error message as it's more specific
+			if (serverMsg) {
+				setWarningModal({ open: true, message: serverMsg })
+			} else if (status === 400) {
+				// Fallback for 400 errors without server message
 				setWarningModal({
 					open: true,
-					message: t('pleaseAnswerRequired') || serverMsg || 'Required questions are missing.',
+					message: t('pleaseAnswerRequired') || 'Required questions are missing.',
 				})
-			} else if (serverMsg) {
-				setWarningModal({ open: true, message: serverMsg })
 			} else {
 				setWarningModal({
 					open: true,
@@ -866,24 +867,163 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 		return missing
 	}
 
-	const handleStudentSubmitClick = () => {
-		// Validate required answers before allowing submit
-		const missing = collectMissingRequiredAnswers()
-		if (missing.length > 0) {
-			// Jump to the first category with missing answer to help the student
-			const first = missing[0]
-			const idx = labels.findIndex(l => l === first.category)
-			if (idx >= 0) setSubTabIndex(idx)
-			// Ensure student can edit to fill answers
-			if (!editMode) setEditMode(true)
-			setWarningModal({
-				open: true,
-				message: `${t('pleaseAnswerRequired') || '必須の質問に回答してください'}（未回答: ${missing.length}）`,
-			})
-			return
+	const handleStudentSubmitClick = async () => {
+		try {
+			// ✅ FIX: Always fetch latest settings before validation
+			// This ensures we check against current required flags, not stale cached ones
+			const questionsResponse = await axios.get('/api/settings/studentQA')
+			const latestQuestions = JSON.parse(questionsResponse.data.value)
+
+			console.log('=== Q&A VALIDATION DEBUG ===')
+			console.log('Latest questions from settings:', latestQuestions)
+			console.log('Current editData:', editData)
+
+			// Update editData with latest required flags from admin settings
+			// Also ADD any new questions that admin added but don't exist in student's data yet
+			const updatedEditData = { ...editData }
+			for (const category in latestQuestions) {
+				if (category === 'idList') continue
+
+				// Ensure category exists in updatedEditData
+				if (!updatedEditData[category]) {
+					updatedEditData[category] = {}
+				}
+
+				for (const key in latestQuestions[category]) {
+					if (updatedEditData[category][key]) {
+						// Update existing question with latest required flag
+						updatedEditData[category][key].required = !!latestQuestions[category][key].required
+						updatedEditData[category][key].question = latestQuestions[category][key].question || updatedEditData[category][key].question
+					} else {
+						// ✅ ADD new question that doesn't exist in student's data yet
+						updatedEditData[category][key] = {
+							question: latestQuestions[category][key].question || '',
+							required: !!latestQuestions[category][key].required,
+							answer: '', // New question has no answer yet
+						}
+					}
+				}
+			}
+
+			// ✅ CRITICAL FIX: Validate using LOCAL variable BEFORE state update
+			// Don't rely on setState() which is async and may not complete before validation
+			// ✅ IMPORTANT: Only validate questions that exist in SETTINGS (not old deleted questions)
+			const missing = []
+			for (const category in latestQuestions) {
+				if (category === 'idList') continue
+
+				const settingsQuestions = latestQuestions[category] || {}
+				const studentAnswers = updatedEditData[category] || {}
+
+				for (const key in settingsQuestions) {
+					const settingsQuestion = settingsQuestions[key]
+					const studentAnswer = studentAnswers[key]
+
+					// Only check if question is required in CURRENT settings
+					if (settingsQuestion && settingsQuestion.required === true) {
+						const answer = studentAnswer?.answer || ''
+						if (!answer || String(answer).trim() === '') {
+							missing.push({
+								category,
+								key,
+								question: settingsQuestion.question || studentAnswer?.question || key,
+							})
+						}
+					}
+				}
+			}
+
+			// Update state AFTER validation (for UI refresh)
+			setEditData(updatedEditData)
+
+			console.log('Updated editData:', updatedEditData)
+			console.log('Missing required answers:', missing)
+			console.log('=== END DEBUG ===')
+
+			// Check validation results
+			if (missing.length > 0) {
+				// Group missing questions by category for better error message
+				const missingByCategory = {}
+				missing.forEach(item => {
+					if (!missingByCategory[item.category]) {
+						missingByCategory[item.category] = []
+					}
+					missingByCategory[item.category].push(item.question)
+				})
+
+				// Build user-friendly error message showing categories
+				const categoryList = Object.keys(missingByCategory)
+					.map(cat => `「${cat}」`)
+					.join('、')
+
+				// Jump to the first category with missing answer to help the student
+				const first = missing[0]
+				const idx = labels.findIndex(l => l === first.category)
+				if (idx >= 0) setSubTabIndex(idx)
+				// Ensure student can edit to fill answers
+				if (!editMode) setEditMode(true)
+				setWarningModal({
+					open: true,
+					message: `必須の質問に回答してください。\n未回答のカテゴリ: ${categoryList}\n（未回答: ${missing.length}件）`,
+				})
+				return
+			}
+
+			// ✅ CRITICAL FIX: Save the updated Q&A data to draft BEFORE submitting
+			// This ensures backend validation sees the latest data including new questions
+			console.log('Saving updated Q&A data to draft before submission...')
+			try {
+				// Remove 'question' and 'required' fields - only save answers
+				const answersOnly = {}
+				for (const category in updatedEditData) {
+					if (category === 'idList') continue
+					answersOnly[category] = {}
+					for (const key in updatedEditData[category]) {
+						const item = updatedEditData[category][key]
+						// Save just the answer value (backend expects this format)
+						answersOnly[category][key] = {
+							answer: item.answer || '',
+						}
+					}
+				}
+
+				// Update the draft with new Q&A data
+				const draftData = {
+					student_id: id,
+					profile_data: {
+						...currentDraft.profile_data,
+						qa: answersOnly,
+					},
+				}
+
+				console.log('Saving draft with Q&A data:', draftData)
+				const saveResponse = await axios.put(`/api/draft`, draftData)
+				console.log('Draft saved successfully:', saveResponse.data)
+			} catch (saveError) {
+				console.error('Error saving draft before submission:', saveError)
+				showAlert(t('errorSavingDraft') || 'Failed to save draft', 'error')
+				return
+			}
+
+			// Open confirmation dialog if all required answers provided
+			toggleConfirmMode()
+		} catch (error) {
+			console.error('Error fetching latest Q&A settings:', error)
+			// Fallback: proceed with current data if fetch fails
+			const missing = collectMissingRequiredAnswers()
+			if (missing.length > 0) {
+				const first = missing[0]
+				const idx = labels.findIndex(l => l === first.category)
+				if (idx >= 0) setSubTabIndex(idx)
+				if (!editMode) setEditMode(true)
+				setWarningModal({
+					open: true,
+					message: `${t('pleaseAnswerRequired') || '必須の質問に回答してください'}（未回答: ${missing.length}）`,
+				})
+				return
+			}
+			toggleConfirmMode()
 		}
-		// Open confirmation dialog if all required answers provided
-		toggleConfirmMode()
 	}
 
 	// Debug logging to understand the state
@@ -1055,7 +1195,10 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							const disableExpand = !id
 							const isIconRow = idx === iconRowIdx
 
-							return <QAAccordion key={key} question={question} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} />
+							// Ensure question has a value (fallback to key if undefined)
+							const questionText = question || key
+
+							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} />
 						})
 					})()}
 			</Box>

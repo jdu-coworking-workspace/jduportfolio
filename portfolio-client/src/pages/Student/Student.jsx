@@ -8,6 +8,8 @@ import Table from '../../components/Table/Table'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
+import { useAtom } from 'jotai'
+import { studentsBackPageAtom } from '../../atoms/store'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -48,6 +50,7 @@ const getInitialFilterState = () => {
 
 const Student = ({ OnlyBookmarked = false }) => {
 	const { language } = useLanguage()
+	const [studentsBackPage, setStudentsBackPage] = useAtom(studentsBackPageAtom)
 	const t = key => translations[language][key] || key
 
 	// Initial filter state - localStorage dan olish
@@ -56,7 +59,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const [filterState, setFilterState] = useState({
 		...initialFilterState,
 		language_skills: initialFilterState.language_skills || [],
-		language_skills_match: initialFilterState.language_skills_match || 'any',
+		language_skills_match: initialFilterState.language_skills_match || '',
 	})
 	const [viewMode, setViewMode] = useState(getInitialViewMode()) // localStorage dan olish
 	const [updatedBookmark, setUpdatedBookmark] = useState({
@@ -150,7 +153,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		},
 		{
 			key: 'language_skills',
-			label: t('language_skills') || 'Language Skills',
+			label: t('languageSkills'),
 			type: 'checkbox',
 			options: languageSkillOptions,
 			matchModeKey: 'language_skills_match',
@@ -201,14 +204,8 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const navigate = useNavigate()
 
 	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
-		navigate(`profile/${student.student_id}/top`, {
-			state: {
-				fromPage: currentPage || 0,
-				sortBy: currentSortBy || '',
-				sortOrder: currentSortOrder || '',
-				returnPath: '/student',
-			},
-		})
+		setStudentsBackPage(currentPage || 0)
+		navigate(`profile/${student.student_id}/top`)
 	}
 
 	const addToBookmark = async student => {
@@ -249,7 +246,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'age',
 			numeric: true,
 			disablePadding: false,
-			label: '年齢',
+			label: t('age'),
 			minWidth: '80px !important',
 			suffix: ' 歳',
 			isSort: true,
@@ -273,7 +270,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'graduation_year',
 			numeric: true,
 			disablePadding: false,
-			label: '卒業予定年（月）',
+			label: t('expectedGraduationYearMonth'),
 			minWidth: '160px',
 			isSort: true,
 		},

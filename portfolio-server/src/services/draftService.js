@@ -497,7 +497,7 @@ class DraftService {
 		})
 
 		if (existingPending) {
-			throw new Error('Sizda allaqachon tekshiruvga yuborilgan faol qoralama mavjud. Yangisini yuborish uchun avvalgisining natijasini kuting.')
+			throw new Error('既に提出済みの下書きがあります。新しい下書きを提出する前に、前回の審査結果をお待ちください。')
 		}
 
 		// Server-side validation: ensure all required QA answers are filled
@@ -513,6 +513,10 @@ class DraftService {
 				if (settings && typeof settings === 'object') {
 					// Prefer answers from current draft.profile_data.qa if present
 					const profileQA = (draft.profile_data && draft.profile_data.qa) || null
+
+					console.log('=== BACKEND Q&A VALIDATION DEBUG ===')
+					console.log('Settings from database:', JSON.stringify(settings, null, 2))
+					console.log('Draft profile_data.qa:', JSON.stringify(profileQA, null, 2))
 
 					let answersByCategory = {}
 					if (profileQA && typeof profileQA === 'object') {
@@ -535,20 +539,48 @@ class DraftService {
 						if (category === 'idList') continue
 						const questions = settings[category] || {}
 						const answers = answersByCategory[category] || {}
+
+						console.log(`Checking category: ${category}`)
+						console.log(`Questions in settings:`, Object.keys(questions))
+						console.log(`Answers from draft:`, JSON.stringify(answers, null, 2))
+
 						for (const key of Object.keys(questions)) {
 							const q = questions[key]
 							if (q && q.required === true) {
 								// Accept legacy answer shapes: object { answer } or plain string
 								const raw = answers[key]
 								const ans = raw && typeof raw === 'object' && raw !== null && 'answer' in raw ? raw.answer : raw
+
+								console.log(`Question ${key}: required=${q.required}, answer="${ans}"`)
+
 								if (!ans || String(ans).trim() === '') {
-									missing.push({ category, key })
+									console.log(`  → MISSING!`)
+									missing.push({ category, key, question: q.question || key })
 								}
 							}
 						}
 					}
+
+					console.log('Missing required answers:', missing)
+					console.log('=== END BACKEND DEBUG ===')
+
 					if (missing.length > 0) {
-						throw new Error(`Majburiy savollarga javob to'liq emas. Iltimos, barcha '必須' savollarga javob bering. (Yetishmaydi: ${missing.length})`)
+						// Group missing questions by category for better error message
+						const missingByCategory = {}
+						missing.forEach(item => {
+							if (!missingByCategory[item.category]) {
+								missingByCategory[item.category] = []
+							}
+							missingByCategory[item.category].push(item.question)
+						})
+
+						// Build user-friendly error message in Japanese
+						const categoryList = Object.keys(missingByCategory)
+							.map(cat => `「${cat}」`)
+							.join('、')
+						const errorMsg = `必須の質問に回答してください。\n未回答のカテゴリ: ${categoryList}\n(未回答: ${missing.length}件)`
+
+						throw new Error(errorMsg)
 					}
 				}
 			}
