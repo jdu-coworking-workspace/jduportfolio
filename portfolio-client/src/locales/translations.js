@@ -564,6 +564,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		login_failed: 'Login failed. Please check your email and password.',
 		no_data_found: 'No data found.',
 		next: 'Next',
+		expectedGraduationYearMonth: 'Expected Graduation Month',
 	},
 	ja: {
 		tagline: '一行PR',
@@ -1139,6 +1140,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		login_failed: 'ログインに失敗しました。メールアドレスとパスワードを確認してください。',
 		no_data_found: 'データが見つかりませんでした',
 		next: '次へ',
+		expectedGraduationYearMonth: '卒業予定年（月）',
 	},
 	uz: {
 		tagline: 'Bir jumlalik PR',
@@ -1698,6 +1700,7 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		login_failed: 'Kirishda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.',
 		no_data_found: "Hech qanday ma'lumot topilmadi",
 		next: 'Keyingi',
+		expectedGraduationYearMonth: 'Kutilayotgan bitirish yili/oyi',
 	},
 	ru: {
 		rank: 'Ранг',
@@ -2228,6 +2231,7 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		login_failed: 'Ошибка входа. Пожалуйста, проверьте свои учетные данные и попробуйте снова.',
 		no_data_found: 'Ничего не найдено',
 		next: 'Далее',
+		expectedGraduationYearMonth: 'Ожидаемый год/месяц выпуска',
 	},
 }
 
