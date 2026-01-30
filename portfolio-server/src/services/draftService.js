@@ -25,9 +25,20 @@ const getChangedKeys = (newData, oldData) => {
 	})
 }
 
+/** Returns true if the value should be treated as "no filter" (omit from query). */
+function isEmptyFilterValue(val) {
+	if (val === null || val === undefined) return true
+	if (val === '') return true
+	if (Array.isArray(val) && val.length === 0) return true
+	return false
+}
+
 class DraftService {
 	static async getAll(filter, pagination = {}) {
 		try {
+			if (!filter || typeof filter !== 'object') {
+				filter = {}
+			}
 			console.log('DraftService.getAll called with filter:', JSON.stringify(filter, null, 2))
 
 			const semesterMapping = {
@@ -178,7 +189,7 @@ class DraftService {
 			}
 
 			Object.keys(filter).forEach(key => {
-				if (filter[key] && key !== 'draft_status') {
+				if (key !== 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					if (key === 'search') {
 						let searchConditions = searchableColumns.map(column => ({
 							[column]: { [Op.iLike]: `%${filter[key]}%` },
@@ -249,7 +260,7 @@ class DraftService {
 					}
 				}
 
-				if (filter[key] && key === 'draft_status') {
+				if (key === 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					const filteredStatuses = filter[key].map(status => statusMapping[status])
 					statusFilter = filteredStatuses.length ? `AND d.status IN (${filteredStatuses.map(s => `'${s}'`).join(', ')})` : ''
 				}
