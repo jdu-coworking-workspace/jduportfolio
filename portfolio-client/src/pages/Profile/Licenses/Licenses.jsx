@@ -155,13 +155,13 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key }) 
 
 			{/* Licenses Form Dialog */}
 			<Dialog open={showForm} onClose={resetForm} maxWidth='sm' fullWidth>
-				<DialogTitle>{editingIndex !== null ? t('edit_license') || 'Edit License/Certificate' : t('add_license') || 'Add License/Certificate'}</DialogTitle>
+				<DialogTitle>{editingIndex !== null ? t('edit_license') : t('add_license_form')}</DialogTitle>
 				<DialogContent>
 					<Box display='flex' flexDirection='column' gap={2} mt={1}>
-						<TextField label={t('certificate_name') || 'Certificate Name'} value={formData.certifacateName} onChange={e => setFormData(prev => ({ ...prev, certifacateName: e.target.value }))} required fullWidth placeholder='e.g. TOEIC 800, 運転免許証' />
+						<TextField label={t('certificate_name')} value={formData.certifacateName} onChange={e => setFormData(prev => ({ ...prev, certifacateName: e.target.value }))} required fullWidth placeholder={t('certificate_placeholder')} />
 						<Box display='flex' gap={2}>
-							<TextField label={t('year') || 'Year'} value={formData.year} onChange={e => setFormData(prev => ({ ...prev, year: e.target.value }))} placeholder='2023' required fullWidth />
-							<TextField label={t('month') || 'Month'} value={formData.month} onChange={e => setFormData(prev => ({ ...prev, month: e.target.value }))} placeholder='03 (optional)' fullWidth />
+							<TextField label={t('year')} value={formData.year} onChange={e => setFormData(prev => ({ ...prev, year: e.target.value }))} placeholder={t('year_placeholder')} required fullWidth />
+							<TextField label={t('month')} value={formData.month} onChange={e => setFormData(prev => ({ ...prev, month: e.target.value }))} placeholder={t('month_placeholder')} fullWidth />
 						</Box>
 					</Box>
 				</DialogContent>

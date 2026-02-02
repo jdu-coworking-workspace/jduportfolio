@@ -155,7 +155,7 @@ const Setting = () => {
 
 			reset(formData)
 		} catch (error) {
-			showAlert('Failed to fetch user data', 'error')
+			showAlert(t('user_fetch_error'), 'error')
 		} finally {
 			setIsLoading(false)
 		}
@@ -349,9 +349,9 @@ const Setting = () => {
 	const handleSync = async () => {
 		try {
 			await axios.post('api/kintone/sync')
-			showAlert('同期に成功しました。', 'success')
+			showAlert(t('sync_successful'), 'success')
 		} catch (error) {
-			showAlert('同期に失敗しました。再試行してください。', 'error')
+			showAlert(t('sync_failed'), 'error')
 		}
 	}
 
@@ -393,7 +393,7 @@ const Setting = () => {
 		return (
 			<Container className={SettingStyle.container}>
 				<Box display='flex' justifyContent='center' alignItems='center' minHeight='400px'>
-					<Typography>Loading...</Typography>
+					<Typography>{t('loading')}</Typography>
 				</Box>
 			</Container>
 		)

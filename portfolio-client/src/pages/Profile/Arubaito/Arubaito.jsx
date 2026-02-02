@@ -154,18 +154,18 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 
 			{/* Arubaito Form Dialog */}
 			<Dialog open={showForm} onClose={resetForm} maxWidth='sm' fullWidth>
-				<DialogTitle>{editingIndex !== null ? t('edit_arubaito') || 'Edit Part-time Work' : t('add_arubaito') || 'Add Part-time Work'}</DialogTitle>
+				<DialogTitle>{editingIndex !== null ? t('edit_arubaito') : t('add_arubaito_form')}</DialogTitle>
 				<DialogContent>
 					<Box display='flex' flexDirection='column' gap={2} mt={1}>
-						<TextField label={t('company') || 'Company'} value={formData.company} onChange={e => setFormData(prev => ({ ...prev, company: e.target.value }))} required fullWidth placeholder='e.g. コンビニエンスストア' />
-						<TextField label={t('role') || 'Role/Position'} value={formData.role} onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))} fullWidth placeholder='e.g. レジ担当' />
-						<TextField label={t('period') || 'Period'} value={formData.period} onChange={e => setFormData(prev => ({ ...prev, period: e.target.value }))} placeholder='e.g. 2023-01 ~ 2024-01' required fullWidth />
+						<TextField label={t('company')} value={formData.company} onChange={e => setFormData(prev => ({ ...prev, company: e.target.value }))} required fullWidth placeholder={t('company_placeholder')} />
+						<TextField label={t('role_position')} value={formData.role} onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))} fullWidth placeholder={t('role_placeholder')} />
+						<TextField label={t('period')} value={formData.period} onChange={e => setFormData(prev => ({ ...prev, period: e.target.value }))} placeholder={t('period_placeholder')} required fullWidth />
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={resetForm}>{t('cancel') || 'Cancel'}</Button>
+					<Button onClick={resetForm}>{t('cancel')}</Button>
 					<Button onClick={handleSubmit} variant='contained' disabled={!formData.company || !formData.period}>
-						{editingIndex !== null ? t('update') || 'Update' : t('add') || 'Add'}
+						{editingIndex !== null ? t('update') : t('add')}
 					</Button>
 				</DialogActions>
 			</Dialog>

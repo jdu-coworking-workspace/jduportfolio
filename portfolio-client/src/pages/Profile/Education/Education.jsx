@@ -136,11 +136,11 @@ export const Education = ({ education = [], onUpdate, editMode, t = key => key }
 											<Menu id='education-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
 												<MenuItem onClick={() => handleEdit(index)}>
 													<EditIcon sx={{ mr: 1 }} />
-													Edit
+													{t('edit')}
 												</MenuItem>
 												<MenuItem onClick={() => handleDelete(index)}>
 													<DeleteIcon sx={{ mr: 1 }} color='error' />
-													Delete
+													{t('delete')}
 												</MenuItem>
 											</Menu>
 										</>
@@ -150,27 +150,27 @@ export const Education = ({ education = [], onUpdate, editMode, t = key => key }
 						))}
 					</Box>
 				) : (
-					<Typography color='text.secondary'>{t('no_education') || 'No education records yet'}</Typography>
+					<Typography color='text.secondary'>{t('no_education')}</Typography>
 				)}
 			</div>
 
 			{/* Education Form Dialog */}
 			<Dialog open={showForm} onClose={resetForm} maxWidth='sm' fullWidth>
-				<DialogTitle>{editingIndex !== null ? t('edit_education') || 'Edit Education' : t('add_education') || 'Add Education'}</DialogTitle>
+				<DialogTitle>{editingIndex !== null ? t('edit_education') : t('add_education')}</DialogTitle>
 				<DialogContent>
 					<Box display='flex' flexDirection='column' gap={2} mt={1}>
-						<TextField label={t('institution') || 'Institution'} value={formData.institution} onChange={e => setFormData(prev => ({ ...prev, institution: e.target.value }))} required fullWidth placeholder='e.g. Tokyo University' />
-						<TextField label={t('status') || 'Status'} value={formData.status} onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))} fullWidth placeholder='e.g. Graduated, Enrolled' />
+						<TextField label={t('institution')} value={formData.institution} onChange={e => setFormData(prev => ({ ...prev, institution: e.target.value }))} required fullWidth placeholder={t('institution_placeholder')} />
+						<TextField label={t('status')} value={formData.status} onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))} fullWidth placeholder={t('status_placeholder')} />
 						<Box display='flex' gap={2}>
-							<TextField label={t('year') || 'Year'} value={formData.year} onChange={e => setFormData(prev => ({ ...prev, year: e.target.value }))} placeholder='2023' required fullWidth />
-							<TextField label={t('month') || 'Month'} value={formData.month} onChange={e => setFormData(prev => ({ ...prev, month: e.target.value }))} placeholder='03 (optional)' fullWidth />
+							<TextField label={t('year')} value={formData.year} onChange={e => setFormData(prev => ({ ...prev, year: e.target.value }))} placeholder={t('year_placeholder')} required fullWidth />
+							<TextField label={t('month')} value={formData.month} onChange={e => setFormData(prev => ({ ...prev, month: e.target.value }))} placeholder={t('month_placeholder')} fullWidth />
 						</Box>
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={resetForm}>{t('cancel') || 'Cancel'}</Button>
+					<Button onClick={resetForm}>{t('cancel')}</Button>
 					<Button onClick={handleSubmit} variant='contained' disabled={!formData.institution || !formData.year}>
-						{editingIndex !== null ? t('update') || 'Update' : t('add') || 'Add'}
+						{editingIndex !== null ? t('update') : t('add')}
 					</Button>
 				</DialogActions>
 			</Dialog>

@@ -511,7 +511,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 		// Simple implementation - just make API call
 		// If some video URLs were removed due to invalid format, inform user
 		if (Array.isArray(data.company_video_url) && processedData.company_video_url.length < data.company_video_url.length) {
-			showAlert(t.invalid_video_urls_removed || 'Some invalid video URLs were removed.', 'warning')
+			showAlert(t.invalid_video_urls_removed, 'warning')
 		}
 
 		await axios.put(`/api/recruiters/${id}`, processedData)
@@ -538,9 +538,9 @@ const CompanyProfile = ({ userId = 0 }) => {
 			clearStorage()
 
 			// Show success message
-			showAlert(t.changes_saved || 'Changes saved successfully!', 'success')
+			showAlert(t.changes_saved, 'success')
 		} catch (error) {
-			showAlert('Error saving changes', 'error')
+			showAlert(t.errorSavingChanges, 'error')
 		}
 	}
 
@@ -1028,8 +1028,8 @@ const CompanyProfile = ({ userId = 0 }) => {
 			{/* Tabs: 会社情報 / 募集概要 */}
 			<Box sx={{ mt: 2, mb: 2 }}>
 				<Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} textColor='primary' indicatorColor='primary'>
-					<Tab label='会社情報' value='company' sx={{ fontWeight: '600' }} />
-					<Tab label='募集概要' value='recruitment' sx={{ fontWeight: '600' }} />
+					<Tab label={t.company_information} value='company' sx={{ fontWeight: '600' }} />
+					<Tab label={t.job_details} value='recruitment' sx={{ fontWeight: '600' }} />
 				</Tabs>
 			</Box>
 
@@ -1068,7 +1068,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 								<Box className={styles.value}>
 									{editMode ? (
-										<CustomTextField value={safeStringValue(editData.company_website)} onChange={e => handleUpdateEditData('company_website', e.target.value)} placeholder='https://example.com' fieldKey='company_website' inputRef={createInputRef('company_website')} />
+										<CustomTextField value={safeStringValue(editData.company_website)} onChange={e => handleUpdateEditData('company_website', e.target.value)} placeholder={t.url_placeholder || 'https://example.com'} fieldKey='company_website' inputRef={createInputRef('company_website')} />
 									) : (
 										(() => {
 											const url = safeStringValue(company.company_website)
@@ -1183,7 +1183,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 												if (newUrl.trim()) {
 													const currentArray = Array.isArray(editData.company_video_url) ? editData.company_video_url : []
 													if (currentArray.length >= 3) {
-														showAlert(t.max_three_videos || '最大3件まで追加できます', 'warning')
+														showAlert(t.max_three_videos, 'warning')
 														return
 													}
 													handleUpdateEditData('company_video_url', [...currentArray, newUrl.trim()])
@@ -1295,7 +1295,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 														arr[idx] = next
 														handleUpdateEditData('intro_page_links', arr)
 													}}
-													placeholder={'https://example.com/page'}
+													placeholder={t.url_placeholder_page}
 													fieldKey={`intro_page_links_url_${idx}`}
 													inputRef={createInputRef(`intro_page_links_url_${idx}`)}
 												/>
@@ -1317,8 +1317,8 @@ const CompanyProfile = ({ userId = 0 }) => {
 										)
 									})}
 									<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-										<CustomTextField value={safeStringValue(editData.newIntroLinkTitle)} onChange={e => handleUpdateEditData('newIntroLinkTitle', e.target.value)} placeholder={t.intro_link_title || 'タイトル'} fieldKey='newIntroLinkTitle' inputRef={createInputRef('newIntroLinkTitle')} />
-										<CustomTextField value={safeStringValue(editData.newIntroLinkUrl)} onChange={e => handleUpdateEditData('newIntroLinkUrl', e.target.value)} placeholder={'https://example.com/page'} fieldKey='newIntroLinkUrl' inputRef={createInputRef('newIntroLinkUrl')} />
+										<CustomTextField value={safeStringValue(editData.newIntroLinkTitle)} onChange={e => handleUpdateEditData('newIntroLinkTitle', e.target.value)} placeholder={t.intro_link_title} fieldKey='newIntroLinkTitle' inputRef={createInputRef('newIntroLinkTitle')} />
+										<CustomTextField value={safeStringValue(editData.newIntroLinkUrl)} onChange={e => handleUpdateEditData('newIntroLinkUrl', e.target.value)} placeholder={t.url_placeholder_page} fieldKey='newIntroLinkUrl' inputRef={createInputRef('newIntroLinkUrl')} />
 										<button
 											type='button'
 											className={styles.videoSaveButton}

@@ -11,7 +11,7 @@ const Skills = () => {
 	const { studentId } = useParams()
 	const location = useLocation()
 	const { language } = useContext(UserContext)
-	const t = translations[language] || translations.en
+	const t = key => (translations[language] || translations.en)[key] || key
 	const [student, setStudent] = useState(null)
 	const [editMode, setEditMode] = useState({})
 	const [editData, setEditData] = useState({})
@@ -54,7 +54,7 @@ const Skills = () => {
 	}
 
 	if (!student) {
-		return <div>Loading...</div>
+		return <div>{t('loading')}</div>
 	}
 
 	return (

@@ -564,7 +564,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				await axios.put(`/api/settings/studentQA`, {
 					value: updatedValue,
 				})
-				showAlert('Changes saved successfully!', 'success')
+				showAlert(t('changes_saved'), 'success')
 				setEditMode(false)
 				setTopEditMode(false)
 			} else {
@@ -634,7 +634,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				handleQAUpdate(studentQA)
 			}
 
-			showAlert('Changes cancelled', 'info')
+			showAlert(t('changes_cancelled'), 'info')
 		} catch (error) {
 			// Fallback: re-fetch from server
 			fetchStudent()
@@ -767,9 +767,9 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				handleQAUpdate(updatedData)
 			}
 
-			showAlert('Item deleted successfully!', 'success')
+			showAlert(t('item_deleted_success'), 'success')
 		} catch (error) {
-			showAlert('Error deleting item. Please try again.', 'error')
+			showAlert(t('error_deleting_item'), 'error')
 
 			// Rollback optimistic update on error
 			fetchStudent()
@@ -1030,18 +1030,18 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 	// While user context is initializing, show loading to avoid flashing errors
 	if (isInitializing) {
-		return <div>Loading...</div>
+		return <div>{t('loading')}</div>
 	}
 
 	// For Admin viewing QA management, we don't need an ID
 	if (role === 'Admin' && !studentId && !userId) {
 		// Admin can view/edit questions without a student ID
 		if (!studentQA) {
-			return <div>Loading questions...</div>
+			return <div>{t('loading_questions')}</div>
 		}
 	} else if (!studentQA) {
 		// Still loading data
-		return <div>Loading...</div>
+		return <div>{t('loading')}</div>
 	} else if (!id && role === 'Student') {
 		// Student needs an ID but doesn't have one
 		return <div>Error: Student ID not found. Please log in again.</div>
