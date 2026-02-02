@@ -127,7 +127,7 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 
 								<Box display='flex' alignItems='center' gap={1} mt={{ xs: 1, sm: 0 }}>
 									<Typography variant='body2' color='text.secondary'>
-										{item.from} — {item.to || t('present') || 'Present'}
+										{item.from} — {item.to || t('present')}
 									</Typography>
 									{editMode && (
 										<>
@@ -137,11 +137,11 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 											<Menu id='basic-menu' anchorEl={anchorEl} open={open} onClose={handleClose}>
 												<MenuItem onClick={() => handleEdit(index)}>
 													<EditIcon sx={{ mr: 1 }} />
-													Edit
+													{t('edit')}
 												</MenuItem>
 												<MenuItem onClick={() => handleDelete(index)}>
 													<DeleteIcon sx={{ mr: 1 }} color='error' />
-													Delete
+													{t('delete')}
 												</MenuItem>
 											</Menu>
 										</>
@@ -151,28 +151,28 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 						))}
 					</Box>
 				) : (
-					<Typography color='text.secondary'>sizda hali work experience yo`q</Typography>
+					<Typography color='text.secondary'>{t('no_work_experience')}</Typography>
 				)}
 			</div>
 
 			{/* Work Experience Form Dialog */}
 			<Dialog open={showForm} onClose={resetForm} maxWidth='sm' fullWidth>
-				<DialogTitle>{editingIndex !== null ? 'Edit Work Experience' : 'Add Work Experience'}</DialogTitle>
+				<DialogTitle>{editingIndex !== null ? t('edit_work_experience') : t('add_work_experience')}</DialogTitle>
 				<DialogContent>
 					<Box display='flex' flexDirection='column' gap={2} mt={1}>
-						<TextField label='Company' value={formData.company} onChange={e => setFormData(prev => ({ ...prev, company: e.target.value }))} required fullWidth />
-						<TextField label='Role/Position' value={formData.role} onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))} fullWidth />
-						<TextField label='Description' value={formData.details} onChange={e => setFormData(prev => ({ ...prev, details: e.target.value }))} multiline rows={3} fullWidth />
+						<TextField label={t('company')} value={formData.company} onChange={e => setFormData(prev => ({ ...prev, company: e.target.value }))} required fullWidth />
+						<TextField label={t('role_position')} value={formData.role} onChange={e => setFormData(prev => ({ ...prev, role: e.target.value }))} fullWidth />
+						<TextField label={t('description_label')} value={formData.details} onChange={e => setFormData(prev => ({ ...prev, details: e.target.value }))} multiline rows={3} fullWidth />
 						<Box display='flex' gap={2}>
-							<TextField label='From (YYYY-MM)' value={formData.from} onChange={e => setFormData(prev => ({ ...prev, from: e.target.value }))} placeholder='2023-01' required fullWidth />
-							<TextField label='To (YYYY-MM)' value={formData.to} onChange={e => setFormData(prev => ({ ...prev, to: e.target.value }))} placeholder='2024-01 or leave empty' fullWidth />
+							<TextField label={t('from_yyyy_mm')} value={formData.from} onChange={e => setFormData(prev => ({ ...prev, from: e.target.value }))} placeholder={t('work_experience_from_placeholder')} required fullWidth />
+							<TextField label={t('to_yyyy_mm')} value={formData.to} onChange={e => setFormData(prev => ({ ...prev, to: e.target.value }))} placeholder={t('work_experience_to_placeholder')} fullWidth />
 						</Box>
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={resetForm}>Cancel</Button>
+					<Button onClick={resetForm}>{t('cancel')}</Button>
 					<Button onClick={handleSubmit} variant='contained' disabled={!formData.company || !formData.from}>
-						{editingIndex !== null ? 'Update' : 'Add'}
+						{editingIndex !== null ? t('update') : t('add')}
 					</Button>
 				</DialogActions>
 			</Dialog>

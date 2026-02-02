@@ -462,7 +462,7 @@ const Top = () => {
 					}
 				}
 			} catch (error) {
-				showAlert('Error loading data', 'error')
+				showAlert(t('error_loading_data'), 'error')
 			} finally {
 				setIsLoading(false)
 			}
@@ -525,7 +525,7 @@ const Top = () => {
 			const studentIdToUse = role === 'Student' ? getStudentIdFromLoginUser() : id
 
 			if (!studentIdToUse) {
-				showAlert('Unable to determine student ID', 'error')
+				showAlert(t('unable_to_determine_student_id'), 'error')
 				return
 			}
 
@@ -590,10 +590,10 @@ const Top = () => {
 				clearStorage()
 				SetUpdateQA(!updateQA)
 			} else {
-				showAlert('No data found', 'error')
+				showAlert(t('no_data_found'), 'error')
 			}
 		} catch (error) {
-			showAlert('Error fetching draft data', 'error')
+			showAlert(t('error_fetching_draft'), 'error')
 		}
 	}
 
@@ -703,7 +703,7 @@ const Top = () => {
 
 			SetUpdateQA(!updateQA)
 		} catch (error) {
-			showAlert('Error fetching student data', 'error')
+			showAlert(t('errorFetchingStudent'), 'error')
 		}
 	}
 
@@ -1151,7 +1151,7 @@ const Top = () => {
 			setHasUnsavedChanges(false)
 			showAlert(t('changes_saved'), 'success')
 		} catch (error) {
-			showAlert('Error saving changes', 'error')
+			showAlert(t('errorSavingChanges'), 'error')
 		}
 	}
 
@@ -1324,7 +1324,7 @@ const Top = () => {
 					sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
 				>
 					<DownloadIcon />
-					download CV
+					{t('download_cv')}
 				</Button>
 			)}
 			{editMode ? (

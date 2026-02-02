@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useLocation, useParams, Link } from 'react-router-dom'
+import { useLanguage } from '../../../contexts/LanguageContext'
+import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import certificateColors from '../../../utils/certificates'
 import { Box, Tabs, Tab, Snackbar, Alert } from '@mui/material'
@@ -8,6 +10,8 @@ import SkillSelector from '../../../components/SkillSelector/SkillSelector'
 import styles from './Stats.module.css'
 
 const Stats = () => {
+	const { language } = useLanguage()
+	const t = key => (translations[language] || translations.en)[key] || key
 	// Helper function to safely parse JSON data
 	const safeParseJSON = (jsonString, fallback = { highest: '未提出', list: [] }) => {
 		try {
@@ -120,7 +124,7 @@ const Stats = () => {
 	}
 
 	if (!student) {
-		return <div>Loading...</div>
+		return <div>{t('loading')}</div>
 	}
 
 	const breakpoints = [

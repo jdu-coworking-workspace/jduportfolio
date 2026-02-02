@@ -59,7 +59,7 @@ const DeliverablesPage = () => {
 	}
 
 	if (!student) {
-		return <div>Loading...</div>
+		return <div>{t('loading')}</div>
 	}
 
 	return (

@@ -64,7 +64,7 @@ const StudentProfile = ({ userId = 0 }) => {
 
 		const fetchStudent = async () => {
 			if (!id) {
-				setError('No valid student ID found')
+				setError('no_valid_student_id')
 				setLoading(false)
 				return
 			}
@@ -80,7 +80,7 @@ const StudentProfile = ({ userId = 0 }) => {
 				setStudent(response.data)
 				setLoading(false)
 			} catch (error) {
-				setError(error.response?.data?.message || 'Error fetching student data')
+				setError(error.response?.data?.message || 'errorFetchingStudent')
 				setLoading(false)
 			}
 		}
@@ -145,7 +145,7 @@ const StudentProfile = ({ userId = 0 }) => {
 					fontSize: '18px',
 				}}
 			>
-				Loading student profile...
+				{t('loading_student_profile')}
 			</Box>
 		)
 	}
@@ -163,7 +163,9 @@ const StudentProfile = ({ userId = 0 }) => {
 					color: 'red',
 				}}
 			>
-				<div>Error: {error}</div>
+				<div>
+					{t('error_label')}: {translations[language][error] ? t(error) : error}
+				</div>
 				<div style={{ fontSize: '14px', marginTop: '10px', color: '#666' }}>
 					Debug info: id={id}, role={role}, studentId={studentId}, userId=
 					{userId}
