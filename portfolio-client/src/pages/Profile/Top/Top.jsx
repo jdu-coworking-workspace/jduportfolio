@@ -769,35 +769,195 @@ const Top = () => {
 
 	const handleSubmitDraft = async () => {
 		try {
-			if (currentDraft && currentDraft.id) {
-				const response = await axios.put(`/api/draft/${currentDraft.id}/submit`, {})
-				if (response.status === 200) {
-					showAlert(t('draftSubmittedSuccessfully'), 'success')
-					setCurrentDraft({
-						...currentDraft,
-						status: 'submitted',
-						submit_count: (currentDraft.submit_count || 0) + 1,
-					})
-					if (role === 'Student') {
-						fetchDraftData()
-					} else {
-						fetchDraft()
+			if (!currentDraft || !currentDraft.id) {
+				showAlert(t('noDraftToSubmit'), 'error')
+				return
+			}
+
+			// ✅ NEW: Validate Personal Information (required fields)
+			console.log('=== TOP PAGE SUBMIT: Validating Personal Information ===')
+			const profileData = currentDraft?.profile_data || editData?.draft || {}
+			const missingPersonalInfo = []
+
+			// Check required personal information fields
+			if (!student?.first_name || String(student.first_name).trim() === '') {
+				missingPersonalInfo.push('名（First Name）')
+			}
+			if (!student?.first_name_furigana || String(student.first_name_furigana).trim() === '') {
+				missingPersonalInfo.push('名のフリガナ（First Name Furigana）')
+			}
+			if (!student?.last_name || String(student.last_name).trim() === '') {
+				missingPersonalInfo.push('姓（Last Name）')
+			}
+			if (!student?.last_name_furigana || String(student.last_name_furigana).trim() === '') {
+				missingPersonalInfo.push('姓のフリガナ（Last Name Furigana）')
+			}
+
+			if (missingPersonalInfo.length > 0) {
+				setWarningModal({
+					open: true,
+					message: `個人情報に必要な情報を入力してください。\n未入力: ${missingPersonalInfo.join('、')}`,
+				})
+				setConfirmMode(false)
+				return
+			}
+
+			// ✅ NEW: Validate Self Introduction (required)
+			console.log('=== TOP PAGE SUBMIT: Validating Self Introduction ===')
+			const selfIntroduction = profileData.self_introduction || editData?.draft?.self_introduction || ''
+			console.log('Detected self_introduction:', selfIntroduction)
+			if (!selfIntroduction || String(selfIntroduction).trim() === '') {
+				setWarningModal({
+					open: true,
+					message: '自己紹介を入力してください。',
+				})
+				setConfirmMode(false)
+				return
+			}
+
+			// ✅ NEW: Validate Origin (required)
+			// Note: The field is stored as 'address' in the database/profileData
+			console.log('=== TOP PAGE SUBMIT: Validating Origin ===')
+			const origin = profileData.address || editData?.draft?.address || student?.address || ''
+			console.log('Detected origin/address:', origin)
+			if (!origin || String(origin).trim() === '') {
+				setWarningModal({
+					open: true,
+					message: '出身情報を入力してください。',
+				})
+				setConfirmMode(false)
+				return
+			}
+
+			// ✅ CRITICAL FIX: Validate and save Q&A data BEFORE submitting
+			// This ensures backend validation sees the latest Q&A structure
+			try {
+				console.log('=== TOP PAGE SUBMIT: Validating Q&A ===')
+
+				// Fetch latest Q&A settings from admin
+				const questionsResponse = await axios.get('/api/settings/studentQA')
+				const latestQuestions = JSON.parse(questionsResponse.data.value)
+				console.log('Latest Q&A questions:', latestQuestions)
+
+				// Get current Q&A data from draft
+				const currentQA = editData?.draft?.qa || currentDraft?.profile_data?.qa || {}
+				console.log('Current Q&A data:', currentQA)
+
+				// Merge current answers with latest question structure
+				const updatedQA = {}
+				for (const category in latestQuestions) {
+					if (category === 'idList') continue
+					updatedQA[category] = {}
+
+					for (const key in latestQuestions[category]) {
+						const settingsQuestion = latestQuestions[category][key]
+						const existingAnswer = currentQA[category]?.[key]
+
+						// Preserve existing answer or create empty entry for new question
+						updatedQA[category][key] = {
+							answer: existingAnswer?.answer || '',
+						}
 					}
 				}
-			} else {
-				showAlert(t('noDraftToSubmit'), 'error')
+
+				// Validate: check all required questions have answers
+				const missing = []
+				for (const category in latestQuestions) {
+					if (category === 'idList') continue
+					const settingsQuestions = latestQuestions[category] || {}
+					const studentAnswers = updatedQA[category] || {}
+
+					for (const key in settingsQuestions) {
+						const settingsQuestion = settingsQuestions[key]
+						if (settingsQuestion && settingsQuestion.required === true) {
+							const answer = studentAnswers[key]?.answer || ''
+							if (!answer || String(answer).trim() === '') {
+								missing.push({
+									category,
+									key,
+									question: settingsQuestion.question || key,
+								})
+							}
+						}
+					}
+				}
+
+				console.log('Missing required Q&A answers:', missing)
+
+				if (missing.length > 0) {
+					// Group missing questions by category for better error message
+					const missingByCategory = {}
+					missing.forEach(item => {
+						if (!missingByCategory[item.category]) {
+							missingByCategory[item.category] = []
+						}
+						missingByCategory[item.category].push(item.question)
+					})
+
+					// Build user-friendly error message showing categories
+					const categoryList = Object.keys(missingByCategory)
+						.map(cat => `「${cat}」`)
+						.join('、')
+
+					// Validation failed - show error with category names
+					setWarningModal({
+						open: true,
+						message: `必須の質問に回答してください。\n未回答のカテゴリ: ${categoryList}\n（未回答: ${missing.length}件）`,
+					})
+					setConfirmMode(false)
+					return
+				}
+
+				// Save updated Q&A structure to draft before submitting
+				console.log('Saving updated Q&A to draft...')
+				const draftData = {
+					student_id: student?.student_id || id,
+					profile_data: {
+						...currentDraft.profile_data,
+						qa: updatedQA,
+					},
+				}
+
+				const saveResponse = await axios.put(`/api/draft`, draftData)
+				console.log('Draft saved successfully:', saveResponse.data)
+			} catch (qaError) {
+				console.error('Error validating/saving Q&A:', qaError)
+				setWarningModal({
+					open: true,
+					message: t('errorSavingDraft') || 'Failed to validate Q&A data',
+				})
+				setConfirmMode(false)
+				return
+			}
+
+			// Now submit the draft (validation and save complete)
+			console.log('Submitting draft...')
+			const response = await axios.put(`/api/draft/${currentDraft.id}/submit`, {})
+			if (response.status === 200) {
+				showAlert(t('draftSubmittedSuccessfully'), 'success')
+				setCurrentDraft({
+					...currentDraft,
+					status: 'submitted',
+					submit_count: (currentDraft.submit_count || 0) + 1,
+				})
+				if (role === 'Student') {
+					fetchDraftData()
+				} else {
+					fetchDraft()
+				}
 			}
 		} catch (error) {
 			const status = error?.response?.status
 			const serverMsg = error?.response?.data?.error
-			// For validation errors (e.g., missing required answers), prefer localized message
-			if (status === 400) {
+			// Always prefer server's error message as it's more specific
+			if (serverMsg) {
+				setWarningModal({ open: true, message: serverMsg })
+			} else if (status === 400) {
+				// Fallback for 400 errors without server message
 				setWarningModal({
 					open: true,
-					message: t('pleaseAnswerRequired') || serverMsg || 'Required questions are missing.',
+					message: t('pleaseAnswerRequired') || 'Required questions are missing.',
 				})
-			} else if (serverMsg) {
-				setWarningModal({ open: true, message: serverMsg })
 			} else {
 				setWarningModal({
 					open: true,

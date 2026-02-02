@@ -10,6 +10,7 @@ import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
 import UserAvatar from '../Table/Avatar/UserAvatar'
 // icons
+import AnnouncementIcon from '@mui/icons-material/Announcement'
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
 import PermIdentityOutlinedIcon from '@mui/icons-material/PermIdentityOutlined'
 import TuneIcon from '@mui/icons-material/Tune'
@@ -171,6 +172,12 @@ const Layout = () => {
 					to: '/student-qa',
 					icon: <QuestionIcon style={{ width: '24px', height: '24px' }} />,
 					label: t('student_qa'),
+					roles: ['Admin'],
+				},
+				{
+					to: '/maintenance',
+					icon: <AnnouncementIcon style={{ width: '24px', height: '24px' }} />,
+					label: 'Maintenance',
 					roles: ['Admin'],
 				},
 			],

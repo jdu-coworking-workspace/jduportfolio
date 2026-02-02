@@ -37,6 +37,7 @@ db.News = require('./News')(sequelize, Sequelize)
 db.ItSkill = require('./itskill')(sequelize, Sequelize)
 db.Skill = require('./skill')(sequelize, Sequelize)
 db.NewsViews = require('./NewsViews')(sequelize, Sequelize)
+db.Maintenance = require('./Maintenance')(sequelize, Sequelize)
 
 // Load other models here if needed
 // db.User = require('./User')(sequelize, Sequelize);
@@ -171,4 +172,5 @@ module.exports = {
 	ItSkill: db.ItSkill,
 	Skill: db.Skill,
 	NewsViews: db.NewsViews, // ← Bu qator qo'shildi!
+	Maintenance: db.Maintenance,
 }

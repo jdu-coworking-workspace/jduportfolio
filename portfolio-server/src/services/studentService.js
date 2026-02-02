@@ -239,9 +239,13 @@ class StudentService {
 	// 	}
 	// }
 
-	static async getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions = {}) {
+	static async getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions = {}, pagination = {}) {
 		try {
 			const normalizedUserType = (userType || '').toLowerCase()
+
+			// Pagination parametrlari
+			const { page, limit, offset } = pagination
+			const isPaginated = page !== undefined && limit !== undefined
 			// 1. FILTRLASH MANTIG'I (o'zgarishsiz qoladi)
 			const semesterMapping = {
 				'1年生': ['1', '2'],
@@ -261,57 +265,131 @@ class StudentService {
 				filter = {}
 			}
 
-			const searchableColumns = ['email', 'first_name', 'last_name', 'self_introduction', 'hobbies', 'skills', 'it_skills', 'jlpt', 'student_id']
+			const searchableColumns = ['email', 'first_name', 'last_name', 'skills', 'it_skills', 'jlpt', 'student_id', 'partner_university']
 
-			// Helper to build JSONB @> conditions for it_skills across levels
+			// Helper to build JSONB conditions for it_skills across levels (case-insensitive)
+			// Only checks Student.it_skills (public data only)
 			const buildItSkillsCondition = (names = [], match = 'any') => {
 				const lvls = ['上級', '中級', '初級']
 				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
 				if (safeNames.length === 0) return null
 
 				const perSkill = safeNames.map(n => {
-					// JSON array string for [{"name":"<n>"}]
-					const json = JSON.stringify([{ name: String(n) }])
-					const esc = sequelize.escape(json) // safe string with quotes
-					const levelExpr = lvls.map(l => `(("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
+					const skillName = String(n).toLowerCase()
+					const escapedName = skillName.replace(/'/g, "''") // Escape single quotes for SQL
+					// Use jsonb_array_elements to iterate over array elements and compare case-insensitively
+					const levelExpr = lvls
+						.map(
+							l => `(
+						"Student"."it_skills" IS NOT NULL 
+						AND EXISTS (
+							SELECT 1 
+							FROM jsonb_array_elements("Student"."it_skills"->'${l}') AS elem
+							WHERE LOWER(elem->>'name') = '${escapedName}'
+						)
+					)`
+						)
+						.join(' OR ')
 					return `(${levelExpr})`
 				})
 				const joiner = match === 'all' ? ' AND ' : ' OR '
 				return `(${perSkill.join(joiner)})`
 			}
 
+			// Helper to build conditions for language_skills (TEXT field containing JSON string)
+			// Handles both formats:
+			// 1. Old seeder format (plain text): "English (TOEIC 800), Korean (TOPIK 4)"
+			// 2. Correct format (JSON string): [{"name":"中国語","level":"#ffeb3b","color":"#5627DB"}]
+			// Only checks Student.language_skills (public data only)
+			const buildLanguageSkillsCondition = (names = [], match = 'any') => {
+				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
+				if (safeNames.length === 0) return null
+
+				const perSkill = safeNames.map(n => {
+					// Escape the skill name for SQL LIKE pattern matching
+					const escapedName = String(n).replace(/[%_\\]/g, '\\$&')
+					// Match both formats:
+					// 1. Plain text format (old seeder): "Japanese (JLPT N2), English (IELTS 6.5)" - search for language name
+					// 2. JSON string format (correct): [{"name":"中国語",...}] - search for JSON pattern with "name" field
+					// Only check Student.language_skills (public data), handle NULL values
+					return `(
+						"Student"."language_skills" IS NOT NULL 
+						AND (
+							"Student"."language_skills"::text LIKE '%${escapedName}%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}",%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}",%'
+						)
+					)`
+				})
+				const joiner = match === 'all' ? ' AND ' : ' OR '
+				return `(${perSkill.join(joiner)})`
+			}
+
 			Object.keys(filter).forEach(key => {
-				if (filter[key]) {
-					if (key === 'search') {
-						const searchValue = String(filter[key])
-						querySearch[Op.or] = searchableColumns.map(column => {
-							if (['skills', 'it_skills'].includes(column)) {
-								return {
-									[Op.or]: [
-										{
-											[column]: {
-												'上級::text': { [Op.iLike]: `%${searchValue}%` },
-											},
-										},
-										{
-											[column]: {
-												'中級::text': { [Op.iLike]: `%${searchValue}%` },
-											},
-										},
-										{
-											[column]: {
-												'初級::text': { [Op.iLike]: `%${searchValue}%` },
-											},
-										},
-									],
-								}
-							}
-							return { [column]: { [Op.iLike]: `%${searchValue}%` } }
-						})
-					} else if (key === 'it_skills') {
+				if (key === 'search') {
+					// Handle search separately - process even if empty string to allow clearing search
+					const searchValue = filter[key] ? String(filter[key]).trim() : ''
+
+					// Only process if search value is not empty
+					if (searchValue) {
+						// If search value is purely numeric, only search student_id with prefix match
+						// This prevents "66" from matching "21" in other columns
+						if (/^\d+$/.test(searchValue)) {
+							querySearch[Op.or] = [{ student_id: { [Op.iLike]: `${searchValue}%` } }]
+						}
+						// If search value looks like a JLPT level (N1-N5), only search jlpt field with exact matching
+						// This prevents "N1" from matching "N3" or appearing in other columns
+						else if (/^N[1-5]$/i.test(searchValue)) {
+							const normalizedSearch = searchValue.toUpperCase()
+							querySearch[Op.or] = [
+								{
+									jlpt: {
+										[Op.or]: [
+											// Match "highest":"N1" (exact, with quotes)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}"%` },
+											// Match "highest":"N1", (with comma after)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}",%` },
+											// Match "highest":"N1"} (with closing brace)
+											{ [Op.iLike]: `%"highest":"${normalizedSearch}"}%` },
+										],
+									},
+								},
+							]
+						}
+						// For all other text searches, search only in name fields and student_id
+						// This prevents unexpected matches from email, skills, partner_university, etc.
+						// Example: "Ja" should match "Janiya", "Jacobson" but NOT match emails like "@japan.edu"
+						else {
+							querySearch[Op.or] = [
+								// Search in first_name (substring match)
+								{ first_name: { [Op.iLike]: `%${searchValue}%` } },
+								// Search in last_name (substring match)
+								{ last_name: { [Op.iLike]: `%${searchValue}%` } },
+								// Search in student_id (prefix match)
+								{ student_id: { [Op.iLike]: `${searchValue}%` } },
+							]
+						}
+					}
+					// Continue to next key after processing search
+					return
+				}
+
+				// Skip empty values for other filter keys: empty strings, empty arrays, null, undefined
+				// Arrays are truthy even when empty, so check length explicitly
+				if (filter[key] && !(Array.isArray(filter[key]) && filter[key].length === 0) && filter[key] !== '') {
+					if (key === 'it_skills') {
 						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
 						const match = filter.it_skills_match === 'all' ? 'all' : 'any'
 						const expr = buildItSkillsCondition(values, match)
+						if (expr) {
+							queryOther[Op.and].push(sequelize.literal(expr))
+						}
+					} else if (key === 'language_skills') {
+						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
+						const match = filter.language_skills_match === 'all' ? 'all' : 'any'
+						const expr = buildLanguageSkillsCondition(values, match)
 						if (expr) {
 							queryOther[Op.and].push(sequelize.literal(expr))
 						}
@@ -332,6 +410,9 @@ class StudentService {
 					} else if (key === 'it_skills_match') {
 						// handled together with it_skills
 						return
+					} else if (key === 'language_skills_match') {
+						// handled together with language_skills
+						return
 					} else if (key === 'partner_university_credits') {
 						const credits = Number(filter[key])
 						if (!isNaN(credits)) {
@@ -345,22 +426,69 @@ class StudentService {
 						}
 					} else if (['jlpt', 'jdu_japanese_certification'].includes(key)) {
 						if (Array.isArray(filter[key])) {
-							// Match only the highest level inside stored JSON string e.g. {"highest":"N5"}
-							queryOther[Op.and].push({
-								[Op.or]: filter[key].map(level => ({
-									[key]: { [Op.iLike]: `%"highest":"${level}"%` },
-								})),
-							})
+							// Separate "未提出" (not submitted) from level filters
+							const hasNotSubmitted = filter[key].includes('未提出')
+							const levels = filter[key].filter(level => level !== '未提出')
+
+							const conditions = []
+
+							// Add level conditions if any levels are selected
+							if (levels.length > 0) {
+								conditions.push({
+									[Op.or]: levels.map(level => ({
+										[Op.or]: [
+											// Match "highest":"N2" (exact)
+											{ [key]: { [Op.iLike]: `%"highest":"${level}"%` } },
+											// Match "highest":"N2", (with comma)
+											{ [key]: { [Op.iLike]: `%"highest":"${level}",%` } },
+											// Match "highest":"N2"} (with closing brace)
+											{ [key]: { [Op.iLike]: `%"highest":"${level}"}%` } },
+										],
+									})),
+								})
+							}
+
+							// Add "未提出" condition (null, empty, or string "null")
+							if (hasNotSubmitted) {
+								conditions.push({
+									[Op.or]: [
+										{ [key]: { [Op.is]: null } }, // SQL NULL
+										{ [key]: { [Op.eq]: '' } }, // Empty string
+										{ [key]: { [Op.eq]: 'null' } }, // String "null" from JSON.stringify(null)
+									],
+								})
+							}
+
+							if (conditions.length > 0) {
+								queryOther[Op.and].push({
+									[Op.or]: conditions,
+								})
+							}
 						}
 					} else if (key === 'ielts') {
-						if (Array.isArray(filter[key])) {
+						if (Array.isArray(filter[key]) && filter[key].length > 0) {
 							queryOther[Op.and].push({
 								[Op.or]: filter[key].map(level => ({
 									[key]: { [Op.iLike]: `%${level}%` },
 								})),
 							})
 						}
-					} else if (Array.isArray(filter[key])) {
+					} else if (key === 'graduation_year') {
+						// Handle graduation year filter - match dates by year and month
+						// Filter options are in format "YYYY-MM-30", but database may have different days
+						// So we match by year and month (YYYY-MM) only
+						if (Array.isArray(filter[key]) && filter[key].length > 0) {
+							queryOther[Op.and].push({
+								[Op.or]: filter[key].map(yearValue => {
+									// Extract year and month from filter value (e.g., "2026-03-30" -> "2026-03")
+									const yearMonth = yearValue.substring(0, 7) // Get "YYYY-MM" part
+									return {
+										graduation_year: { [Op.iLike]: `${yearMonth}%` },
+									}
+								}),
+							})
+						}
+					} else if (Array.isArray(filter[key]) && filter[key].length > 0) {
 						queryOther[key] = { [Op.in]: filter[key] }
 					} else if (typeof filter[key] === 'string') {
 						queryOther[key] = { [Op.iLike]: `%${filter[key]}%` }
@@ -370,7 +498,29 @@ class StudentService {
 				}
 			})
 
-			query[Op.and] = [querySearch, queryOther, { active: true }]
+			// Build query conditions - only include querySearch and queryOther if they have actual conditions
+			query[Op.and] = [{ active: true }]
+
+			// Only add querySearch if it has conditions
+			// querySearch uses Op.or (a Symbol), so we check for it directly
+			// Object.keys() doesn't return Symbol keys, so we must check Op.or explicitly
+			if (querySearch[Op.or] && querySearch[Op.or].length > 0) {
+				query[Op.and].push(querySearch)
+			}
+
+			// Check if queryOther has any conditions
+			// queryOther can have:
+			// 1. Direct properties (e.g., queryOther.partner_university = { [Op.in]: [...] })
+			// 2. Items in queryOther[Op.and] array (e.g., queryOther[Op.and].push(...))
+			// Note: Op.and is a Symbol, so it won't appear in Object.keys()
+			const hasQueryOtherConditions =
+				(queryOther[Op.and] && queryOther[Op.and].length > 0) || // Has items in Op.and array
+				Object.keys(queryOther).length > 0 // Has direct properties (Symbol keys not included in Object.keys)
+
+			if (hasQueryOtherConditions) {
+				query[Op.and].push(queryOther)
+			}
+
 			if (normalizedUserType === 'recruiter') {
 				query[Op.and].push({ visibility: true })
 			}
@@ -412,26 +562,51 @@ class StudentService {
 				attributes.include = [[sequelize.literal(`EXISTS (SELECT 1 FROM "Bookmarks" AS "Bookmark" WHERE "Bookmark"."studentId" = "Student"."id" AND "Bookmark"."recruiterId" = ${sequelize.escape(recruiterId)})`), 'isBookmarked']]
 			}
 
-			const students = await Student.findAll({
-				where: query,
-				attributes,
-				include: [
-					{
-						model: Draft,
-						as: 'draft',
-						attributes: ['id', 'status', 'profile_data'],
-						required: false,
-					},
-				],
-				order: order, // <<<<<<<<<<<<<<<< SARALASH SHU YERDA QO'LLANILADI
-			})
+			// Pagination uchun findAndCountAll, aks holda findAll
+			let students
+			let totalCount = 0
+
+			if (isPaginated) {
+				const result = await Student.findAndCountAll({
+					where: query,
+					attributes,
+					include: [
+						{
+							model: Draft,
+							as: 'draft',
+							attributes: ['id', 'status', 'profile_data'],
+							required: false,
+						},
+					],
+					order: order,
+					limit: limit,
+					offset: offset,
+					distinct: true, // JOIN bilan to'g'ri hisoblash uchun
+				})
+				students = result.rows
+				totalCount = result.count
+			} else {
+				students = await Student.findAll({
+					where: query,
+					attributes,
+					include: [
+						{
+							model: Draft,
+							as: 'draft',
+							attributes: ['id', 'status', 'profile_data'],
+							required: false,
+						},
+					],
+					order: order,
+				})
+			}
 
 			// 4. DRAFT MA'LUMOTLARINI BIRLASHTIRISH (o'zgarishsiz qoladi)
 			const studentsWithDraftData = students.map(student => {
 				const studentJson = student.toJSON()
 				if (studentJson.draft && studentJson.draft.profile_data && studentJson.draft.status !== 'draft') {
 					const draftData = studentJson.draft.profile_data
-					const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
+					const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'hobbies_description', 'special_skills_description', 'other_information', 'it_skills', 'skills', 'language_skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
 					fieldsToMerge.forEach(field => {
 						if (draftData[field] !== undefined) {
 							studentJson[field] = draftData[field]
@@ -441,9 +616,21 @@ class StudentService {
 				return studentJson
 			})
 
+			// Pagination bo'lsa, object qaytarish; aks holda eski format (array)
+			if (isPaginated) {
+				return {
+					students: studentsWithDraftData,
+					total: totalCount,
+				}
+			}
+
 			return studentsWithDraftData
 		} catch (error) {
 			console.error('Error in getAllStudents:', error.message, error.stack)
+			// Pagination bo'lsa, object qaytarish; aks holda eski format (array)
+			if (pagination.page !== undefined && pagination.limit !== undefined) {
+				return { students: [], total: 0 }
+			}
 			return []
 		}
 	}
@@ -985,17 +1172,31 @@ class StudentService {
 		try {
 			const { Op } = require('sequelize')
 			const normalizedRole = (requesterRole || '').toLowerCase()
-			const whereClause = search
-				? {
-						[Op.or]: [
-							{ student_id: { [Op.iLike]: `%${search}%` } },
-							{
-								[Op.or]: [{ first_name: { [Op.iLike]: `%${search}%` } }, { last_name: { [Op.iLike]: `%${search}%` } }],
+			let whereClause = { active: true }
+
+			if (search) {
+				const searchValue = String(search).trim()
+
+				// If search value looks like a JLPT level (N1-N5), search in jlpt field
+				if (/^N[1-5]$/i.test(searchValue)) {
+					const normalizedSearch = searchValue.toUpperCase()
+					whereClause[Op.or] = [
+						// Search in student_id, first_name, last_name as before
+						{ student_id: { [Op.iLike]: `%${searchValue}%` } },
+						{ first_name: { [Op.iLike]: `%${searchValue}%` } },
+						{ last_name: { [Op.iLike]: `%${searchValue}%` } },
+						// Also search in jlpt field for JLPT level matches
+						{
+							jlpt: {
+								[Op.or]: [{ [Op.iLike]: `%"highest":"${normalizedSearch}"%` }, { [Op.iLike]: `%"highest":"${normalizedSearch}",%` }, { [Op.iLike]: `%"highest":"${normalizedSearch}"}%` }],
 							},
-						],
-						active: true,
-					}
-				: { active: true }
+						},
+					]
+				} else {
+					// Default search in student_id, first_name, last_name
+					whereClause[Op.or] = [{ student_id: { [Op.iLike]: `%${searchValue}%` } }, { first_name: { [Op.iLike]: `%${searchValue}%` } }, { last_name: { [Op.iLike]: `%${searchValue}%` } }]
+				}
+			}
 
 			// Recruiters should only see public (visible) student IDs
 			if (normalizedRole === 'recruiter') {
@@ -1014,6 +1215,51 @@ class StudentService {
 				name: `${student.first_name} ${student.last_name}`,
 				display: `${student.student_id} - ${student.first_name} ${student.last_name}`,
 			}))
+		} catch (error) {
+			throw error
+		}
+	}
+
+	static async getLanguageSkills(requesterRole = null) {
+		try {
+			const normalizedRole = (requesterRole || '').toLowerCase()
+			let whereClause = { active: true }
+
+			// Recruiters should only see public (visible) students
+			if (normalizedRole === 'recruiter') {
+				whereClause.visibility = true
+			}
+
+			const students = await Student.findAll({
+				where: whereClause,
+				attributes: ['language_skills'],
+			})
+
+			const uniqueSkills = new Set()
+
+			students.forEach(student => {
+				if (student.language_skills) {
+					try {
+						// Parse JSON string to array
+						const skills = typeof student.language_skills === 'string' ? JSON.parse(student.language_skills) : student.language_skills
+						if (Array.isArray(skills)) {
+							skills.forEach(skill => {
+								if (skill && skill.name) {
+									uniqueSkills.add(skill.name)
+								}
+							})
+						}
+					} catch (error) {
+						// Skip invalid JSON
+						console.warn('Invalid language_skills JSON:', student.language_skills)
+					}
+				}
+			})
+
+			// Convert Set to sorted array of objects
+			return Array.from(uniqueSkills)
+				.sort()
+				.map(name => ({ name }))
 		} catch (error) {
 			throw error
 		}

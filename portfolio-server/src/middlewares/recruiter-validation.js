@@ -5,7 +5,11 @@ exports.validateRecruiterCreation = [
 	body('email').isEmail().withMessage('Email must be a valid email address'),
 	body('password').notEmpty().withMessage('Password is required'),
 	body('company_name').notEmpty().withMessage('Company name is required'),
-	body('phone').isNumeric().withMessage('Phone number must be numeric'),
+	body('phone')
+		.customSanitizer(v => (v === '' ? null : v))
+		.optional({ nullable: true, checkFalsy: true })
+		.matches(/^\+?\d{6,15}$/)
+		.withMessage('Phone number must be numeric (6-15 digits, optionally + prefix)'),
 	body('first_name').notEmpty().withMessage('First name is required'),
 	body('last_name').notEmpty().withMessage('Last name is required'),
 	body('date_of_birth').isISO8601().toDate().withMessage('Date of birth must be a valid date'),
@@ -46,9 +50,9 @@ const normalizeCommaList = val => {
 exports.validateRecruiterUpdate = [
 	body('email').isEmail().optional({ nullable: true }).withMessage('Email must be a valid email address'),
 	body('phone')
-		.optional({ nullable: true })
+		.customSanitizer(v => (v === '' ? null : v))
+		.optional({ nullable: true, checkFalsy: true })
 		.matches(/^\+?\d{6,15}$/)
-		.optional({ nullable: true })
 		.withMessage('Phone number must be numeric (6-15 digits, optionally + prefix)'),
 	body('company_name').optional({ nullable: true }).isString().isLength({ max: 100 }).withMessage('Company name must be a string up to 100 chars'),
 	body('company_Address').optional({ nullable: true }).isString().isLength({ max: 1000 }).withMessage('Company address must be a string (<=1000 chars)'),

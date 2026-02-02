@@ -17,5 +17,8 @@
 	},
 	"lint-staged": {
 		"*": "prettier --write --ignore-unknown --ignore-path .prettierignore"
+	},
+	"dependencies": {
+		"@aws-sdk/client-sesv2": "^3.964.0"
 	}
 }

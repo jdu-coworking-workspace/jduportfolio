@@ -10,6 +10,7 @@ const cron = require('node-cron')
 
 const configureRoutes = require('./routes')
 const KintoneService = require('./services/kintoneService')
+const maintenanceMiddleware = require('./middlewares/maintenance-middleware')
 
 const PORT = process.env.PORT || 4000
 
@@ -113,6 +114,9 @@ app.use(
 		credentials: true,
 	})
 )
+
+// Apply maintenance middleware before routes (but after CORS to allow maintenance endpoint)
+app.use(maintenanceMiddleware)
 
 // Configure routes
 configureRoutes(app)

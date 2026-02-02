@@ -50,57 +50,22 @@ module.exports = {
 				specialized_education_credits: 15,
 				self_introduction: `I am Test Student ${studentNumber}. This is a test account for development and testing purposes.`,
 				hobbies: 'Reading, Coding, Gaming',
-				major: 'Computer Science',
-				job_type: 'IT Engineer',
-				gallery: JSON.stringify([]),
-				skills: JSON.stringify({
-					上級: [],
-					中級: [],
-					初級: [],
-				}),
-				it_skills: JSON.stringify({
-					上級: [],
-					中級: [],
-					初級: [],
-				}),
+				gallery: null,
+				skills: null,
+				it_skills: null,
 				other_information: 'Test account - do not modify',
-				other_skills: JSON.stringify({}),
+				other_skills: null,
 				language_skills: 'English (Basic), Japanese (N5)',
 				ielts: null,
 				jlpt: null,
-				jdu_japanese_certification: null,
-				japanese_speech_contest: null,
-				it_contest: null,
-				deliverables: JSON.stringify([
-					{
-						id: Date.now(),
-						title: 'Portfolio Website',
-						description: 'Personal portfolio website built with React',
-						image_urls: [],
-						role: ['Frontend Developer'],
-						technologies: null, // ← default null
-						startDate: null, // ← default null
-						endDate: null, // ← default null
-					},
-					{
-						id: Date.now() + 1,
-						title: 'E-commerce App',
-						description: 'Mobile e-commerce application',
-						image_urls: [],
-						role: ['Full Stack Developer'],
-						technologies: null, // ← default null
-						startDate: null, // ← default null
-						endDate: null, // ← default null
-					},
-				]),
-				graduation_year: '2025',
+				deliverables: null,
+				graduation_year: '2025年',
 				graduation_season: '春',
-				credit_details: JSON.stringify([]),
-				active: true,
-				visibility: false,
+				visibility: false, // Hidden by default
+				active: false,
 				has_pending: false,
-				kintone_id: 99900 + i,
-				// Yangi CV fieldlar
+				kintone_id: 99999 + i, // Unique kintone_id for each test student
+				// CV download / additional student fields
 				education: JSON.stringify([
 					{
 						year: 2018,
@@ -153,7 +118,7 @@ module.exports = {
 					numDependents: 0,
 					transportation: '自転車通勤可能、公共交通機関利用',
 					additionalEmail: `test${studentNumber}. sub@jdu. uz`,
-					additionalPhone: '090-1234-5678', // ← NEW
+					additionalPhone: '090-1234-5678',
 					addressFurigana: 'トウキョウトシブヤクジングウマエ',
 					languageEnglish: 'Advanced (IELTS 6.5相当)',
 					languageRussian: 'Fluent (ビジネスレベル)',

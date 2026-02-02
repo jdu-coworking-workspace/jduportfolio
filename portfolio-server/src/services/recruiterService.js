@@ -283,7 +283,7 @@ class RecruiterService {
 					first_name: record.recruiterFirstName?.value,
 					last_name: record.recruiterLastName?.value,
 					company_name: record.recruiterCompany?.value,
-					phone: record.recruiterPhone?.value,
+					phone: record.recruiterPhone?.value || null,
 					kintone_id: kintoneId,
 					active: true,
 					isPartner,

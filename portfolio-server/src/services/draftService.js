@@ -25,9 +25,20 @@ const getChangedKeys = (newData, oldData) => {
 	})
 }
 
+/** Returns true if the value should be treated as "no filter" (omit from query). */
+function isEmptyFilterValue(val) {
+	if (val === null || val === undefined) return true
+	if (val === '') return true
+	if (Array.isArray(val) && val.length === 0) return true
+	return false
+}
+
 class DraftService {
-	static async getAll(filter) {
+	static async getAll(filter, pagination = {}) {
 		try {
+			if (!filter || typeof filter !== 'object') {
+				filter = {}
+			}
 			console.log('DraftService.getAll called with filter:', JSON.stringify(filter, null, 2))
 
 			const semesterMapping = {
@@ -83,17 +94,61 @@ class DraftService {
 			let queryOther = {}
 			queryOther[Op.and] = []
 
-			// Helper to build JSONB @> conditions for it_skills across levels
+			// Helper to build JSONB conditions for it_skills across levels (case-insensitive)
+			// Only checks Student.it_skills (public data only)
 			const buildItSkillsCondition = (names = [], match = 'any') => {
 				const lvls = ['上級', '中級', '初級']
 				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
 				if (safeNames.length === 0) return null
 
 				const perSkill = safeNames.map(n => {
-					const json = JSON.stringify([{ name: String(n) }])
-					const esc = sequelize.escape(json)
-					const levelExpr = lvls.map(l => `(("Student"."it_skills"->'${l}') @> ${esc}::jsonb)`).join(' OR ')
+					const skillName = String(n).toLowerCase()
+					const escapedName = skillName.replace(/'/g, "''") // Escape single quotes for SQL
+					// Use jsonb_array_elements to iterate over array elements and compare case-insensitively
+					const levelExpr = lvls
+						.map(
+							l => `(
+					"Student"."it_skills" IS NOT NULL 
+					AND EXISTS (
+						SELECT 1 
+						FROM jsonb_array_elements("Student"."it_skills"->'${l}') AS elem
+						WHERE LOWER(elem->>'name') = '${escapedName}'
+					)
+				)`
+						)
+						.join(' OR ')
 					return `(${levelExpr})`
+				})
+				const joiner = match === 'all' ? ' AND ' : ' OR '
+				return `(${perSkill.join(joiner)})`
+			}
+
+			// Helper to build conditions for language_skills (TEXT field containing JSON string)
+			// Handles both formats:
+			// 1. Old seeder format (plain text): "English (TOEIC 800), Korean (TOPIK 4)"
+			// 2. Correct format (JSON string): [{"name":"中国語","level":"#ffeb3b","color":"#5627DB"}]
+			// Only checks Student.language_skills (public data only)
+			const buildLanguageSkillsCondition = (names = [], match = 'any') => {
+				const safeNames = Array.isArray(names) ? names.filter(Boolean) : []
+				if (safeNames.length === 0) return null
+
+				const perSkill = safeNames.map(n => {
+					// Escape the skill name for SQL LIKE pattern matching
+					const escapedName = String(n).replace(/[%_\\]/g, '\\$&')
+					// Match both formats:
+					// 1. Plain text format (old seeder): "Japanese (JLPT N2), English (IELTS 6.5)" - search for language name
+					// 2. JSON string format (correct): [{"name":"中国語",...}] - search for JSON pattern with "name" field
+					// Only check Student.language_skills (public data), handle NULL values
+					return `(
+						"Student"."language_skills" IS NOT NULL 
+						AND (
+							"Student"."language_skills"::text LIKE '%${escapedName}%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}"%'
+							OR "Student"."language_skills"::text LIKE '%"name":"${escapedName}",%'
+							OR "Student"."language_skills"::text LIKE '%"name": "${escapedName}",%'
+						)
+					)`
 				})
 				const joiner = match === 'all' ? ' AND ' : ' OR '
 				return `(${perSkill.join(joiner)})`
@@ -134,7 +189,7 @@ class DraftService {
 			}
 
 			Object.keys(filter).forEach(key => {
-				if (filter[key] && key !== 'draft_status') {
+				if (key !== 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					if (key === 'search') {
 						let searchConditions = searchableColumns.map(column => ({
 							[column]: { [Op.iLike]: `%${filter[key]}%` },
@@ -149,6 +204,13 @@ class DraftService {
 						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
 						const match = filter.it_skills_match === 'all' ? 'all' : 'any'
 						const expr = buildItSkillsCondition(values, match)
+						if (expr) {
+							queryOther[Op.and].push(sequelize.literal(expr))
+						}
+					} else if (key === 'language_skills') {
+						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
+						const match = filter.language_skills_match === 'all' ? 'all' : 'any'
+						const expr = buildLanguageSkillsCondition(values, match)
 						if (expr) {
 							queryOther[Op.and].push(sequelize.literal(expr))
 						}
@@ -186,6 +248,9 @@ class DraftService {
 					} else if (key === 'it_skills_match') {
 						// handled together with it_skills
 						return
+					} else if (key === 'language_skills_match') {
+						// handled together with language_skills
+						return
 					} else if (Array.isArray(filter[key])) {
 						queryOther[key] = { [Op.in]: filter[key] }
 					} else if (typeof filter[key] === 'string') {
@@ -195,7 +260,7 @@ class DraftService {
 					}
 				}
 
-				if (filter[key] && key === 'draft_status') {
+				if (key === 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					const filteredStatuses = filter[key].map(status => statusMapping[status])
 					statusFilter = filteredStatuses.length ? `AND d.status IN (${filteredStatuses.map(s => `'${s}'`).join(', ')})` : ''
 				}
@@ -224,7 +289,9 @@ class DraftService {
 			console.log('Final query object:', JSON.stringify(query, null, 2))
 			console.log('Combined filters:', allFilters)
 
-			const students = await Student.findAll({
+			// Pagination parametrlari
+			const isPaginated = pagination.limit !== undefined && pagination.offset !== undefined
+			const queryOptions = {
 				where: query,
 				attributes: {
 					include: ['credit_details'], // Explicitly include credit_details field
@@ -256,17 +323,37 @@ class DraftService {
 						],
 					},
 				],
-			})
+				...(isPaginated && { limit: pagination.limit, offset: pagination.offset }),
+				distinct: true, // For accurate count with JOINs
+			}
 
-			// Map pendingDraft to draft for backward compatibility with frontend
-			return students.map(student => {
-				const studentJson = student.toJSON()
-				return {
-					...studentJson,
-					draft: studentJson.pendingDraft,
-					pendingDraft: undefined,
-				}
-			})
+			// Pagination bo'lsa findAndCountAll, aks holda findAll
+			if (isPaginated) {
+				const { count, rows: students } = await Student.findAndCountAll(queryOptions)
+
+				// Map pendingDraft to draft for backward compatibility with frontend
+				const mappedStudents = students.map(student => {
+					const studentJson = student.toJSON()
+					return {
+						...studentJson,
+						draft: studentJson.pendingDraft,
+						pendingDraft: undefined,
+					}
+				})
+				return { students: mappedStudents, total: count }
+			} else {
+				const students = await Student.findAll(queryOptions)
+
+				// Map pendingDraft to draft for backward compatibility with frontend
+				return students.map(student => {
+					const studentJson = student.toJSON()
+					return {
+						...studentJson,
+						draft: studentJson.pendingDraft,
+						pendingDraft: undefined,
+					}
+				})
+			}
 		} catch (error) {
 			console.error('DraftService.getAll error:', error)
 			console.error('Error message:', error.message)
@@ -350,7 +437,16 @@ class DraftService {
 
 			// If profile is public and no fresh student submission, auto-update live
 			if (shouldAutoApprove) {
-				await Student.update(newProfileData, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...newProfileData }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: studentId },
 				})
 			}
@@ -370,7 +466,16 @@ class DraftService {
 
 			// Auto-approve only if no fresh submission exists
 			if (shouldAutoApprove) {
-				await Student.update(newProfileData, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...newProfileData }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: studentId },
 				})
 			}
@@ -403,7 +508,7 @@ class DraftService {
 		})
 
 		if (existingPending) {
-			throw new Error('Sizda allaqachon tekshiruvga yuborilgan faol qoralama mavjud. Yangisini yuborish uchun avvalgisining natijasini kuting.')
+			throw new Error('既に提出済みの下書きがあります。新しい下書きを提出する前に、前回の審査結果をお待ちください。')
 		}
 
 		// Server-side validation: ensure all required QA answers are filled
@@ -419,6 +524,10 @@ class DraftService {
 				if (settings && typeof settings === 'object') {
 					// Prefer answers from current draft.profile_data.qa if present
 					const profileQA = (draft.profile_data && draft.profile_data.qa) || null
+
+					console.log('=== BACKEND Q&A VALIDATION DEBUG ===')
+					console.log('Settings from database:', JSON.stringify(settings, null, 2))
+					console.log('Draft profile_data.qa:', JSON.stringify(profileQA, null, 2))
 
 					let answersByCategory = {}
 					if (profileQA && typeof profileQA === 'object') {
@@ -441,20 +550,48 @@ class DraftService {
 						if (category === 'idList') continue
 						const questions = settings[category] || {}
 						const answers = answersByCategory[category] || {}
+
+						console.log(`Checking category: ${category}`)
+						console.log(`Questions in settings:`, Object.keys(questions))
+						console.log(`Answers from draft:`, JSON.stringify(answers, null, 2))
+
 						for (const key of Object.keys(questions)) {
 							const q = questions[key]
 							if (q && q.required === true) {
 								// Accept legacy answer shapes: object { answer } or plain string
 								const raw = answers[key]
 								const ans = raw && typeof raw === 'object' && raw !== null && 'answer' in raw ? raw.answer : raw
+
+								console.log(`Question ${key}: required=${q.required}, answer="${ans}"`)
+
 								if (!ans || String(ans).trim() === '') {
-									missing.push({ category, key })
+									console.log(`  → MISSING!`)
+									missing.push({ category, key, question: q.question || key })
 								}
 							}
 						}
 					}
+
+					console.log('Missing required answers:', missing)
+					console.log('=== END BACKEND DEBUG ===')
+
 					if (missing.length > 0) {
-						throw new Error(`Majburiy savollarga javob to'liq emas. Iltimos, barcha '必須' savollarga javob bering. (Yetishmaydi: ${missing.length})`)
+						// Group missing questions by category for better error message
+						const missingByCategory = {}
+						missing.forEach(item => {
+							if (!missingByCategory[item.category]) {
+								missingByCategory[item.category] = []
+							}
+							missingByCategory[item.category].push(item.question)
+						})
+
+						// Build user-friendly error message in Japanese
+						const categoryList = Object.keys(missingByCategory)
+							.map(cat => `「${cat}」`)
+							.join('、')
+						const errorMsg = `必須の質問に回答してください。\n未回答のカテゴリ: ${categoryList}\n(未回答: ${missing.length}件)`
+
+						throw new Error(errorMsg)
 					}
 				}
 			}
@@ -523,8 +660,17 @@ class DraftService {
 
 		// On approval, promote pending to live
 		if (status.toLowerCase() === 'approved') {
+			// Serialize fields that are TEXT in Student table but stored as objects in Draft
+			const sanitizedProfileData = { ...draft.profile_data }
+			const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+			textFields.forEach(field => {
+				if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+					sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+				}
+			})
+
 			// Update live profile (Student table)
-			await Student.update(draft.profile_data, {
+			await Student.update(sanitizedProfileData, {
 				where: { student_id: draft.student_id },
 			})
 

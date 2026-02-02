@@ -32,6 +32,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const userId = JSON.parse(sessionStorage.getItem('loginUser')).id
 
 	const [itSkillOptions, setItSkillOptions] = useState(['JS', 'Python', 'Java', 'SQL'])
+	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -52,6 +53,25 @@ const Student = ({ OnlyBookmarked = false }) => {
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		const fetchLanguageSkills = async () => {
+			try {
+				const res = await axios.get('/api/skills')
+				if (!cancelled) {
+					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+					if (names.length > 0) setLanguageSkillOptions(names)
+				}
+			} catch {
+				// fallback silently
+			}
+		}
+		fetchLanguageSkills()
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
 	const filterProps = [
 		//{
 		//  key: "semester",
@@ -66,6 +86,14 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'checkbox',
 			options: itSkillOptions,
 			matchModeKey: 'it_skills_match',
+			minWidth: '160px',
+		},
+		{
+			key: 'language_skills',
+			label: t('languageSkills'),
+			type: 'checkbox',
+			options: languageSkillOptions,
+			matchModeKey: 'language_skills_match',
 			minWidth: '160px',
 		},
 		{
@@ -134,8 +162,16 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const navigate = useNavigate()
 
-	const navigateToProfile = student => {
-		navigate(`profile/${student.student_id}/top`, { state: { student } })
+	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
+		navigate(`profile/${student.student_id}/top`, {
+			state: {
+				student,
+				fromPage: currentPage || 0,
+				sortBy: currentSortBy || '',
+				sortOrder: currentSortOrder || '',
+				returnPath: '/checkprofile',
+			},
+		})
 	}
 
 	const updateDraftStatus = async (draftId, status) => {
@@ -250,7 +286,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'first_name',
 			numeric: false,
 			disablePadding: true,
-			label: '学生',
+			label: t('student'),
 			type: 'avatar',
 			minWidth: '220px',
 			onClickAction: navigateToProfile,
@@ -260,7 +296,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'student_id',
 			numeric: false,
 			disablePadding: false,
-			label: '学籍番号',
+			label: t('student_id'),
 			minWidth: '120px',
 			isSort: true,
 		},
@@ -268,7 +304,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'age',
 			numeric: true,
 			disablePadding: false,
-			label: '年齢',
+			label: t('age'),
 			minWidth: '80px !important',
 			suffix: ' 歳',
 			isSort: true,
@@ -279,7 +315,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			numeric: true,
 			type: 'date',
 			disablePadding: false,
-			label: '申請日',
+			label: t('application_date'),
 			minWidth: '120px',
 		},
 		{
@@ -287,7 +323,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			subkey: 'submit_count',
 			numeric: true,
 			disablePadding: false,
-			label: '申請回数',
+			label: t('number_of_applications'),
 			minWidth: '100px',
 		},
 		{
@@ -296,7 +332,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'changed_fields',
 			numeric: false,
 			disablePadding: false,
-			label: '変更項目',
+			label: t('changed_elements'),
 			minWidth: '120px',
 		},
 		{
@@ -305,7 +341,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'status_icon',
 			numeric: false,
 			disablePadding: false,
-			label: '承認状況',
+			label: t('approvalStatus'),
 			minWidth: '100px',
 			statusMap: {
 				submitted: { icon: 'pending', color: '#ff9800', text: t('approval_status_unconfirmed') },
@@ -330,7 +366,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			numeric: false,
 			type: 'visibility_toggle',
 			disablePadding: false,
-			label: '公開状況',
+			label: t('visible_status'),
 			minWidth: '100px',
 			onToggle: (row, visibility) => setProfileVisibility(row.student_id, visibility),
 			disabled: role !== 'Admin', // Only admins can toggle visibility
@@ -340,7 +376,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			numeric: false,
 			type: 'email',
 			disablePadding: false,
-			label: 'メール',
+			label: t('email'),
 			minWidth: '200px',
 			isSort: true,
 		},

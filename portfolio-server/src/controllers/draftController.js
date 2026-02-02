@@ -151,7 +151,16 @@ class DraftController {
 			})
 
 			if (status.toLowerCase() === 'approved') {
-				await Student.update(draft.profile_data, {
+				// Serialize fields that are TEXT in Student table but stored as objects in Draft
+				const sanitizedProfileData = { ...draft.profile_data }
+				const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+				textFields.forEach(field => {
+					if (sanitizedProfileData[field] && typeof sanitizedProfileData[field] === 'object') {
+						sanitizedProfileData[field] = JSON.stringify(sanitizedProfileData[field])
+					}
+				})
+
+				await Student.update(sanitizedProfileData, {
 					where: { student_id: draft.student_id },
 				})
 
@@ -311,13 +320,47 @@ class DraftController {
 				}
 			}
 
+			// Pagination parametrlari
+			const page = req.query.page ? parseInt(req.query.page, 10) : undefined
+			const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined
+			const isPaginated = page !== undefined && limit !== undefined
+			const pagination = isPaginated ? { page, limit, offset: (page - 1) * limit } : {}
+
 			console.log('Parsed filter:', filter)
 
-			const students = await DraftService.getAll(filter)
-			return res.status(200).json(students)
+			const result = await DraftService.getAll(filter, pagination)
+
+			// Set cache control headers
+			res.set({
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				Pragma: 'no-cache',
+				Expires: '0',
+			})
+
+			// Pagination bo'lsa, yangi format; aks holda eski format
+			if (isPaginated) {
+				res.status(200).json({
+					data: result.students,
+					pagination: {
+						page: page,
+						limit: limit,
+						total: result.total,
+						totalPages: Math.ceil(result.total / limit),
+					},
+				})
+			} else {
+				res.status(200).json(result)
+			}
 		} catch (error) {
 			console.error('getAllDrafts error:', error)
-			next(error)
+
+			// Return empty array/object instead of 500 error for better UX
+			const isPaginated = req.query.page !== undefined && req.query.limit !== undefined
+			if (isPaginated) {
+				res.status(200).json({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } })
+			} else {
+				res.status(200).json([])
+			}
 		}
 	}
 	/**

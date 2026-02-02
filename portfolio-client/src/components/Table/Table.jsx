@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from '../../utils/axiosUtils'
 
@@ -20,6 +20,7 @@ import translations from '../../locales/translations'
 import ChangedFieldsModal from '../ChangedFieldsModal/ChangedFieldsModal'
 import UserAvatar from './Avatar/UserAvatar'
 import { getComparator, stableSort } from './TableUtils'
+import { tableScrollPositionAtom } from '../../atoms/store'
 // localStorage dan qiymat o'qish yoki default qiymat
 const getInitialRowsPerPage = () => {
 	try {
@@ -34,8 +35,9 @@ const getInitialRowsPerPage = () => {
 const rowsPerPageAtom = atom(getInitialRowsPerPage())
 
 const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
+	const studentTableRef = useRef(null)
 	const { language } = useLanguage()
-	const t = key => translations[language][key] || key
+	const t = key => translations[language][key] || keyski
 
 	const role = sessionStorage.getItem('role')
 
@@ -46,10 +48,33 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const [orderBy, setOrderBy] = useState(searchParams.get('orderBy') || '')
 	const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || '')
 	const [sortOrder, setSortOrder] = useState(searchParams.get('sortOrder') || '')
+
+	// Initialize from URL params on mount if they exist
+	useEffect(() => {
+		const urlSortBy = searchParams.get('sortBy')
+		const urlSortOrder = searchParams.get('sortOrder')
+		const urlOrderBy = searchParams.get('orderBy')
+		const urlOrder = searchParams.get('order')
+
+		if (urlSortBy && urlSortBy !== sortBy) {
+			setSortBy(urlSortBy)
+		}
+		if (urlSortOrder && urlSortOrder !== sortOrder) {
+			setSortOrder(urlSortOrder)
+		}
+		if (urlOrderBy && urlOrderBy !== orderBy) {
+			setOrderBy(urlOrderBy)
+		}
+		if (urlOrder && urlOrder !== order) {
+			setOrder(urlOrder)
+		}
+	}, []) // Only run on mount
 	const [selected, _setSelected] = useState([])
 	const [page, setPage] = useState(parseInt(searchParams.get('page') || '0', 10))
 	const [rowsPerPage, setRowsPerPage] = useAtom(rowsPerPageAtom)
+	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [rows, setRows] = useState([])
+	const [totalCount, setTotalCount] = useState(0) // Server-side pagination uchun
 	const [loading, setLoading] = useState(false)
 	const [_refresher, setRefresher] = useState(0)
 	const [anchorEls, setAnchorEls] = useState({})
@@ -59,6 +84,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		deleteAction: null,
 	})
 	const [selectedChangedFields, setSelectedChangedFields] = useState(null)
+	const [headerFilterAnchor, setHeaderFilterAnchor] = useState({ field: null, element: null })
 
 	// localStorage ga saqlash
 	useEffect(() => {
@@ -68,6 +94,28 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			// Silently fail if localStorage is not available
 		}
 	}, [rowsPerPage])
+
+	// Sync sortBy/sortOrder (backend) with order/orderBy (frontend) - keep them in sync
+	useEffect(() => {
+		if (sortBy) {
+			// Map backend sort field names to frontend column IDs
+			const reverseMap = {
+				name: 'first_name',
+				student_id: 'student_id',
+				age: 'age',
+				graduation_year: 'graduation_year',
+				email: 'email',
+			}
+			const mappedOrderBy = reverseMap[sortBy]
+			if (mappedOrderBy && mappedOrderBy !== orderBy) {
+				setOrderBy(mappedOrderBy)
+			}
+			const mappedOrder = sortOrder?.toLowerCase() || 'asc'
+			if (mappedOrder !== order) {
+				setOrder(mappedOrder)
+			}
+		}
+	}, [sortBy, sortOrder])
 
 	// Sync state to URL params
 	useEffect(() => {
@@ -80,6 +128,43 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 		setSearchParams(params, { replace: true })
 	}, [page, sortBy, sortOrder, orderBy, order, setSearchParams])
+
+	// Handler for header filter dropdown
+	const handleHeaderFilterClick = (event, headerId, anchorElement = null) => {
+		event.stopPropagation()
+		// Use provided anchor element or fall back to currentTarget
+		const anchor = anchorElement || event.currentTarget
+		setHeaderFilterAnchor({ field: headerId, element: anchor })
+	}
+
+	const handleHeaderFilterClose = () => {
+		setHeaderFilterAnchor({ field: null, element: null })
+	}
+
+	const handleHeaderFilterChange = (headerId, value) => {
+		if (!tableProps.onFilterChange) return
+
+		const currentFilter = { ...tableProps.filter }
+
+		if (value === 'all' || value === '') {
+			// Remove filter for this field
+			if (Array.isArray(currentFilter[headerId])) {
+				delete currentFilter[headerId]
+			} else {
+				delete currentFilter[headerId]
+			}
+		} else {
+			// Set filter - for jlpt, partner_university, graduation_year, use array format
+			if (headerId === 'jlpt' || headerId === 'partner_university' || headerId === 'graduation_year') {
+				currentFilter[headerId] = [value]
+			} else {
+				currentFilter[headerId] = value
+			}
+		}
+
+		tableProps.onFilterChange(currentFilter)
+		handleHeaderFilterClose()
+	}
 
 	// Sort handler function
 	const handleSort = header => {
@@ -94,7 +179,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			student_id: 'student_id',
 			age: 'age',
 			email: 'email',
-			expected_graduation_year: 'graduation_year',
+			graduation_year: 'graduation_year',
 		}
 
 		const apiSortField = sortMapping[header.id]
@@ -140,13 +225,17 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		return header.keyIdentifier || `${header.id}${header.subkey || ''}`
 	}
 
-	const fetchUserData = useCallback(async () => {
-		setLoading(true)
-		try {
+	const fetchUserData = useCallback(
+		signal => {
+			setLoading(true)
+
 			const params = {
-				filter: tableProps.filter,
+				filter: tableProps.filter, // Let axios handle serialization
 				recruiterId: tableProps.recruiterId,
 				onlyBookmarked: tableProps.OnlyBookmarked,
+				// Server-side pagination parametrlari
+				page: page + 1, // MUI 0-indexed, backend 1-indexed
+				limit: rowsPerPage,
 			}
 
 			// Add sorting parameters if they exist
@@ -155,22 +244,62 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 				params.sortOrder = sortOrder
 			}
 
-			const response = await axios.get(tableProps.dataLink, { params })
-			setRows(response.data)
-		} catch (error) {
-			// Handle error silently
-		} finally {
-			setLoading(false)
-		}
-	}, [tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder])
+			// ✅ CRITICAL FIX: Use abort signal to cancel outdated requests
+			// Stringify filter to ensure proper serialization for backend
+			const serializedParams = {
+				...params,
+				filter: typeof params.filter === 'object' ? JSON.stringify(params.filter) : params.filter,
+			}
+			axios
+				.get(tableProps.dataLink, {
+					params: serializedParams,
+					signal, // ✅ Pass abort signal
+				})
+				.then(response => {
+					// Server-side pagination: yangi format { data: [], pagination: {} }
+					// Backward compatible: eski format [] ham qo'llab-quvvatlanadi
+					const students = Array.isArray(response.data) ? response.data : response.data.data
+					const total = Array.isArray(response.data) ? response.data.length : response.data.pagination?.total || 0
+
+					const filteredRows = students.map(r => ({
+						student_id: r.student_id,
+						id: r.id,
+						isCurrent: false,
+					}))
+					localStorage.setItem('visibleRowsStudentIds', JSON.stringify(filteredRows))
+					setRows(students)
+					setTotalCount(total)
+				})
+				.catch(error => {
+					// Ignore aborted requests (expected behavior)
+					if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
+						console.error('Error fetching students:', error)
+					}
+				})
+				.finally(() => {
+					setLoading(false)
+				})
+		},
+		[tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder, page, rowsPerPage]
+	)
 
 	useEffect(() => {
-		fetchUserData()
+		// ✅ Create AbortController for this effect
+		const controller = new AbortController()
+
+		// ✅ Call fetchUserData with abort signal
+		fetchUserData(controller.signal)
+
+		// ✅ Cleanup: abort request when component unmounts or dependencies change
+		return () => {
+			controller.abort()
+		}
 	}, [
 		fetchUserData,
+		tableProps.filter, // ✅ CRITICAL: Include filter in dependencies to trigger refetch when filter changes
 		tableProps.refreshTrigger,
-		// Remove refresher from dependencies to prevent automatic refetch
-		// refresher should only be used for manual refresh operations
+		page, // Server-side pagination uchun
+		rowsPerPage, // Server-side pagination uchun
 	])
 
 	useEffect(() => {
@@ -178,6 +307,17 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			setRows(prevData => prevData.map(data => (data.id === updatedBookmark.studentId ? { ...data, isBookmarked: !data.isBookmarked } : data)))
 		}
 	}, [updatedBookmark])
+
+	// Filter o'zgarganda page'ni 0 ga reset qilish
+	// Bu mavjud bo'lmagan page so'rashdan saqlaydi
+	const prevFilterRef = useRef(tableProps.filter)
+	useEffect(() => {
+		// Filter o'zgarganini tekshirish
+		if (JSON.stringify(prevFilterRef.current) !== JSON.stringify(tableProps.filter)) {
+			setPage(0)
+			prevFilterRef.current = tableProps.filter
+		}
+	}, [tableProps.filter])
 
 	const handleChangePage = (event, newPage) => {
 		setPage(newPage)
@@ -191,7 +331,40 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 	const isSelected = id => selected.indexOf(id) !== -1
 
-	const visibleRows = stableSort(rows, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+	// Server-side pagination: backend allaqachon pagination qilgan, frontend sorting kerak emas
+	// Backend already sorts data based on sortBy/sortOrder, no need to sort again on frontend
+	const visibleRows = rows
+
+	// Scroll to specific student row instead of just position
+	useEffect(() => {
+		if (visibleRows.length <= 0 || viewMode !== 'table') return
+
+		// Try to scroll to the current student if marked in localStorage
+		const currentStudentIds = JSON.parse(localStorage.getItem('visibleRowsStudentIds') || '[]')
+		const currentStudent = currentStudentIds.find(s => s.isCurrent)
+
+		if (currentStudent && studentTableRef.current) {
+			// Small delay to ensure DOM is fully rendered
+			setTimeout(() => {
+				const rowElement = document.querySelector(`[data-student-id="${currentStudent.student_id}"]`)
+				if (rowElement) {
+					rowElement.scrollIntoView({ behavior: 'auto', block: 'center' })
+				} else if (tableScrollPosition) {
+					// Fallback to scroll position if student row not found
+					studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+				}
+			}, 100)
+		} else if (tableScrollPosition && studentTableRef.current) {
+			// No current student marked, use saved scroll position
+			studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+		}
+
+		return () => {
+			if (studentTableRef.current) {
+				setTableScrollPosition(studentTableRef.current.scrollTop)
+			}
+		}
+	}, [visibleRows.length, viewMode, tableScrollPosition, setTableScrollPosition])
 
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
@@ -203,9 +376,25 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 	// Grid view da profile click handler
 	const handleProfileClickInGrid = row => {
+		// Mark current student in localStorage
+		const studentIds = localStorage.getItem('visibleRowsStudentIds')
+		if (studentIds) {
+			const parsedIds = JSON.parse(studentIds)
+			localStorage.setItem(
+				'visibleRowsStudentIds',
+				JSON.stringify(
+					parsedIds.map(item => ({
+						...item,
+						isCurrent: item.student_id === row.student_id,
+					}))
+				)
+			)
+		}
+
 		const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 		if (avatarHeader && avatarHeader.onClickAction) {
-			avatarHeader.onClickAction(row)
+			// Pass current pagination and sorting state to navigation handler
+			avatarHeader.onClickAction(row, page, sortBy, sortOrder)
 		}
 	}
 
@@ -366,7 +555,19 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 										color: '#333',
 									}}
 								>
-									{row.expected_graduation_year || 'N/A'}
+									{(() => {
+										// Format graduation_year from date format to Japanese format
+										// Input: "2026-03-30" -> Output: "2026年03月"
+										if (row.graduation_year) {
+											const match = String(row.graduation_year).match(/^(\d{4})-(\d{2})/)
+											if (match) {
+												const [, year, month] = match
+												return `${year}年${month}月`
+											}
+											return row.graduation_year
+										}
+										return 'N/A'
+									})()}
 								</Typography>
 							</Box>
 						</Box>
@@ -381,7 +582,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		<TablePagination
 			rowsPerPageOptions={[5, 10, 25, 50, 100]}
 			component='div'
-			count={rows.length}
+			count={totalCount || rows.length}
 			rowsPerPage={rowsPerPage}
 			page={page}
 			onPageChange={handleChangePage}
@@ -445,6 +646,10 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					}}
 				>
 					<TableContainer
+						ref={studentTableRef}
+						onScroll={event => {
+							setTableScrollPosition(event.target.scrollTop)
+						}}
 						sx={{
 							minHeight: visibleRows.length > 0 ? 'auto' : '300px',
 							maxHeight: {
@@ -484,9 +689,30 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 									{visibleHeaders.map((header, index) => {
 										const isSortable = header.isSort === true
 										const isActiveSortColumn = orderBy === header.id
+										const isFilterable = ['jlpt', 'partner_university', 'graduation_year'].includes(header.id)
+										const isFilterOpen = headerFilterAnchor.field === header.id
+										const currentFilterValue = tableProps.filter?.[header.id]
+										const filterOptions = tableProps.filterOptions?.[header.id] || []
+										const formatFunction = tableProps.filterOptions?.[`${header.id}_format`]
+
+										// Get current selected value for display
+										let selectedValue = 'all'
+										if (currentFilterValue) {
+											if (Array.isArray(currentFilterValue) && currentFilterValue.length > 0) {
+												selectedValue = currentFilterValue[0]
+											} else if (typeof currentFilterValue === 'string') {
+												selectedValue = currentFilterValue
+											}
+										}
 
 										return (
 											<TableCell
+												ref={el => {
+													// Store reference for menu anchoring
+													if (isFilterable && el) {
+														el._headerId = header.id
+													}
+												}}
 												sx={{
 													backgroundColor: '#f7fafc',
 													borderBottom: '1px solid #e0e0e0',
@@ -494,13 +720,14 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													position: 'sticky',
 													top: 0,
 													zIndex: 10,
-													cursor: isSortable ? 'pointer' : 'default',
+													cursor: isSortable || isFilterable ? 'pointer' : 'default',
 													userSelect: 'none',
-													'&:hover': isSortable
-														? {
-																backgroundColor: '#edf2f7',
-															}
-														: {},
+													'&:hover':
+														isSortable || isFilterable
+															? {
+																	backgroundColor: '#edf2f7',
+																}
+															: {},
 													...(index === 0 && {
 														borderTopLeftRadius: '10px',
 													}),
@@ -512,7 +739,15 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 												align='center'
 												padding={'normal'}
 												sortDirection={orderBy === header.id ? order : false}
-												onClick={() => isSortable && handleSort(header)}
+												onClick={e => {
+													if (isFilterable) {
+														// Ensure we use the TableCell as anchor, not child elements
+														const cellElement = e.currentTarget
+														handleHeaderFilterClick(e, header.id, cellElement)
+													} else if (isSortable) {
+														handleSort(header)
+													}
+												}}
 											>
 												<Box
 													sx={{
@@ -523,7 +758,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													}}
 												>
 													{header.label}
-													{isSortable && (
+													{isSortable && !isFilterable && (
 														<Box
 															sx={{
 																display: 'flex',
@@ -535,6 +770,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 															{isActiveSortColumn && order === 'asc' ? <KeyboardArrowUpIcon sx={{ fontSize: '16px', color: '#2563eb' }} /> : isActiveSortColumn && order === 'desc' ? <KeyboardArrowDownIcon sx={{ fontSize: '16px', color: '#2563eb' }} /> : <KeyboardArrowUpIcon sx={{ fontSize: '16px' }} />}
 														</Box>
 													)}
+													{isFilterable && <KeyboardArrowDownIcon sx={{ fontSize: '16px', opacity: 0.5 }} />}
 												</Box>
 											</TableCell>
 										)
@@ -551,6 +787,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 											tabIndex={-1}
 											key={row.id}
 											selected={isSelected(row.id)}
+											data-student-id={row.student_id}
 											sx={{
 												cursor: 'pointer',
 												backgroundColor: '#ffffff',
@@ -569,13 +806,27 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														if (header.type === 'delete_icon') {
 															return
 														}
-
+														const studentIds = localStorage.getItem('visibleRowsStudentIds')
+														if (studentIds) {
+															const parsedIds = JSON.parse(studentIds)
+															// Update isCurrent flags
+															localStorage.setItem(
+																'visibleRowsStudentIds',
+																JSON.stringify(
+																	parsedIds.map(item => ({
+																		...item,
+																		isCurrent: item.student_id === row.student_id,
+																	}))
+																)
+															)
+														}
 														// Find the avatar header to get the profile navigation function
 														const avatarHeader = tableProps.headers.find(h => h.type === 'avatar')
 														if (avatarHeader && avatarHeader.onClickAction) {
-															avatarHeader.onClickAction(row)
+															// Pass current pagination and sorting state to navigation handler
+															avatarHeader.onClickAction(row, page, sortBy, sortOrder)
 														} else if (header.onClickAction) {
-															header.onClickAction(row)
+															header.onClickAction(row, page, sortBy, sortOrder)
 														}
 													}}
 													sx={{
@@ -1114,6 +1365,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														) : (
 															'未提出'
 														)
+													) : header.id === 'graduation_year' ? (
+														// Format graduation_year from date format to Japanese format
+														// Input: "2026-03-30" -> Output: "2026年03月"
+														(() => {
+															if (row[header.id]) {
+																const match = String(row[header.id]).match(/^(\d{4})-(\d{2})/)
+																if (match) {
+																	const [, year, month] = match
+																	return `${year}年${month}月`
+																}
+																return row[header.id]
+															}
+															return 'N/A'
+														})()
 													) : row[header.id] ? (
 														<>
 															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : row[header.id] ? row[header.id] : 'N/A'}
@@ -1260,6 +1525,55 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 
 			{/* Changed Fields Modal */}
 			<ChangedFieldsModal open={Boolean(selectedChangedFields)} onClose={() => setSelectedChangedFields(null)} data={selectedChangedFields} />
+
+			{/* Header Filter Menu - Single menu for all filterable headers */}
+			{headerFilterAnchor.field &&
+				headerFilterAnchor.element &&
+				(() => {
+					const headerId = headerFilterAnchor.field
+					const currentFilterValue = tableProps.filter?.[headerId]
+					const filterOptions = tableProps.filterOptions?.[headerId] || []
+					const formatFunction = tableProps.filterOptions?.[`${headerId}_format`]
+
+					// Get current selected value for display
+					let selectedValue = 'all'
+					if (currentFilterValue) {
+						if (Array.isArray(currentFilterValue) && currentFilterValue.length > 0) {
+							selectedValue = currentFilterValue[0]
+						} else if (typeof currentFilterValue === 'string') {
+							selectedValue = currentFilterValue
+						}
+					}
+
+					return (
+						<Menu
+							anchorEl={headerFilterAnchor.element}
+							open={Boolean(headerFilterAnchor.element)}
+							onClose={handleHeaderFilterClose}
+							anchorOrigin={{
+								vertical: 'bottom',
+								horizontal: 'left',
+							}}
+							transformOrigin={{
+								vertical: 'top',
+								horizontal: 'left',
+							}}
+						>
+							<MenuItem selected={selectedValue === 'all'} onClick={() => handleHeaderFilterChange(headerId, 'all')}>
+								{t('all') || '全て'}
+							</MenuItem>
+							{filterOptions.map(option => {
+								const displayValue = formatFunction ? formatFunction(option) : option
+								const isSelected = selectedValue === option
+								return (
+									<MenuItem key={option} selected={isSelected} onClick={() => handleHeaderFilterChange(headerId, option)}>
+										{displayValue}
+									</MenuItem>
+								)
+							})}
+						</Menu>
+					)
+				})()}
 		</Box>
 	)
 }

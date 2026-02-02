@@ -8,6 +8,8 @@ import Table from '../../components/Table/Table'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
+import { useAtom } from 'jotai'
+import { studentsBackPageAtom } from '../../atoms/store'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -25,8 +27,10 @@ const getInitialFilterState = () => {
 	const defaultState = {
 		search: '',
 		it_skills: [],
+		language_skills: [],
 		jlpt: [],
 		jdu_japanese_certification: [],
+		graduation_year: [],
 		partner_university: [],
 		other_information: '',
 	}
@@ -46,12 +50,17 @@ const getInitialFilterState = () => {
 
 const Student = ({ OnlyBookmarked = false }) => {
 	const { language } = useLanguage()
+	const [studentsBackPage, setStudentsBackPage] = useAtom(studentsBackPageAtom)
 	const t = key => translations[language][key] || key
 
 	// Initial filter state - localStorage dan olish
 	const initialFilterState = getInitialFilterState()
 
-	const [filterState, setFilterState] = useState(initialFilterState)
+	const [filterState, setFilterState] = useState({
+		...initialFilterState,
+		language_skills: initialFilterState.language_skills || [],
+		language_skills_match: initialFilterState.language_skills_match || '',
+	})
 	const [viewMode, setViewMode] = useState(getInitialViewMode()) // localStorage dan olish
 	const [updatedBookmark, setUpdatedBookmark] = useState({
 		studentId: null,
@@ -69,6 +78,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 	}, [viewMode])
 
 	const [itSkillOptions, setItSkillOptions] = useState(['JS', 'Python', 'Java', 'SQL'])
+	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -89,6 +99,50 @@ const Student = ({ OnlyBookmarked = false }) => {
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		const fetchLanguageSkills = async () => {
+			try {
+				const res = await axios.get('/api/skills')
+				if (!cancelled) {
+					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+					if (names.length > 0) setLanguageSkillOptions(names)
+				}
+			} catch {
+				// fallback silently
+			}
+		}
+		fetchLanguageSkills()
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	// Generate graduation year options dynamically (current year to 5 years ahead)
+	// Database stores dates in format: "2026-03-30", "2026-09-30", etc.
+	// Filter options use date format internally, but display in Japanese format (2026年03月)
+	const currentYear = new Date().getFullYear()
+	const graduationYearOptions = []
+	for (let i = 0; i <= 5; i++) {
+		const year = currentYear + i
+		// Generate date strings for March 30th and September 30th
+		graduationYearOptions.push(`${year}-03-30`) // Spring graduation (March)
+		graduationYearOptions.push(`${year}-09-30`) // Fall graduation (September)
+	}
+
+	// Utility function to format graduation year from date format to Japanese format
+	// Input: "2026-03-30" -> Output: "2026年03月"
+	const formatGraduationYear = dateStr => {
+		if (!dateStr || typeof dateStr !== 'string') return dateStr
+		// Extract year and month from date string (YYYY-MM-DD)
+		const match = dateStr.match(/^(\d{4})-(\d{2})/)
+		if (match) {
+			const [, year, month] = match
+			return `${year}年${month}月`
+		}
+		return dateStr
+	}
+
 	const filterFields = [
 		{
 			key: 'it_skills',
@@ -96,6 +150,13 @@ const Student = ({ OnlyBookmarked = false }) => {
 			type: 'checkbox',
 			options: itSkillOptions,
 			matchModeKey: 'it_skills_match',
+		},
+		{
+			key: 'language_skills',
+			label: t('languageSkills'),
+			type: 'checkbox',
+			options: languageSkillOptions,
+			matchModeKey: 'language_skills_match',
 		},
 		{
 			key: 'jlpt',
@@ -108,6 +169,13 @@ const Student = ({ OnlyBookmarked = false }) => {
 			label: t('jdu_certification'),
 			type: 'checkbox',
 			options: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
+		},
+		{
+			key: 'graduation_year',
+			label: '卒業予定年（月）',
+			type: 'checkbox',
+			options: graduationYearOptions,
+			displayFormat: formatGraduationYear, // Format for display: "2026-03-30" -> "2026年03月"
 		},
 		{
 			key: 'partner_university',
@@ -135,8 +203,9 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const navigate = useNavigate()
 
-	const navigateToProfile = student => {
-		navigate(`profile/${student.student_id}`)
+	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
+		setStudentsBackPage(currentPage || 0)
+		navigate(`profile/${student.student_id}/top`)
 	}
 
 	const addToBookmark = async student => {
@@ -177,7 +246,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			id: 'age',
 			numeric: true,
 			disablePadding: false,
-			label: '年齢',
+			label: t('age'),
 			minWidth: '80px !important',
 			suffix: ' 歳',
 			isSort: true,
@@ -198,10 +267,10 @@ const Student = ({ OnlyBookmarked = false }) => {
 			isJSON: false,
 		},
 		{
-			id: 'expected_graduation_year',
+			id: 'graduation_year',
 			numeric: true,
 			disablePadding: false,
-			label: '卒業予定年（月）',
+			label: t('expectedGraduationYearMonth'),
 			minWidth: '160px',
 			isSort: true,
 		},
@@ -222,6 +291,14 @@ const Student = ({ OnlyBookmarked = false }) => {
 		filter: filterState,
 		recruiterId: recruiterId,
 		OnlyBookmarked: OnlyBookmarked,
+		onFilterChange: handleFilterChange, // Pass filter change handler to Table
+		// Pass filter options for header dropdowns
+		filterOptions: {
+			jlpt: ['N1', 'N2', 'N3', 'N4', 'N5', '未提出'],
+			partner_university: ['東京通信大学', '産業能率大学', '新潟産業大学', '京都橘大学', '大手前大学', '自由が丘産能短期大学', '40単位モデル'],
+			graduation_year: graduationYearOptions,
+			graduation_year_format: formatGraduationYear,
+		},
 	}
 
 	return (
