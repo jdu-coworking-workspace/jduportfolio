@@ -1,6 +1,8 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material'
+import { useAtom } from 'jotai'
 import { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { checkprofileBackPageAtom, checkprofileSortByAtom, checkprofileSortOrderAtom, listReturnPathAtom } from '../../atoms/store'
 import Filter from '../../components/Filter/Filter'
 import Table from '../../components/Table/Table'
 
@@ -161,8 +163,16 @@ const Student = ({ OnlyBookmarked = false }) => {
 	}
 
 	const navigate = useNavigate()
+	const [, setCheckprofileBackPage] = useAtom(checkprofileBackPageAtom)
+	const [, setCheckprofileSortBy] = useAtom(checkprofileSortByAtom)
+	const [, setCheckprofileSortOrder] = useAtom(checkprofileSortOrderAtom)
+	const [, setListReturnPath] = useAtom(listReturnPathAtom)
 
 	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
+		setCheckprofileBackPage(currentPage ?? 0)
+		setCheckprofileSortBy(currentSortBy ?? '')
+		setCheckprofileSortOrder(currentSortOrder ?? '')
+		setListReturnPath('/checkprofile')
 		navigate(`profile/${student.student_id}/top`, {
 			state: {
 				student,

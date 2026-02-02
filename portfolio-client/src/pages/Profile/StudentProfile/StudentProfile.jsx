@@ -9,10 +9,16 @@ import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
-import { studentsBackPageAtom, tableScrollPositionAtom } from '../../../atoms/store'
+import { checkprofileBackPageAtom, checkprofileSortByAtom, checkprofileSortOrderAtom, listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom, tableScrollPositionAtom } from '../../../atoms/store'
 const StudentProfile = ({ userId = 0 }) => {
 	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [studentsBackPage] = useAtom(studentsBackPageAtom)
+	const [studentsSortBy] = useAtom(studentsSortByAtom)
+	const [studentsSortOrder] = useAtom(studentsSortOrderAtom)
+	const [checkprofileBackPage] = useAtom(checkprofileBackPageAtom)
+	const [checkprofileSortBy] = useAtom(checkprofileSortByAtom)
+	const [checkprofileSortOrder] = useAtom(checkprofileSortOrderAtom)
+	const [listReturnPath] = useAtom(listReturnPathAtom)
 	const [visibleRowsStudentIds, setVisibleRowsStudentIds] = useState([])
 	const [step, setStep] = useState(1)
 	const { studentId } = useParams()
@@ -91,10 +97,25 @@ const StudentProfile = ({ userId = 0 }) => {
 	const handleBackClick = () => {
 		const isRootPath = location.pathname.endsWith('/top')
 		if (isRootPath) {
-			if (location.pathname.startsWith('/checkprofile')) {
-				navigate('/checkprofile')
+			const returnPath = listReturnPath || (location.pathname.startsWith('/checkprofile') ? '/checkprofile' : '/student')
+			if (returnPath === '/checkprofile') {
+				const page = checkprofileBackPage ?? 0
+				const sortBy = checkprofileSortBy ?? ''
+				const sortOrder = checkprofileSortOrder ?? ''
+				const query = new URLSearchParams()
+				if (page > 0) query.set('page', String(page))
+				if (sortBy) query.set('sortBy', sortBy)
+				if (sortOrder) query.set('sortOrder', sortOrder)
+				navigate(`/checkprofile${query.toString() ? `?${query.toString()}` : ''}`)
 			} else {
-				navigate(`/student?page=${studentsBackPage ?? ''}`)
+				const page = studentsBackPage ?? 0
+				const sortBy = studentsSortBy ?? ''
+				const sortOrder = studentsSortOrder ?? ''
+				const query = new URLSearchParams()
+				if (page > 0) query.set('page', String(page))
+				if (sortBy) query.set('sortBy', sortBy)
+				if (sortOrder) query.set('sortOrder', sortOrder)
+				navigate(`/student${query.toString() ? `?${query.toString()}` : ''}`)
 			}
 		} else {
 			navigate(-1)
@@ -115,10 +136,25 @@ const StudentProfile = ({ userId = 0 }) => {
 		const next = visibleRowsStudentIds[currentIndex + step]
 		if (!next) return
 		const nextStudentId = next.student_id
-		setTableScrollPosition(oldData => {
-			return oldData + 48
-		})
-		navigate(`/student/profile/${nextStudentId}/top`)
+
+		// Update isCurrent in localStorage so when user presses Back we scroll to this student
+		try {
+			const raw = localStorage.getItem('visibleRowsStudentIds')
+			if (raw) {
+				const list = JSON.parse(raw)
+				const updated = list.map(item => ({
+					...item,
+					isCurrent: item.student_id === nextStudentId,
+				}))
+				localStorage.setItem('visibleRowsStudentIds', JSON.stringify(updated))
+			}
+		} catch (_) {}
+
+		setVisibleRowsStudentIds(prev => prev.map(item => ({ ...item, isCurrent: item.student_id === nextStudentId })))
+		setTableScrollPosition(oldData => (oldData != null ? oldData + 48 : 48))
+
+		const basePath = listReturnPath || (location.pathname.startsWith('/checkprofile') ? '/checkprofile' : '/student')
+		navigate(`${basePath}/profile/${nextStudentId}/top`)
 	}
 
 	const calculateAge = birthDateString => {

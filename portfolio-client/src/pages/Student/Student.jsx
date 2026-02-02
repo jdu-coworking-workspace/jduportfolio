@@ -9,7 +9,7 @@ import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
 import { useAtom } from 'jotai'
-import { studentsBackPageAtom } from '../../atoms/store'
+import { listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom } from '../../atoms/store'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -51,6 +51,9 @@ const getInitialFilterState = () => {
 const Student = ({ OnlyBookmarked = false }) => {
 	const { language } = useLanguage()
 	const [studentsBackPage, setStudentsBackPage] = useAtom(studentsBackPageAtom)
+	const [, setStudentsSortBy] = useAtom(studentsSortByAtom)
+	const [, setStudentsSortOrder] = useAtom(studentsSortOrderAtom)
+	const [, setListReturnPath] = useAtom(listReturnPathAtom)
 	const t = key => translations[language][key] || key
 
 	// Initial filter state - localStorage dan olish
@@ -204,7 +207,10 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const navigate = useNavigate()
 
 	const navigateToProfile = (student, currentPage, currentSortBy, currentSortOrder) => {
-		setStudentsBackPage(currentPage || 0)
+		setStudentsBackPage(currentPage ?? 0)
+		setStudentsSortBy(currentSortBy ?? '')
+		setStudentsSortOrder(currentSortOrder ?? '')
+		setListReturnPath('/student')
 		navigate(`profile/${student.student_id}/top`)
 	}
 

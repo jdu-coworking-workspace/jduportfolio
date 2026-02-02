@@ -1381,11 +1381,11 @@ const Top = () => {
 	}
 	return (
 		<Box mb={2}>
-			{/* Portal edit buttons for both Students and Staff */}
-			{portalContainer && (role === 'Student' || role === 'Staff' || role === 'Admin') && createPortal(portalContent, portalContainer)}
+			{/* Portal edit buttons for both Students and Staff — render null when not portaling so Box never receives non-ReactNode */}
+			{portalContainer && (role === 'Student' || role === 'Staff' || role === 'Admin') ? createPortal(portalContent, portalContainer) : null}
 
-			{/* Live/Draft Toggle for Students */}
-			{role === 'Student' && !editMode && liveData && (
+			{/* Live/Draft Toggle for Students — use ternary so Box never receives boolean false */}
+			{role === 'Student' && !editMode && liveData ? (
 				<Box
 					sx={{
 						display: 'flex',
@@ -1430,7 +1430,7 @@ const Top = () => {
 						{t('draftProfile') || '編集版'}
 					</Button>
 				</Box>
-			)}
+			) : null}
 
 			<div
 				style={{
@@ -1465,7 +1465,7 @@ const Top = () => {
 			</div>
 
 			{/* Staff Comment Display Section for Students - show feedback from pending draft */}
-			{role === 'Student' && subTabIndex === 0 && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') && (
+			{role === 'Student' && subTabIndex === 0 && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
 				<Box
 					sx={{
 						my: 2,
@@ -1502,13 +1502,13 @@ const Top = () => {
 					</Box>
 					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>プロフィールを修正して再度提出してください。</Box>
 				</Box>
-			)}
+			) : null}
 
 			{/* Past staff comment history block (Student sees own, Staff sees target student's) */}
-			{(role === 'Student' || role === 'Staff') && subTabIndex === 0 && <HistoryComments targetStudentId={role === 'Student' ? null : studentId} />}
+			{(role === 'Student' || role === 'Staff') && subTabIndex === 0 ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
 
 			{/* self introduction */}
-			{subTabIndex === 'selfIntroduction' && (
+			{subTabIndex === 'selfIntroduction' ? (
 				<Box my={2}>
 					<TextField title={t('selfIntroduction')} data={student.draft.self_introduction} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='self_introduction' parentKey='draft' icon={BadgeOutlinedIcon} imageUrl={student.photo} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('self_introduction')} maxLength={1000} showCounter stackOnSmall />
 					{/* New Design for Hobbies and Special Skills */}
@@ -1900,9 +1900,9 @@ const Top = () => {
 						</div>
 					</div>
 				</Box>
-			)}
+			) : null}
 			{/* skills */}
-			{subTabIndex === 'skill' && (
+			{subTabIndex === 'skill' ? (
 				<Box my={2}>
 					<div className={styles.gridBox}>
 						<SkillSelector
@@ -2066,27 +2066,27 @@ const Top = () => {
 						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 					</div>
 				</Box>
-			)}
+			) : null}
 			{/* deliverables */}
-			{subTabIndex === 'deliverables' && (
+			{subTabIndex === 'deliverables' ? (
 				<Box my={2}>
 					<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
 				</Box>
-			)}
-			{subTabIndex === 'education' && (
+			) : null}
+			{subTabIndex === 'education' ? (
 				<Box my={2}>
 					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
-			)}
-			{subTabIndex === 'work_experience' && (
+			) : null}
+			{subTabIndex === 'work_experience' ? (
 				<Box my={2}>
 					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
 					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
-			)}
+			) : null}
 			{/* Credits section is temporarily disabled */}
 			{/* QA */}
-			{subTabIndex === 'qa' && (
+			{subTabIndex === 'qa' ? (
 				<Box my={2}>
 					{/* Debug */}
 					{/* {console.log('=== TOP.JSX QA DEBUG ===')}
@@ -2096,18 +2096,18 @@ const Top = () => {
 					{console.log('typeof qa:', typeof editData.draft?.qa)} */}
 					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} />
 				</Box>
-			)}
+			) : null}
 			<ProfileConfirmDialog open={confirmMode} onClose={toggleConfirmMode} onConfirm={handleSubmitDraft} />
 
 			{/* Auto-save indicator */}
-			{editMode && role === 'Student' && (
+			{editMode && role === 'Student' ? (
 				<Snackbar open={saveStatus.isSaving || !!saveStatus.lastSaved} autoHideDuration={saveStatus.isSaving ? null : 2000} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} onClose={() => setSaveStatus(prev => ({ ...prev, lastSaved: null }))}>
 					<Alert severity='info' icon={saveStatus.isSaving ? <SaveIcon /> : <SaveIcon />} sx={{ alignItems: 'center' }}>
 						{saveStatus.isSaving ? t('savingChanges') || 'Saving...' : t('changesSaved') || 'Changes saved'}
-						{saveStatus.isSaving && <LinearProgress color='inherit' sx={{ ml: 2, width: 100 }} />}
+						{saveStatus.isSaving ? <LinearProgress color='inherit' sx={{ ml: 2, width: 100 }} /> : null}
 					</Alert>
 				</Snackbar>
-			)}
+			) : null}
 
 			{/* Recovery dialog */}
 			<Dialog open={showRecoveryDialog} onClose={() => setShowRecoveryDialog(false)}>
