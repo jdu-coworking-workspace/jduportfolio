@@ -3,6 +3,7 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import BusinessCenterOutlinedIcon from '@mui/icons-material/BusinessCenterOutlined'
 import CloseIcon from '@mui/icons-material/Close'
 import CodeIcon from '@mui/icons-material/Code'
+import DownloadIcon from '@mui/icons-material/Download'
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt'
 import ExtensionOutlinedIcon from '@mui/icons-material/ExtensionOutlined'
 import FavoriteBorderTwoToneIcon from '@mui/icons-material/FavoriteBorderTwoTone'
@@ -13,6 +14,7 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField as MuiTextField, Snackbar, Typography } from '@mui/material'
 import { useAtom } from 'jotai'
+import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom' // ReactDOM.createPortal o'rniga
 import { useForm } from 'react-hook-form'
@@ -21,17 +23,20 @@ import { activeUniverAtom, deletedUrlsAtom, deliverableImagesAtom, editDataAtom,
 import Deliverables from '../../../components/Deliverables/Deliverables'
 import ProfileConfirmDialog from '../../../components/Dialogs/ProfileConfirmDialog'
 import LanguageSkillSelector from '../../../components/LanguageSkillSelector/LanguageSkillSelector'
-import SkillSelector from '../../../components/SkillSelector/SkillSelector'
 import OtherSkillsSelector from '../../../components/OtherSkillsSelector/OtherSkillsSelector'
+import SkillSelector from '../../../components/SkillSelector/SkillSelector'
 import TextField from '../../../components/TextField/TextField'
 import { useAlert } from '../../../contexts/AlertContext'
 import { useLanguage } from '../../../contexts/LanguageContext'
+import { downloadCV } from '../../../lib/cv-download'
 import translations from '../../../locales/translations'
 import QA from '../../../pages/Profile/QA/QA'
 import axios from '../../../utils/axiosUtils'
+import Arubaito from '../Arubaito/Arubaito'
+import { Education } from '../Education/Education'
+import { Licenses } from '../Licenses/Licenses'
+import WorkExperience from '../WorkExperience/WorkExperience'
 import styles from './Top.module.css'
-import PropTypes from 'prop-types'
-
 const Top = () => {
 	let id
 	const role = sessionStorage.getItem('role')
@@ -740,7 +745,7 @@ const Top = () => {
 	}
 
 	const mapData = data => {
-		const draftKeys = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'qa']
+		const draftKeys = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'qa', 'education', 'work_experience', 'licenses', 'arubaito']
 		return {
 			...data,
 			draft: draftKeys.reduce((acc, key) => {
@@ -1001,7 +1006,6 @@ const Top = () => {
 			return updatedData
 		})
 	}
-
 	// Auto-save effect with change detection
 	useEffect(() => {
 		if (editMode && role === 'Student' && editData?.draft && student) {
@@ -1222,6 +1226,7 @@ const Top = () => {
 			await handleUpdateEditData('deliverables', updatedDeliverables)
 
 			const studentIdToUse = student.student_id || id
+			console.log('tahsimlab olinayotgan editData:', editData)
 
 			const draftData = {
 				student_id: studentIdToUse,
@@ -1232,7 +1237,10 @@ const Top = () => {
 			}
 
 			// Always use PUT for upsert approach (backend uses PUT method)
+			console.log('yuborilayotgan editdata:', draftData)
+
 			const res = await axios.put(`/api/draft`, draftData)
+			console.log(res.data)
 
 			const savedDraft = res.data.draft || res.data
 			setCurrentDraft(savedDraft)
@@ -1301,6 +1309,24 @@ const Top = () => {
 
 	const portalContent = (
 		<Box className={styles.buttonsContainer}>
+			{role === 'Student' && viewingLive && (
+				<Button
+					variant='contained'
+					size='small'
+					onClick={async () => {
+						try {
+							downloadCV(student)
+						} catch (err) {
+							console.log(err)
+							// alert('Failed to fetch CV data. Check console for details.')
+						}
+					}}
+					sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
+				>
+					<DownloadIcon />
+					download CV
+				</Button>
+			)}
 			{editMode ? (
 				<>
 					<Button onClick={handleDraftUpsert} variant='contained' color='primary' size='small'>
@@ -1419,18 +1445,18 @@ const Top = () => {
 					borderEndStartRadius: 10,
 				}}
 			>
-				{['selfIntroduction', 'skill', 'deliverables', 'qa'].map((item, ind) => (
+				{['selfIntroduction', 'skill', 'deliverables', 'education', 'work_experience', 'qa'].map((item, ind) => (
 					<div
 						key={ind}
 						style={{
 							fontWeight: 500,
 							fontSize: 16,
-							color: subTabIndex === ind ? '#5627db' : '#4b4b4b',
-							borderBottom: subTabIndex === ind ? '2px solid #5627db' : '#4b4b4b',
+							color: subTabIndex === item ? '#5627db' : '#4b4b4b',
+							borderBottom: subTabIndex === item ? '2px solid #5627db' : '#4b4b4b',
 							cursor: 'pointer',
 						}}
 						onClick={() => {
-							setSubTabIndex(ind)
+							setSubTabIndex(item)
 						}}
 					>
 						{t(item)}
@@ -1482,7 +1508,7 @@ const Top = () => {
 			{(role === 'Student' || role === 'Staff') && subTabIndex === 0 && <HistoryComments targetStudentId={role === 'Student' ? null : studentId} />}
 
 			{/* self introduction */}
-			{subTabIndex === 0 && (
+			{subTabIndex === 'selfIntroduction' && (
 				<Box my={2}>
 					<TextField title={t('selfIntroduction')} data={student.draft.self_introduction} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='self_introduction' parentKey='draft' icon={BadgeOutlinedIcon} imageUrl={student.photo} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('self_introduction')} maxLength={1000} showCounter stackOnSmall />
 					{/* New Design for Hobbies and Special Skills */}
@@ -1861,19 +1887,22 @@ const Top = () => {
 					</div>
 					<div className={styles.twoCol} style={{ alignItems: 'flex-start' }}>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('origin')} data={student.draft.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
+							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('major')} data={student.draft.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
+							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('jobType')} data={student.draft.job_type} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='job_type' parentKey='draft' icon={BusinessCenterOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('job_type')} />
+							<TextField title={t('major')} data={student.draft?.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
+						</div>
+						<div style={{ flex: 1, minWidth: 280 }}>
+							<TextField title={t('jobType')} data={student.draft?.job_type} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='job_type' parentKey='draft' icon={BusinessCenterOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('job_type')} />
 						</div>
 					</div>
 				</Box>
 			)}
 			{/* skills */}
-			{subTabIndex === 1 && (
+			{subTabIndex === 'skill' && (
 				<Box my={2}>
 					<div className={styles.gridBox}>
 						<SkillSelector
@@ -2033,18 +2062,31 @@ const Top = () => {
 						/>
 
 						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
+
+						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 					</div>
 				</Box>
 			)}
 			{/* deliverables */}
-			{subTabIndex === 2 && (
+			{subTabIndex === 'deliverables' && (
 				<Box my={2}>
-					<Deliverables data={student.draft.deliverables} editMode={editMode} editData={editData.draft} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student.student_id || id} />
+					<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
+				</Box>
+			)}
+			{subTabIndex === 'education' && (
+				<Box my={2}>
+					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+				</Box>
+			)}
+			{subTabIndex === 'work_experience' && (
+				<Box my={2}>
+					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
+					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
 			)}
 			{/* Credits section is temporarily disabled */}
 			{/* QA */}
-			{subTabIndex === 3 && (
+			{subTabIndex === 'qa' && (
 				<Box my={2}>
 					{/* Debug */}
 					{/* {console.log('=== TOP.JSX QA DEBUG ===')}

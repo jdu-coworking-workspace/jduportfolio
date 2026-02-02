@@ -397,7 +397,7 @@ class DraftController {
 			// If no draft version exists, create a default one from live data
 			if (!studentWithDrafts.draft) {
 				const studentProfile = studentWithDrafts
-				const draftKeys = ['self_introduction', 'hobbies', 'skills', 'it_skills', 'gallery', 'deliverables', 'other_information']
+				const draftKeys = ['self_introduction', 'hobbies', 'skills', 'it_skills', 'gallery', 'deliverables', 'other_information', 'education', 'work_experience', 'licenses', 'additional_info', 'arubaito']
 				const defaultDraftData = draftKeys.reduce((acc, key) => {
 					acc[key] = studentProfile[key] || null
 					return acc

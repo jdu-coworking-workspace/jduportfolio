@@ -27,6 +27,6 @@ export const newImagesAtom = atom([])
 export const deletedUrlsAtom = atom([])
 
 export const activeUniverAtom = atom('JDU')
-export const subTabIndexAtom = atom(0)
+export const subTabIndexAtom = atom('selfIntroduction')
 
 export const updateQAAtom = atom(true)

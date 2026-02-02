@@ -184,7 +184,7 @@
 	object-fit: cover;
 }
 
-@media (max-width: 786px) {
+@media (max-width: 1024px) {
 	.login-image {
 		display: none;
 	}

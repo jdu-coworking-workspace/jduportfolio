@@ -15,7 +15,8 @@
 		"clean": "rm -rf node_modules logs build",
 		"clean:logs": "rm -rf logs",
 		"clean:modules": "rm -rf node_modules",
-		"refresh": "npm run migratedown && npm run migrate && npm run seed"
+		"refresh": "npm run migratedown && npm run migrate && npm run seed",
+		"prepare": "husky"
 	},
 	"gitignore": ".gitignore",
 	"keywords": [],
@@ -51,6 +52,7 @@
 		"swagger-ui-express": "^5.0.1"
 	},
 	"devDependencies": {
+		"husky": "^9.1.7",
 		"prettier": "3.3.3"
 	}
 }

@@ -1,8 +1,8 @@
-import React from 'react'
-import { Dialog, DialogTitle, DialogContent, DialogActions, Typography, Button, Checkbox, Divider, Box } from '@mui/material'
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
-import translations from '../../locales/translations.js'
+import React from 'react'
 import { useLanguage } from '../../contexts/LanguageContext.jsx'
+import translations from '../../locales/translations.js'
 
 function ConfirmationDialog({ open, onClose, onConfirm }) {
 	const [checked, setChecked] = React.useState(false)
