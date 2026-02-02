@@ -21,6 +21,12 @@ function formatJapaneseDateWithAge(birthdayStr) {
 	return `${birthday.getFullYear()}年 ${birthday.getMonth() + 1}月 ${birthday.getDate()}日 （満 ${age} 歳）`
 }
 export const downloadCV = async cvData => {
+	// Normalize array-like fields to avoid runtime errors when they are null/undefined
+	const education = Array.isArray(cvData.education) ? cvData.education : cvData.education ? [cvData.education] : []
+	const work_experience = Array.isArray(cvData.work_experience) ? cvData.work_experience : cvData.work_experience ? [cvData.work_experience] : []
+	const licenses = Array.isArray(cvData.licenses) ? cvData.licenses : cvData.licenses ? [cvData.licenses] : []
+	const arubaito = Array.isArray(cvData.arubaito) ? cvData.arubaito : cvData.arubaito ? [cvData.arubaito] : []
+
 	const response = await fetch('/resume-template.xlsx')
 	const arrayBuffer = await response.arrayBuffer()
 	const workbook = new ExcelJS.Workbook()
@@ -89,7 +95,9 @@ export const downloadCV = async cvData => {
 	sheet.getCell('G9').value = cvData.additional_info?.additionalEmail || ''
 
 	// Additional address index (B8) - Row 7: Additional address
-	sheet.getCell('B8').value = `現住所 （〒　　　${cvData.additional_info?.indeks || ''}　　　　　　）`
+	// Prefer "indeks" but fall back to "additionalIndeks" so Settings updates are reflected
+	const additionalIndex = cvData.additional_info?.indeks || cvData.additional_info?.additionalIndeks || ''
+	sheet.getCell('B8').value = `現住所 （〒　　　${additionalIndex}　　　　　　）`
 	// Additional address (B9) - Row 7: Additional address
 	sheet.getCell('B9').value = cvData.additional_info?.additionalAddress || ''
 	// additional tel nomer (G11)
@@ -108,8 +116,8 @@ export const downloadCV = async cvData => {
 	const contactAddress = cvData.address || ''
 	sheet.getCell('B13').value = contactAddress
 	// EDUCATION (B9)
-	if (cvData.education.length > 0) {
-		cvData.education.map((item, index) => {
+	if (education.length > 0) {
+		education.map((item, index) => {
 			sheet.getCell(`B${17 + index}`).value = item.year
 			sheet.getCell(`C${17 + index}`).value = item.month
 			sheet.getCell(`D${17 + index}`).value = item.institution
@@ -117,8 +125,8 @@ export const downloadCV = async cvData => {
 		})
 	}
 	// workExperience (B9)
-	if (cvData.work_experience.length > 0) {
-		cvData.work_experience.map((item, index) => {
+	if (work_experience.length > 0) {
+		work_experience.map((item, index) => {
 			sheet.getCell(`B${23 + index}`).value = new Date(item.from).getFullYear()
 			sheet.getCell(`C${23 + index}`).value = new Date(item.from).getMonth() + 1
 			sheet.getCell(`D${23 + index}`).value = `${item.company} ${item.details}`
@@ -128,8 +136,8 @@ export const downloadCV = async cvData => {
 		sheet.getCell('D24').value = `                    以上`
 	}
 	// certificatess
-	if (cvData.licenses.length > 0) {
-		cvData.licenses.map((item, index) => {
+	if (licenses.length > 0) {
+		licenses.map((item, index) => {
 			sheet.getCell(`J${4 + index}`).value = item.year
 			sheet.getCell(`K${4 + index}`).value = item.month
 
@@ -182,8 +190,8 @@ export const downloadCV = async cvData => {
 		})
 	}
 	// arubaito (A20)
-	if (cvData.arubaito.length > 0) {
-		cvData.arubaito.map((item, index) => {
+	if (arubaito.length > 0) {
+		arubaito.map((item, index) => {
 			sheet2.getCell(`A${20 + index}`).value = item.company
 			sheet2.getCell(`B${20 + index}`).value = item.role
 

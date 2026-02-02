@@ -2063,25 +2063,25 @@ const Top = () => {
 
 						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
 
-						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData.draft.licenses || [] : currentDraft.profile_data.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 					</div>
 				</Box>
 			)}
 			{/* deliverables */}
 			{subTabIndex === 'deliverables' && (
 				<Box my={2}>
-					<Deliverables data={student.draft.deliverables} editMode={editMode} editData={editData.draft} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student.student_id || id} />
+					<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
 				</Box>
 			)}
 			{subTabIndex === 'education' && (
 				<Box my={2}>
-					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData.draft.education || [] : currentDraft.profile_data.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
 			)}
 			{subTabIndex === 'work_experience' && (
 				<Box my={2}>
-					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData.draft.work_experience || [] : currentDraft.profile_data.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
-					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData.draft.arubaito || [] : currentDraft.profile_data.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
+					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
 				</Box>
 			)}
 			{/* Credits section is temporarily disabled */}

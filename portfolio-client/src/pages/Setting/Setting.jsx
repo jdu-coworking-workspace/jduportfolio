@@ -232,19 +232,22 @@ const Setting = () => {
 				last_name_furigana: data.last_name_furigana,
 				phone: data.phone,
 				email: data.email,
-				postal_code: data.postal_code,
 				contactEmail: data.contactEmail,
 				contactPhone: data.contactPhone,
 				workingHours: data.workingHours,
 				location: data.location,
-				additional_info: {
+			}
+			// Student-only fields (CV download, profile)
+			if (role === 'Student') {
+				updateData.postal_code = data.postal_code
+				updateData.additional_info = {
 					additionalAddress: data.additionalAddress,
 					additionalAddressFurigana: data.additionalAddressFurigana,
 					additionalEmail: data.additionalEmail,
 					additionalIndeks: data.additionalIndeks,
 					additionalPhone: data.additionalPhone,
 					isMarried: data.isMarried,
-				},
+				}
 			}
 			if (data.password) {
 				updateData.password = data.password
@@ -632,195 +635,199 @@ const Setting = () => {
 											)}
 										/>
 									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('postal_code') || '郵便番号'}
-										</Typography>
-										<Controller
-											name='postal_code'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-													placeholder={t('postal_code_placeholder') || 'e.g. 160-0023'}
-												/>
-											)}
-										/>
-									</Grid>
+									{role === 'Student' && (
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('postal_code') || '郵便番号'}
+											</Typography>
+											<Controller
+												name='postal_code'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
+														disabled={!isEditing}
+														className={SettingStyle.textField}
+														placeholder={t('postal_code_placeholder') || 'e.g. 160-0023'}
+													/>
+												)}
+											/>
+										</Grid>
+									)}
 								</Grid>
 							</CardContent>
 						</AccordionDetails>
 					</Accordion>
 				</Card>
-				{/* additional info */}
-				<Card
-					className={SettingStyle.sectionCard}
-					sx={{
-						boxShadow: `
-							0 1px 3px rgba(0, 0, 0, 0.04),
-							0 1px 2px rgba(0, 0, 0, 0.03)
-						`,
-						transition: 'box-shadow 0.3s ease',
-						'&:hover': {
+				{/* Additional info (student only: used for CV download and student profile) */}
+				{role === 'Student' && (
+					<Card
+						className={SettingStyle.sectionCard}
+						sx={{
 							boxShadow: `
-								0 2px 4px rgba(0, 0, 0, 0.06),
-								0 4px 8px rgba(0, 0, 0, 0.04)
+								0 1px 3px rgba(0, 0, 0, 0.04),
+								0 1px 2px rgba(0, 0, 0, 0.03)
 							`,
-						},
-					}}
-				>
-					<Accordion>
-						<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-								<InfoOutlinedIcon className={SettingStyle.sectionIcon} sx={{ color: '#5627DB' }} />
-								<Typography variant='h6' className={SettingStyle.sectionTitle}>
-									{t('additional_info')}
-								</Typography>
-							</Box>
-						</AccordionSummary>
-						<AccordionDetails>
-							<CardContent>
-								<Grid container spacing={3}>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('additional_address')}
-										</Typography>
-										<Controller
-											name='additionalAddress'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('additional_address_furigana')}
-										</Typography>
-										<Controller
-											name='additionalAddressFurigana'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('additional_email')}
-										</Typography>
-										<Controller
-											name='additionalEmail'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('additional_index')}
-										</Typography>
-										<Controller
-											name='additionalIndeks'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('additional_phone')}
-										</Typography>
-										<Controller
-											name='additionalPhone'
-											control={control}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													value={field.value || ''} // Ensure never undefined
-													variant='outlined'
-													fullWidth
-													disabled={!isEditing}
-													className={SettingStyle.textField}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid item xs={12} sm={6}>
-										<Typography variant='body2' className={SettingStyle.fieldLabel}>
-											{t('isMarried')}
-										</Typography>
-										<Controller
-											name='isMarried'
-											control={control}
-											render={({ field }) => (
-												<RadioGroup row value={field.value ? 'married' : 'single'} onChange={e => field.onChange(e.target.value === 'married')} sx={{ display: 'flex', gap: 2, mt: 1 }}>
-													<FormControlLabel
-														value='single'
-														control={<Radio />}
+							transition: 'box-shadow 0.3s ease',
+							'&:hover': {
+								boxShadow: `
+									0 2px 4px rgba(0, 0, 0, 0.06),
+									0 4px 8px rgba(0, 0, 0, 0.04)
+								`,
+							},
+						}}
+					>
+						<Accordion>
+							<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls='panel1-content' id='panel1-header'>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+									<InfoOutlinedIcon className={SettingStyle.sectionIcon} sx={{ color: '#5627DB' }} />
+									<Typography variant='h6' className={SettingStyle.sectionTitle}>
+										{t('additional_info')}
+									</Typography>
+								</Box>
+							</AccordionSummary>
+							<AccordionDetails>
+								<CardContent>
+									<Grid container spacing={3}>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('additional_address')}
+											</Typography>
+											<Controller
+												name='additionalAddress'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
 														disabled={!isEditing}
-														label={
-															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-																<PersonIcon sx={{ fontSize: 20 }} />
-																<span> {t('single')}</span>
-															</Box>
-														}
+														className={SettingStyle.textField}
 													/>
-													<FormControlLabel
-														value='married'
-														control={<Radio />}
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('additional_address_furigana')}
+											</Typography>
+											<Controller
+												name='additionalAddressFurigana'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
 														disabled={!isEditing}
-														label={
-															<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-																<FamilyRestroomIcon sx={{ fontSize: 20 }} />
-																<span> {t('married')}</span>
-															</Box>
-														}
+														className={SettingStyle.textField}
 													/>
-												</RadioGroup>
-											)}
-										/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('additional_email')}
+											</Typography>
+											<Controller
+												name='additionalEmail'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
+														disabled={!isEditing}
+														className={SettingStyle.textField}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('additional_index')}
+											</Typography>
+											<Controller
+												name='additionalIndeks'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
+														disabled={!isEditing}
+														className={SettingStyle.textField}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('additional_phone')}
+											</Typography>
+											<Controller
+												name='additionalPhone'
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value || ''} // Ensure never undefined
+														variant='outlined'
+														fullWidth
+														disabled={!isEditing}
+														className={SettingStyle.textField}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid item xs={12} sm={6}>
+											<Typography variant='body2' className={SettingStyle.fieldLabel}>
+												{t('isMarried')}
+											</Typography>
+											<Controller
+												name='isMarried'
+												control={control}
+												render={({ field }) => (
+													<RadioGroup row value={field.value ? 'married' : 'single'} onChange={e => field.onChange(e.target.value === 'married')} sx={{ display: 'flex', gap: 2, mt: 1 }}>
+														<FormControlLabel
+															value='single'
+															control={<Radio />}
+															disabled={!isEditing}
+															label={
+																<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+																	<PersonIcon sx={{ fontSize: 20 }} />
+																	<span> {t('single')}</span>
+																</Box>
+															}
+														/>
+														<FormControlLabel
+															value='married'
+															control={<Radio />}
+															disabled={!isEditing}
+															label={
+																<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+																	<FamilyRestroomIcon sx={{ fontSize: 20 }} />
+																	<span> {t('married')}</span>
+																</Box>
+															}
+														/>
+													</RadioGroup>
+												)}
+											/>
+										</Grid>
 									</Grid>
-								</Grid>
-							</CardContent>
-						</AccordionDetails>
-					</Accordion>
-				</Card>
+								</CardContent>
+							</AccordionDetails>
+						</Accordion>
+					</Card>
+				)}
 				{/* Password Change Card */}
 				<Card
 					className={SettingStyle.sectionCard}

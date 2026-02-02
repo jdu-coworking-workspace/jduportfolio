@@ -339,32 +339,38 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	useEffect(() => {
 		if (visibleRows.length <= 0 || viewMode !== 'table') return
 
+		// Capture current container reference once for this effect run
+		const container = studentTableRef.current
+		if (!container) return
+
 		// Try to scroll to the current student if marked in localStorage
 		const currentStudentIds = JSON.parse(localStorage.getItem('visibleRowsStudentIds') || '[]')
 		const currentStudent = currentStudentIds.find(s => s.isCurrent)
 
-		if (currentStudent && studentTableRef.current) {
+		if (currentStudent) {
 			// Small delay to ensure DOM is fully rendered
 			setTimeout(() => {
 				const rowElement = document.querySelector(`[data-student-id="${currentStudent.student_id}"]`)
 				if (rowElement) {
 					rowElement.scrollIntoView({ behavior: 'auto', block: 'center' })
-				} else if (tableScrollPosition) {
+				} else if (tableScrollPosition != null) {
 					// Fallback to scroll position if student row not found
-					studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+					container.scrollTop = parseFloat(tableScrollPosition)
 				}
 			}, 100)
-		} else if (tableScrollPosition && studentTableRef.current) {
+		} else if (tableScrollPosition != null) {
 			// No current student marked, use saved scroll position
-			studentTableRef.current.scrollTop = parseFloat(tableScrollPosition)
+			container.scrollTop = parseFloat(tableScrollPosition)
 		}
 
 		return () => {
-			if (studentTableRef.current) {
-				setTableScrollPosition(studentTableRef.current.scrollTop)
+			if (container) {
+				setTableScrollPosition(container.scrollTop)
 			}
 		}
-	}, [visibleRows.length, viewMode, tableScrollPosition, setTableScrollPosition])
+		// Intentionally omit tableScrollPosition from deps:
+		// we only want to restore once on mount / data load, not on every scroll
+	}, [visibleRows.length, viewMode, setTableScrollPosition])
 
 	// Grid view da bookmark click handler
 	const handleBookmarkClickInGrid = row => {
@@ -1360,11 +1366,28 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 															</Menu>
 														</div>
 													) : header.isJSON ? (
-														JSON.parse(row[header.id])?.highest ? (
-															JSON.parse(row[header.id])?.highest
-														) : (
-															'未提出'
-														)
+														(() => {
+															const rawValue = row[header.id]
+															if (!rawValue) return '未提出'
+
+															// If value already looks like JSON, try to parse; otherwise treat as plain text (e.g. 'N1')
+															let parsed = rawValue
+															if (typeof rawValue === 'string' && /^[\[{]/.test(rawValue.trim())) {
+																try {
+																	parsed = JSON.parse(rawValue)
+																} catch (e) {
+																	// Fallback to raw string if JSON.parse fails
+																	return rawValue || '未提出'
+																}
+															}
+
+															// When parsed is an object with "highest", use it; otherwise return the value or fallback text
+															if (parsed && typeof parsed === 'object' && 'highest' in parsed) {
+																return parsed.highest || '未提出'
+															}
+
+															return parsed || '未提出'
+														})()
 													) : header.id === 'graduation_year' ? (
 														// Format graduation_year from date format to Japanese format
 														// Input: "2026-03-30" -> Output: "2026年03月"
