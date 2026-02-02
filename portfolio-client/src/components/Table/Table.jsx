@@ -37,7 +37,7 @@ const rowsPerPageAtom = atom(getInitialRowsPerPage())
 const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const studentTableRef = useRef(null)
 	const { language } = useLanguage()
-	const t = key => translations[language][key] || keyski
+	const t = key => translations[language][key] || key
 
 	const role = sessionStorage.getItem('role')
 
@@ -261,10 +261,20 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					const students = Array.isArray(response.data) ? response.data : response.data.data
 					const total = Array.isArray(response.data) ? response.data.length : response.data.pagination?.total || 0
 
+					// Preserve isCurrent for back-navigation scroll restoration (don't wipe it on refetch)
+					const prevIds = (() => {
+						try {
+							return JSON.parse(localStorage.getItem('visibleRowsStudentIds') || '[]')
+						} catch {
+							return []
+						}
+					})()
+					const previousCurrentStudentId = prevIds.find(s => s.isCurrent)?.student_id
+
 					const filteredRows = students.map(r => ({
 						student_id: r.student_id,
 						id: r.id,
-						isCurrent: false,
+						isCurrent: previousCurrentStudentId != null && r.student_id === previousCurrentStudentId,
 					}))
 					localStorage.setItem('visibleRowsStudentIds', JSON.stringify(filteredRows))
 					setRows(students)
@@ -583,14 +593,25 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		</Grid>
 	)
 
+	// Clamp page to valid range so we never pass out-of-range page to MUI (e.g. when returning from profile with saved page)
+	const count = totalCount || rows.length
+	const maxPage = Math.max(0, Math.ceil(count / rowsPerPage) - 1)
+	const clampedPage = Math.min(Math.max(0, page), maxPage)
+	// Sync clamped page when totalCount is known and current page is out of range
+	useEffect(() => {
+		if (page !== clampedPage && (totalCount > 0 || rows.length > 0)) {
+			setPage(clampedPage)
+		}
+	}, [clampedPage, page, totalCount, rows.length])
+
 	// Reusable pagination component edited for both views
 	const PaginationControls = () => (
 		<TablePagination
 			rowsPerPageOptions={[5, 10, 25, 50, 100]}
 			component='div'
-			count={totalCount || rows.length}
+			count={count}
 			rowsPerPage={rowsPerPage}
-			page={page}
+			page={clampedPage}
 			onPageChange={handleChangePage}
 			onRowsPerPageChange={handleChangeRowsPerPage}
 			labelRowsPerPage={t('rows_per_page')}
