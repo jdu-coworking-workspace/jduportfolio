@@ -302,6 +302,73 @@ const Top = () => {
 		checkPortalContainer()
 	}, [])
 
+	// Helper function to create time badge with colors and animations
+	const getTimeBadge = updatedAt => {
+		if (!updatedAt) return null
+
+		const now = new Date()
+		const updated = new Date(updatedAt)
+		const diffMs = now - updated
+		const daysAgo = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+		const hoursAgo = Math.floor(diffMs / (1000 * 60 * 60))
+		const minutesAgo = Math.floor(diffMs / (1000 * 60))
+
+		// Get relative time string
+		let timeLabel
+		if (minutesAgo < 60) {
+			timeLabel = language === 'ja' ? `${minutesAgo}分前` : language === 'uz' ? `${minutesAgo} daqiqa oldin` : language === 'ru' ? `${minutesAgo} мин. назад` : `${minutesAgo}m ago`
+		} else if (hoursAgo < 24) {
+			timeLabel = language === 'ja' ? `${hoursAgo}時間前` : language === 'uz' ? `${hoursAgo} soat oldin` : language === 'ru' ? `${hoursAgo} ч. назад` : `${hoursAgo}h ago`
+		} else if (daysAgo < 30) {
+			timeLabel = language === 'ja' ? `${daysAgo}日前` : language === 'uz' ? `${daysAgo} kun oldin` : language === 'ru' ? `${daysAgo} дн. назад` : `${daysAgo}d ago`
+		} else if (daysAgo < 365) {
+			const weeksAgo = Math.floor(daysAgo / 7)
+			timeLabel = language === 'ja' ? `${weeksAgo}週間前` : language === 'uz' ? `${weeksAgo} hafta oldin` : language === 'ru' ? `${weeksAgo} нед. назад` : `${weeksAgo}w ago`
+		} else {
+			const monthsAgo = Math.floor(daysAgo / 30)
+			timeLabel = language === 'ja' ? `${monthsAgo}ヶ月前` : language === 'uz' ? `${monthsAgo} oy oldin` : language === 'ru' ? `${monthsAgo} мес. назад` : `${monthsAgo}mo ago`
+		}
+
+		// Get color and pulse status based on days
+		let bgColor, textColor, shouldPulse
+		if (daysAgo < 14) {
+			bgColor = '#e8f5e9' // light green bg
+			textColor = '#2e7d32' // dark green text
+			shouldPulse = false
+		} else if (daysAgo < 30) {
+			bgColor = '#fff3e0' // light orange bg
+			textColor = '#ef6c00' // orange text
+			shouldPulse = false
+		} else if (daysAgo < 60) {
+			bgColor = '#fff3e0' // light orange bg
+			textColor = '#e65100' // dark orange text
+			shouldPulse = false
+		} else {
+			bgColor = '#ffebee' // light red bg
+			textColor = '#c62828' // dark red text
+			shouldPulse = true
+		}
+
+		return (
+			<Chip
+				size='small'
+				label={timeLabel}
+				className={shouldPulse ? styles.pulsingBadge : ''}
+				sx={{
+					backgroundColor: bgColor,
+					color: textColor,
+					fontWeight: 600,
+					fontSize: '12px',
+					height: '40px',
+					border: shouldPulse ? `1px solid ${textColor}` : 'none',
+					'& .MuiChip-label': {
+						px: 1.5,
+					},
+				}}
+			/>
+		)
+	}
+
 	// Handle language change event to save data before reload
 	useEffect(() => {
 		const handleBeforeLanguageChange = e => {
@@ -1310,22 +1377,25 @@ const Top = () => {
 	const portalContent = (
 		<Box className={styles.buttonsContainer}>
 			{role === 'Student' && viewingLive && (
-				<Button
-					variant='contained'
-					size='small'
-					onClick={async () => {
-						try {
-							downloadCV(student)
-						} catch (err) {
-							console.log(err)
-							// alert('Failed to fetch CV data. Check console for details.')
-						}
-					}}
-					sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
-				>
-					<DownloadIcon />
-					{t('download_cv')}
-				</Button>
+				<>
+					<Button
+						variant='contained'
+						size='small'
+						onClick={async () => {
+							try {
+								downloadCV(student)
+							} catch (err) {
+								console.log(err)
+								// alert('Failed to fetch CV data. Check console for details.')
+							}
+						}}
+						sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
+					>
+						<DownloadIcon />
+						{t('download_cv')}
+					</Button>
+					{currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+				</>
 			)}
 			{editMode ? (
 				<>
@@ -1339,32 +1409,39 @@ const Top = () => {
 			) : (
 				<>
 					{!(role === 'Student' && viewingLive) && (
-						<Button
-							onClick={() => {
-								// Clear any stale localStorage before entering edit mode
-								clearStorage()
-								setEditMode(true)
-								// Clear any old save status when entering edit mode
-								if (role === 'Student' || role === 'Recruiter') {
-									setSaveStatus({
-										isSaving: false,
-										lastSaved: null,
-										hasUnsavedChanges: false,
-									})
-								}
-							}}
-							variant='contained'
-							color='primary'
-							size='small'
-						>
-							{t('editProfile')}
-						</Button>
+						<>
+							<Button
+								onClick={() => {
+									// Clear any stale localStorage before entering edit mode
+									clearStorage()
+									setEditMode(true)
+									// Clear any old save status when entering edit mode
+									if (role === 'Student' || role === 'Recruiter') {
+										setSaveStatus({
+											isSaving: false,
+											lastSaved: null,
+											hasUnsavedChanges: false,
+										})
+									}
+								}}
+								variant='contained'
+								color='primary'
+								size='small'
+							>
+								{t('editProfile')}
+							</Button>
+							{/* Show time badge for Staff/Admin viewing student profile - show LIVE profile update time (when approved) */}
+							{(role === 'Staff' || role === 'Admin') && currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+						</>
 					)}
 
 					{role === 'Student' && hasDraft && currentDraft && !viewingLive && (
-						<Button onClick={toggleConfirmMode} variant='contained' color='success' size='small' sx={{ ml: 1 }}>
-							{t('submitAgree')}
-						</Button>
+						<>
+							<Button onClick={toggleConfirmMode} variant='contained' color='success' size='small' sx={{ ml: 1 }}>
+								{t('submitAgree')}
+							</Button>
+							{currentDraft?.updated_at && getTimeBadge(currentDraft.updated_at)}
+						</>
 					)}
 				</>
 			)}
@@ -1394,41 +1471,45 @@ const Top = () => {
 						borderRadius: '8px',
 						padding: '8px',
 						margin: '16px',
-						gap: '8px',
+						gap: '16px',
 					}}
 				>
-					<Button
-						onClick={() => setViewingLive(true)}
-						variant={viewingLive ? 'contained' : 'outlined'}
-						size='small'
-						sx={{
-							minWidth: '120px',
-							backgroundColor: viewingLive ? '#5627DB' : 'transparent',
-							color: viewingLive ? '#fff' : '#5627DB',
-							borderColor: '#5627DB',
-							'&:hover': {
-								backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-							},
-						}}
-					>
-						{t('liveProfile') || '公開版'}
-					</Button>
-					<Button
-						onClick={() => setViewingLive(false)}
-						variant={!viewingLive ? 'contained' : 'outlined'}
-						size='small'
-						sx={{
-							minWidth: '120px',
-							backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
-							color: !viewingLive ? '#fff' : '#5627DB',
-							borderColor: '#5627DB',
-							'&:hover': {
-								backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-							},
-						}}
-					>
-						{t('draftProfile') || '編集版'}
-					</Button>
+					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+						<Button
+							onClick={() => setViewingLive(true)}
+							variant={viewingLive ? 'contained' : 'outlined'}
+							size='small'
+							sx={{
+								minWidth: '120px',
+								backgroundColor: viewingLive ? '#5627DB' : 'transparent',
+								color: viewingLive ? '#fff' : '#5627DB',
+								borderColor: '#5627DB',
+								'&:hover': {
+									backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+								},
+							}}
+						>
+							{t('liveProfile') || '公開版'}
+						</Button>
+					</Box>
+					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+						<Button
+							onClick={() => setViewingLive(false)}
+							variant={!viewingLive ? 'contained' : 'outlined'}
+							size='small'
+							sx={{
+								minWidth: '120px',
+								backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
+								color: !viewingLive ? '#fff' : '#5627DB',
+								borderColor: '#5627DB',
+								'&:hover': {
+									backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+								},
+							}}
+						>
+							{t('draftProfile') || '編集版'}
+						</Button>
+					</Box>
 				</Box>
 			) : null}
 

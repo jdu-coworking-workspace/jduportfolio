@@ -57,6 +57,23 @@
 	gap: 8px;
 }
 
+/* Pulse animation for outdated profile badges */
+@keyframes pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+	}
+	70% {
+		box-shadow: 0 0 0 8px rgba(244, 67, 54, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+	}
+}
+
+.pulsingBadge {
+	animation: pulse 1.5s infinite;
+}
+
 /* Two-column container that stacks on small screens */
 .twoCol {
 	display: flex;
