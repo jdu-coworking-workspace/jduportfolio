@@ -53,37 +53,12 @@ export const downloadCV = async cvData => {
 	sheet.getCell('C6').value = jpFormatted
 
 	// Photo (G3) - Add image if available
-	if (cvData.photo) {
-		try {
-			// Rasmni fetch qilish
-			const imgRes = await fetch(cvData.photo)
-			const buffer = await imgRes.arrayBuffer()
-
-			// Formatni URL dan aniqlash
-			const ext = cvData.photo.endsWith('.png') ? 'png' : cvData.photo.endsWith('.jpg') || cvData.photo.endsWith('.jpeg') ? 'jpeg' : 'png'
-			const imageId = workbook.addImage({
-				buffer,
-				extension: ext,
-			})
-
-			// Rasm joylashuvi (G3)
-			sheet.addImage(imageId, {
-				tl: { col: 6, row: 2 },
-				br: { col: 7, row: 6 },
-				editAs: 'oneCell',
-			})
-		} catch (error) {
-			console.log('Image add error:', error)
-			sheet.getCell('G3').value = '写真エラー：画像を貼れませんでした。'
-		}
-	} else {
-		sheet.getCell('G3').value = `　写真を貼る位置
+	sheet.getCell('G3').value = `写真を貼る位置
 写真を貼る必要がある場合
 1．縦  36～40mm　横  24～30mm
 2.本人単身胸から上
 3.裏面のりづけ
 4 裏面に氏名記入`
-	}
 
 	// Additional address furigana (C7) - Row 7: Additional address (フリガナ)
 	sheet.getCell('C7').value = cvData.additional_info?.additionalAddressFurigana || ''
@@ -160,18 +135,6 @@ export const downloadCV = async cvData => {
 	// 自己PR (B8)
 	sheet.getCell('J12').value = cvData.self_introduction
 
-	//  kuniga necha soat ishlashi(J26)
-	// sheet.getCell('J26').value = `約　` + cvData.additional_info.commuteTime + `　時間　　　`
-	// //   Boquvda bo‘lgan oila a’zolari (turmush o‘rtog‘idan tashqari) (L26)
-	// sheet.getCell('L26').value = cvData.additional_info.numDependents + `人　　　　`
-
-	// //  is married (M26)
-	// sheet.getCell('M26').value = cvData.additional_info.isMarried ? '有' : '無'
-	// //turmush ortogini boqish majburiyati aliment (N26)
-	// sheet.getCell('N26').value = cvData.additional_info.spousalSupportObligation ? '有' : '無'
-	// // 本人希望記入欄 (J28)
-	// sheet.getCell('J28').value = cvData.additional_info.hopes
-
 	// 2 sheet boshlandi ------------------------------------------------------------------------------->
 
 	// ism familiya (D5)
@@ -186,7 +149,17 @@ export const downloadCV = async cvData => {
 			sheet2.getCell(`A${8 + offset}`).value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
 			sheet2.getCell(`A${9 + offset}`).value = item.description
 
-			sheet2.getCell(`E${9 + offset}`).value = `役割　${item.role.join(', ')}`
+			const descCell = sheet2.getCell(`A${9 + offset}`)
+			descCell.value = item.description
+			descCell.alignment = { wrapText: true, vertical: 'top' }
+
+			const roleCell = sheet2.getCell(`E${9 + offset}`)
+			roleCell.value = `役割　${item.role.join(', ')}`
+			roleCell.alignment = {
+				wrapText: true,
+				vertical: 'top',
+				horizontal: 'left',
+			}
 		})
 	}
 	// arubaito (A20)
@@ -199,11 +172,34 @@ export const downloadCV = async cvData => {
 		})
 	}
 	// ■資格など (A33)
+	const rightRegularStyle = {
+		alignment: {
+			horizontal: 'right',
+			vertical: 'middle',
+			wrapText: true,
+		},
+		font: {
+			bold: false,
+			size: 11,
+			name: 'Calibri',
+		},
+	}
 	if (cvData.licenses.length > 0) {
 		cvData.licenses.map((item, index) => {
-			sheet2.getCell(`A${33 + index}`).value = item.year
-			sheet2.getCell(`B${33 + index}`).value = item.month
-			sheet2.getCell(`C${33 + index}`).value = item.certifacateName
+			const yearCell = sheet2.getCell(`A${33 + index}`)
+			yearCell.value = item.year
+			yearCell.alignment = rightRegularStyle.alignment
+			yearCell.font = rightRegularStyle.font
+
+			const monthCell = sheet2.getCell(`B${33 + index}`)
+			monthCell.value = item.month
+			monthCell.alignment = rightRegularStyle.alignment
+			monthCell.font = rightRegularStyle.font
+
+			const certCell = sheet2.getCell(`C${33 + index}`)
+			certCell.value = item.certifacateName
+			certCell.alignment = rightRegularStyle.alignment
+			certCell.font = rightRegularStyle.font
 		})
 	}
 
