@@ -172,11 +172,34 @@ export const downloadCV = async cvData => {
 		})
 	}
 	// ■資格など (A33)
+	const rightRegularStyle = {
+		alignment: {
+			horizontal: 'right',
+			vertical: 'middle',
+			wrapText: true,
+		},
+		font: {
+			bold: false,
+			size: 11,
+			name: 'Calibri',
+		},
+	}
 	if (cvData.licenses.length > 0) {
 		cvData.licenses.map((item, index) => {
-			sheet2.getCell(`A${33 + index}`).value = item.year
-			sheet2.getCell(`B${33 + index}`).value = item.month
-			sheet2.getCell(`C${33 + index}`).value = item.certifacateName
+			const yearCell = sheet2.getCell(`A${33 + index}`)
+			yearCell.value = item.year
+			yearCell.alignment = rightRegularStyle.alignment
+			yearCell.font = rightRegularStyle.font
+
+			const monthCell = sheet2.getCell(`B${33 + index}`)
+			monthCell.value = item.month
+			monthCell.alignment = rightRegularStyle.alignment
+			monthCell.font = rightRegularStyle.font
+
+			const certCell = sheet2.getCell(`C${33 + index}`)
+			certCell.value = item.certifacateName
+			certCell.alignment = rightRegularStyle.alignment
+			certCell.font = rightRegularStyle.font
 		})
 	}
 
