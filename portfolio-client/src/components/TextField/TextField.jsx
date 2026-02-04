@@ -22,6 +22,7 @@ const TextField = ({
 	showCounter = false, // optional: show character counter
 	imageVersion, // optional: cache-busting version string
 	stackOnSmall = false, // optional: stack image above text on small screens
+	placeholder, // optional: placeholder text for input
 }) => {
 	const { language } = useLanguage()
 	const t = key => translations[language][key] || key
@@ -79,7 +80,7 @@ const TextField = ({
 				) : (
 					''
 				)}
-				<div className={styles.data}>{editMode ? <MuiTextField value={(parentKey ? editData[parentKey]?.[keyName] : editData[keyName]) || ''} onChange={handleChange} variant='outlined' sx={{ width: '100%' }} multiline inputProps={maxLength ? { maxLength } : undefined} helperText={showCounter && maxLength ? `${((parentKey ? editData[parentKey]?.[keyName] : editData[keyName]) || '').length}/${maxLength}` : undefined} /> : <div className={styles.displayValue}>{data ? data : t('notEntered') || 'Not entered'}</div>}</div>
+				<div className={styles.data}>{editMode ? <MuiTextField value={(parentKey ? editData[parentKey]?.[keyName] : editData[keyName]) || ''} onChange={handleChange} variant='outlined' sx={{ width: '100%' }} multiline placeholder={placeholder} inputProps={maxLength ? { maxLength } : undefined} helperText={showCounter && maxLength ? `${((parentKey ? editData[parentKey]?.[keyName] : editData[keyName]) || '').length}/${maxLength}` : undefined} /> : <div className={styles.displayValue}>{data ? data : t('notEntered') || 'Not entered'}</div>}</div>
 			</div>
 			{details ? (
 				<div style={{ display: 'flex', gap: 8 }}>

@@ -654,7 +654,7 @@ class StudentService {
 					{
 						model: Draft,
 						as: 'pendingDraft',
-						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by'],
+						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by', 'changed_fields'],
 						required: false, // LEFT JOIN so students without pending drafts are still included
 					},
 				],
@@ -732,7 +732,7 @@ class StudentService {
 					{
 						model: Draft,
 						as: 'pendingDraft',
-						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by'],
+						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by', 'changed_fields'],
 						required: false, // LEFT JOIN so students without pending drafts are still included
 					},
 				],

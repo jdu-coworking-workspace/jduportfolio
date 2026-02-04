@@ -976,15 +976,17 @@ const Top = () => {
 				}
 
 				// Save updated Q&A structure to draft before submitting
+				// ⚠️ CRITICAL: Merge QA with editData.draft to preserve all other changes
 				console.log('Saving updated Q&A to draft...')
 				const draftData = {
 					student_id: student?.student_id || id,
 					profile_data: {
-						...currentDraft.profile_data,
-						qa: updatedQA,
+						...editData.draft, // Include ALL current edits (address, hobbies, etc.)
+						qa: updatedQA, // Update QA
 					},
 				}
 
+				console.log('Draft data being saved:', draftData)
 				const saveResponse = await axios.put(`/api/draft`, draftData)
 				console.log('Draft saved successfully:', saveResponse.data)
 			} catch (qaError) {
@@ -1054,11 +1056,17 @@ const Top = () => {
 	}
 
 	// Callback function to update currentDraft from child components
-	const updateCurrentDraft = newStatus => {
+	// clearChangedFields: if true, also clears the changed_fields array (used after approval/rejection)
+	const updateCurrentDraft = (newStatus, clearChangedFields = false) => {
 		setCurrentDraft(prevDraft => ({
 			...prevDraft,
 			status: newStatus,
+			...(clearChangedFields ? { changed_fields: [] } : {}),
 		}))
+		// Also update currentPending if it exists (for staff view consistency)
+		if (clearChangedFields) {
+			setCurrentPending(prevPending => (prevPending ? { ...prevPending, status: newStatus, changed_fields: [] } : null))
+		}
 	}
 
 	const handleUpdateEditData = (key, value) => {
@@ -1546,7 +1554,7 @@ const Top = () => {
 			</div>
 
 			{/* Staff Comment Display Section for Students - show feedback from pending draft */}
-			{role === 'Student' && subTabIndex === 0 && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
+			{role === 'Student' && subTabIndex === 'selfIntroduction' && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
 				<Box
 					sx={{
 						my: 2,
@@ -1559,7 +1567,7 @@ const Top = () => {
 					}}
 				>
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-						<span style={{ fontWeight: 'bold', color: '#e65100' }}>スタッフからのフィードバック</span>
+						<span style={{ fontWeight: 'bold', color: '#e65100' }}>{t('staffFeedbackTitle') || 'スタッフからのフィードバック'}</span>
 					</Box>
 					<Box
 						sx={{
@@ -1581,12 +1589,12 @@ const Top = () => {
 							{currentPending.comments}
 						</pre>
 					</Box>
-					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>プロフィールを修正して再度提出してください。</Box>
+					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>{t('staffFeedbackHint') || 'プロフィールを修正して再度提出してください。'}</Box>
 				</Box>
 			) : null}
 
 			{/* Past staff comment history block (Student sees own, Staff sees target student's) */}
-			{(role === 'Student' || role === 'Staff') && subTabIndex === 0 ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
+			{(role === 'Student' || role === 'Staff') && subTabIndex === 'selfIntroduction' ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
 
 			{/* self introduction */}
 			{subTabIndex === 'selfIntroduction' ? (
@@ -1968,10 +1976,10 @@ const Top = () => {
 					</div>
 					<div className={styles.twoCol} style={{ alignItems: 'flex-start' }}>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
+							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} placeholder={t('originPlaceholder') || 'Uzbekistan'} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
+							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} placeholder={t('addressFuriganaPlaceholder') || 'ウズファイスト'} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
 							<TextField title={t('major')} data={student.draft?.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
@@ -2144,7 +2152,7 @@ const Top = () => {
 
 						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
 
-						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('licenses')} />
 					</div>
 				</Box>
 			) : null}
@@ -2156,13 +2164,13 @@ const Top = () => {
 			) : null}
 			{subTabIndex === 'education' ? (
 				<Box my={2}>
-					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('education')} />
 				</Box>
 			) : null}
 			{subTabIndex === 'work_experience' ? (
 				<Box my={2}>
-					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
-					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('work_experience')} />
+					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('arubaito')} />
 				</Box>
 			) : null}
 			{/* Credits section is temporarily disabled */}
@@ -2299,6 +2307,8 @@ const Top = () => {
 
 // --- Helper component: Student's past staff comment history (from notifications) ---
 function HistoryComments({ targetStudentId }) {
+	const { language } = useLanguage()
+	const t = key => translations[language][key] || key
 	const [items, setItems] = useState([])
 	const [loaded, setLoaded] = useState(false)
 
@@ -2335,7 +2345,7 @@ function HistoryComments({ targetStudentId }) {
 				border: '1px solid #e0e0e0',
 			}}
 		>
-			<Typography sx={{ fontWeight: 600, mb: 1 }}>過去のスタッフコメント</Typography>
+			<Typography sx={{ fontWeight: 600, mb: 1 }}>{t('pastStaffComments') || '過去のスタッフコメント'}</Typography>
 			{items.map((n, idx) => {
 				const parts = n.message.split('|||COMMENT_SEPARATOR|||')
 				const commentRaw = parts[1] || ''

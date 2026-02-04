@@ -4,7 +4,7 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Menu, MenuItem, TextField, Typography } from '@mui/material'
 import * as React from 'react'
 import { useState } from 'react'
-export const Education = ({ education = [], onUpdate, editMode, t = key => key }) => {
+export const Education = ({ education = [], onUpdate, editMode, t = key => key, isChanged = false }) => {
 	const [editingIndex, setEditingIndex] = useState(null)
 	const [showForm, setShowForm] = useState(false)
 	const [formData, setFormData] = useState({
@@ -72,7 +72,32 @@ export const Education = ({ education = [], onUpdate, editMode, t = key => key }
 		setShowForm(true)
 	}
 	return (
-		<Box>
+		<Box
+			sx={{
+				backgroundColor: isChanged ? '#fff3cd' : 'transparent',
+				border: isChanged ? '2px solid #ffc107' : 'none',
+				borderRadius: isChanged ? '10px' : '0',
+				padding: isChanged ? 2 : 0,
+				position: 'relative',
+			}}
+		>
+			{isChanged && (
+				<div
+					style={{
+						position: 'absolute',
+						top: 8,
+						right: 8,
+						backgroundColor: '#ffc107',
+						color: '#000',
+						padding: '2px 8px',
+						borderRadius: 4,
+						fontSize: 12,
+						fontWeight: 600,
+					}}
+				>
+					Changed
+				</div>
+			)}
 			<div
 				style={{
 					fontSize: 20,
