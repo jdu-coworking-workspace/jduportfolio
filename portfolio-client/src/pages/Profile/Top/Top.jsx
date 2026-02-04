@@ -12,7 +12,7 @@ import RestoreIcon from '@mui/icons-material/Restore'
 import SaveIcon from '@mui/icons-material/Save'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField as MuiTextField, Snackbar, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField as MuiTextField, Snackbar, Tooltip, Typography } from '@mui/material'
 import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
@@ -349,23 +349,68 @@ const Top = () => {
 			shouldPulse = true
 		}
 
+		// Format full date for tooltip
+		const fullDate = updated.toLocaleString(language === 'ja' ? 'ja-JP' : language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+		// Build tooltip content
+		const tooltipTitle = (
+			<div style={{ textAlign: 'center', padding: '4px' }}>
+				<div style={{ fontWeight: 600, marginBottom: '4px' }}>{language === 'ja' ? '最終更新' : language === 'uz' ? 'Oxirgi yangilanish' : language === 'ru' ? 'Последнее обновление' : 'Last updated'}</div>
+				<div>{fullDate}</div>
+			</div>
+		)
+
 		return (
-			<Chip
-				size='small'
-				label={timeLabel}
-				className={shouldPulse ? styles.pulsingBadge : ''}
-				sx={{
-					backgroundColor: bgColor,
-					color: textColor,
-					fontWeight: 600,
-					fontSize: '12px',
-					height: '40px',
-					border: shouldPulse ? `1px solid ${textColor}` : 'none',
-					'& .MuiChip-label': {
-						px: 1.5,
-					},
-				}}
-			/>
+			<Tooltip title={tooltipTitle} arrow placement='bottom'>
+				<Chip
+					size='small'
+					label={timeLabel}
+					className={shouldPulse ? styles.pulsingBadge : ''}
+					sx={{
+						backgroundColor: bgColor,
+						color: textColor,
+						fontWeight: 600,
+						fontSize: '12px',
+						height: '40px',
+						border: shouldPulse ? `1px solid ${textColor}` : 'none',
+						cursor: 'pointer',
+						'& .MuiChip-label': {
+							px: 1.5,
+						},
+					}}
+				/>
+			</Tooltip>
+		)
+	}
+
+	// Helper function to create badge for new profiles that need to be filled
+	const getNewProfileBadge = (isStaff = false) => {
+		// For staff: descriptive status "Not filled yet"
+		// For student: call to action "Fill out profile"
+		const label = isStaff ? (language === 'ja' ? 'まだ記入されていません' : language === 'uz' ? "Hali to'ldirilmagan" : language === 'ru' ? 'Ещё не заполнено' : 'Not filled yet') : language === 'ja' ? '記入してください' : language === 'uz' ? "To'ldiring" : language === 'ru' ? 'Заполните' : 'Fill out profile'
+
+		const tooltipText = language === 'ja' ? 'プロフィールをまだ提出していません' : language === 'uz' ? 'Profil hali topshirilmagan' : language === 'ru' ? 'Профиль ещё не отправлен' : 'Profile has not been submitted yet'
+
+		return (
+			<Tooltip title={tooltipText} arrow placement='bottom'>
+				<Chip
+					size='small'
+					label={label}
+					className={styles.pulsingBlueBadge}
+					sx={{
+						backgroundColor: '#e3f2fd',
+						color: '#1565c0',
+						fontWeight: 600,
+						fontSize: '12px',
+						height: '40px',
+						border: '1px solid #1976d2',
+						cursor: 'pointer',
+						'& .MuiChip-label': {
+							px: 1.5,
+						},
+					}}
+				/>
+			</Tooltip>
 		)
 	}
 
@@ -1402,7 +1447,7 @@ const Top = () => {
 						<DownloadIcon />
 						{t('download_cv')}
 					</Button>
-					{currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+					{currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge()}
 				</>
 			)}
 			{editMode ? (
@@ -1439,7 +1484,7 @@ const Top = () => {
 								{t('editProfile')}
 							</Button>
 							{/* Show time badge for Staff/Admin viewing student profile - show LIVE profile update time (when approved) */}
-							{(role === 'Staff' || role === 'Admin') && currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+							{(role === 'Staff' || role === 'Admin') && (currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge(true))}
 						</>
 					)}
 
