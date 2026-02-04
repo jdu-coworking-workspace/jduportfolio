@@ -95,7 +95,7 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key, i
 						fontWeight: 600,
 					}}
 				>
-					Changed
+					{t('changed') || 'Changed'}
 				</div>
 			)}
 			<div

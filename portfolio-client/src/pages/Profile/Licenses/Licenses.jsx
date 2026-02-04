@@ -94,7 +94,7 @@ export const Licenses = ({ licenses = [], onUpdate, editMode, t = key => key, is
 						fontWeight: 600,
 					}}
 				>
-					Changed
+					{t('changed') || 'Changed'}
 				</div>
 			)}
 			<div

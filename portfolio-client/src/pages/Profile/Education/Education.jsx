@@ -95,7 +95,7 @@ export const Education = ({ education = [], onUpdate, editMode, t = key => key, 
 						fontWeight: 600,
 					}}
 				>
-					Changed
+					{t('changed') || 'Changed'}
 				</div>
 			)}
 			<div

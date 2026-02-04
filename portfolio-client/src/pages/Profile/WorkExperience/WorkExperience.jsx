@@ -93,7 +93,7 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 						fontWeight: 600,
 					}}
 				>
-					Changed
+					{t('changed') || 'Changed'}
 				</div>
 			)}
 			<div

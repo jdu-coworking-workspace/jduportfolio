@@ -1618,17 +1618,17 @@ const Top = () => {
 								<div
 									style={{
 										position: 'absolute',
-										top: -10,
-										right: 10,
+										top: 8,
+										right: 8,
 										backgroundColor: '#ffc107',
-										color: '#fff',
+										color: '#000',
 										padding: '2px 8px',
 										borderRadius: '4px',
 										fontSize: '12px',
-										fontWeight: 'bold',
+										fontWeight: 600,
 									}}
 								>
-									変更あり
+									{t('changed') || 'Changed'}
 								</div>
 							)}
 							<div
@@ -1804,17 +1804,17 @@ const Top = () => {
 								<div
 									style={{
 										position: 'absolute',
-										top: -10,
-										right: 10,
+										top: 8,
+										right: 8,
 										backgroundColor: '#ffc107',
-										color: '#fff',
+										color: '#000',
 										padding: '2px 8px',
 										borderRadius: '4px',
 										fontSize: '12px',
-										fontWeight: 'bold',
+										fontWeight: 600,
 									}}
 								>
-									変更あり
+									{t('changed') || 'Changed'}
 								</div>
 							)}
 							<div

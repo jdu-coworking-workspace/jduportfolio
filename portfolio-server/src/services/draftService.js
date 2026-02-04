@@ -441,7 +441,7 @@ class DraftService {
 		let changedFieldsVsLive = []
 
 		// These are the ONLY fields that exist in the Students table
-		const studentTableFields = ['self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+		const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
 		// Fields that might be stored as JSON strings - need to parse both sides
 		const jsonTextFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills', 'other_skills']
 
@@ -676,7 +676,7 @@ class DraftService {
 			// should NOT be compared against the Students table since they don't exist there
 
 			// These are the ONLY fields that exist in the Students table and can be compared
-			const studentTableFields = ['self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
 
 			// Fields that might be stored as JSON strings (in Students table as TEXT, or in draft as string)
 			// Need to parse both sides before comparison to avoid type mismatches
@@ -742,7 +742,7 @@ class DraftService {
 			}
 		} else {
 			// No student record found - only mark fields that exist in Students table as changed
-			const studentTableFields = ['self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
 			changedFieldsVsLive = studentTableFields.filter(key => key in draft.profile_data)
 			console.log('=== SUBMIT: No live profile found ===')
 		}
