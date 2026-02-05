@@ -12,7 +12,7 @@ import RestoreIcon from '@mui/icons-material/Restore'
 import SaveIcon from '@mui/icons-material/Save'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField as MuiTextField, Snackbar, Typography } from '@mui/material'
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField as MuiTextField, Snackbar, Tooltip, Typography } from '@mui/material'
 import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
@@ -301,6 +301,118 @@ const Top = () => {
 
 		checkPortalContainer()
 	}, [])
+
+	// Helper function to create time badge with colors and animations
+	const getTimeBadge = updatedAt => {
+		if (!updatedAt) return null
+
+		const now = new Date()
+		const updated = new Date(updatedAt)
+		const diffMs = now - updated
+		const daysAgo = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+		const hoursAgo = Math.floor(diffMs / (1000 * 60 * 60))
+		const minutesAgo = Math.floor(diffMs / (1000 * 60))
+
+		// Get relative time string
+		let timeLabel
+		if (minutesAgo < 60) {
+			timeLabel = language === 'ja' ? `${minutesAgo}分前` : language === 'uz' ? `${minutesAgo} daqiqa oldin` : language === 'ru' ? `${minutesAgo} мин. назад` : `${minutesAgo}m ago`
+		} else if (hoursAgo < 24) {
+			timeLabel = language === 'ja' ? `${hoursAgo}時間前` : language === 'uz' ? `${hoursAgo} soat oldin` : language === 'ru' ? `${hoursAgo} ч. назад` : `${hoursAgo}h ago`
+		} else if (daysAgo < 30) {
+			timeLabel = language === 'ja' ? `${daysAgo}日前` : language === 'uz' ? `${daysAgo} kun oldin` : language === 'ru' ? `${daysAgo} дн. назад` : `${daysAgo}d ago`
+		} else if (daysAgo < 365) {
+			const weeksAgo = Math.floor(daysAgo / 7)
+			timeLabel = language === 'ja' ? `${weeksAgo}週間前` : language === 'uz' ? `${weeksAgo} hafta oldin` : language === 'ru' ? `${weeksAgo} нед. назад` : `${weeksAgo}w ago`
+		} else {
+			const monthsAgo = Math.floor(daysAgo / 30)
+			timeLabel = language === 'ja' ? `${monthsAgo}ヶ月前` : language === 'uz' ? `${monthsAgo} oy oldin` : language === 'ru' ? `${monthsAgo} мес. назад` : `${monthsAgo}mo ago`
+		}
+
+		// Get color and pulse status based on days
+		let bgColor, textColor, shouldPulse
+		if (daysAgo < 14) {
+			bgColor = '#e8f5e9' // light green bg
+			textColor = '#2e7d32' // dark green text
+			shouldPulse = false
+		} else if (daysAgo < 30) {
+			bgColor = '#fff3e0' // light orange bg
+			textColor = '#ef6c00' // orange text
+			shouldPulse = false
+		} else if (daysAgo < 60) {
+			bgColor = '#fff3e0' // light orange bg
+			textColor = '#e65100' // dark orange text
+			shouldPulse = false
+		} else {
+			bgColor = '#ffebee' // light red bg
+			textColor = '#c62828' // dark red text
+			shouldPulse = true
+		}
+
+		// Format full date for tooltip
+		const fullDate = updated.toLocaleString(language === 'ja' ? 'ja-JP' : language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+		// Build tooltip content
+		const tooltipTitle = (
+			<div style={{ textAlign: 'center', padding: '4px' }}>
+				<div style={{ fontWeight: 600, marginBottom: '4px' }}>{language === 'ja' ? '最終更新' : language === 'uz' ? 'Oxirgi yangilanish' : language === 'ru' ? 'Последнее обновление' : 'Last updated'}</div>
+				<div>{fullDate}</div>
+			</div>
+		)
+
+		return (
+			<Tooltip title={tooltipTitle} arrow placement='bottom'>
+				<Chip
+					size='small'
+					label={timeLabel}
+					className={shouldPulse ? styles.pulsingBadge : ''}
+					sx={{
+						backgroundColor: bgColor,
+						color: textColor,
+						fontWeight: 600,
+						fontSize: '12px',
+						height: '40px',
+						border: shouldPulse ? `1px solid ${textColor}` : 'none',
+						cursor: 'pointer',
+						'& .MuiChip-label': {
+							px: 1.5,
+						},
+					}}
+				/>
+			</Tooltip>
+		)
+	}
+
+	// Helper function to create badge for new profiles that need to be filled
+	const getNewProfileBadge = (isStaff = false) => {
+		// For staff: descriptive status "Not filled yet"
+		// For student: call to action "Fill out profile"
+		const label = isStaff ? (language === 'ja' ? 'まだ記入されていません' : language === 'uz' ? "Hali to'ldirilmagan" : language === 'ru' ? 'Ещё не заполнено' : 'Not filled yet') : language === 'ja' ? '記入してください' : language === 'uz' ? "To'ldiring" : language === 'ru' ? 'Заполните' : 'Fill out profile'
+
+		const tooltipText = language === 'ja' ? 'プロフィールをまだ提出していません' : language === 'uz' ? 'Profil hali topshirilmagan' : language === 'ru' ? 'Профиль ещё не отправлен' : 'Profile has not been submitted yet'
+
+		return (
+			<Tooltip title={tooltipText} arrow placement='bottom'>
+				<Chip
+					size='small'
+					label={label}
+					className={styles.pulsingBlueBadge}
+					sx={{
+						backgroundColor: '#e3f2fd',
+						color: '#1565c0',
+						fontWeight: 600,
+						fontSize: '12px',
+						height: '40px',
+						border: '1px solid #1976d2',
+						cursor: 'pointer',
+						'& .MuiChip-label': {
+							px: 1.5,
+						},
+					}}
+				/>
+			</Tooltip>
+		)
+	}
 
 	// Handle language change event to save data before reload
 	useEffect(() => {
@@ -909,15 +1021,17 @@ const Top = () => {
 				}
 
 				// Save updated Q&A structure to draft before submitting
+				// ⚠️ CRITICAL: Merge QA with editData.draft to preserve all other changes
 				console.log('Saving updated Q&A to draft...')
 				const draftData = {
 					student_id: student?.student_id || id,
 					profile_data: {
-						...currentDraft.profile_data,
-						qa: updatedQA,
+						...editData.draft, // Include ALL current edits (address, hobbies, etc.)
+						qa: updatedQA, // Update QA
 					},
 				}
 
+				console.log('Draft data being saved:', draftData)
 				const saveResponse = await axios.put(`/api/draft`, draftData)
 				console.log('Draft saved successfully:', saveResponse.data)
 			} catch (qaError) {
@@ -987,11 +1101,17 @@ const Top = () => {
 	}
 
 	// Callback function to update currentDraft from child components
-	const updateCurrentDraft = newStatus => {
+	// clearChangedFields: if true, also clears the changed_fields array (used after approval/rejection)
+	const updateCurrentDraft = (newStatus, clearChangedFields = false) => {
 		setCurrentDraft(prevDraft => ({
 			...prevDraft,
 			status: newStatus,
+			...(clearChangedFields ? { changed_fields: [] } : {}),
 		}))
+		// Also update currentPending if it exists (for staff view consistency)
+		if (clearChangedFields) {
+			setCurrentPending(prevPending => (prevPending ? { ...prevPending, status: newStatus, changed_fields: [] } : null))
+		}
 	}
 
 	const handleUpdateEditData = (key, value) => {
@@ -1310,22 +1430,25 @@ const Top = () => {
 	const portalContent = (
 		<Box className={styles.buttonsContainer}>
 			{role === 'Student' && viewingLive && (
-				<Button
-					variant='contained'
-					size='small'
-					onClick={async () => {
-						try {
-							downloadCV(student)
-						} catch (err) {
-							console.log(err)
-							// alert('Failed to fetch CV data. Check console for details.')
-						}
-					}}
-					sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
-				>
-					<DownloadIcon />
-					{t('download_cv')}
-				</Button>
+				<>
+					<Button
+						variant='contained'
+						size='small'
+						onClick={async () => {
+							try {
+								downloadCV(student)
+							} catch (err) {
+								console.log(err)
+								// alert('Failed to fetch CV data. Check console for details.')
+							}
+						}}
+						sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
+					>
+						<DownloadIcon />
+						{t('download_cv')}
+					</Button>
+					{currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge()}
+				</>
 			)}
 			{editMode ? (
 				<>
@@ -1339,32 +1462,39 @@ const Top = () => {
 			) : (
 				<>
 					{!(role === 'Student' && viewingLive) && (
-						<Button
-							onClick={() => {
-								// Clear any stale localStorage before entering edit mode
-								clearStorage()
-								setEditMode(true)
-								// Clear any old save status when entering edit mode
-								if (role === 'Student' || role === 'Recruiter') {
-									setSaveStatus({
-										isSaving: false,
-										lastSaved: null,
-										hasUnsavedChanges: false,
-									})
-								}
-							}}
-							variant='contained'
-							color='primary'
-							size='small'
-						>
-							{t('editProfile')}
-						</Button>
+						<>
+							<Button
+								onClick={() => {
+									// Clear any stale localStorage before entering edit mode
+									clearStorage()
+									setEditMode(true)
+									// Clear any old save status when entering edit mode
+									if (role === 'Student' || role === 'Recruiter') {
+										setSaveStatus({
+											isSaving: false,
+											lastSaved: null,
+											hasUnsavedChanges: false,
+										})
+									}
+								}}
+								variant='contained'
+								color='primary'
+								size='small'
+							>
+								{t('editProfile')}
+							</Button>
+							{/* Show time badge for Staff/Admin viewing student profile - show LIVE profile update time (when approved) */}
+							{(role === 'Staff' || role === 'Admin') && (currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge(true))}
+						</>
 					)}
 
 					{role === 'Student' && hasDraft && currentDraft && !viewingLive && (
-						<Button onClick={toggleConfirmMode} variant='contained' color='success' size='small' sx={{ ml: 1 }}>
-							{t('submitAgree')}
-						</Button>
+						<>
+							<Button onClick={toggleConfirmMode} variant='contained' color='success' size='small' sx={{ ml: 1 }}>
+								{t('submitAgree')}
+							</Button>
+							{currentDraft?.updated_at && getTimeBadge(currentDraft.updated_at)}
+						</>
 					)}
 				</>
 			)}
@@ -1394,41 +1524,45 @@ const Top = () => {
 						borderRadius: '8px',
 						padding: '8px',
 						margin: '16px',
-						gap: '8px',
+						gap: '16px',
 					}}
 				>
-					<Button
-						onClick={() => setViewingLive(true)}
-						variant={viewingLive ? 'contained' : 'outlined'}
-						size='small'
-						sx={{
-							minWidth: '120px',
-							backgroundColor: viewingLive ? '#5627DB' : 'transparent',
-							color: viewingLive ? '#fff' : '#5627DB',
-							borderColor: '#5627DB',
-							'&:hover': {
-								backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-							},
-						}}
-					>
-						{t('liveProfile') || '公開版'}
-					</Button>
-					<Button
-						onClick={() => setViewingLive(false)}
-						variant={!viewingLive ? 'contained' : 'outlined'}
-						size='small'
-						sx={{
-							minWidth: '120px',
-							backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
-							color: !viewingLive ? '#fff' : '#5627DB',
-							borderColor: '#5627DB',
-							'&:hover': {
-								backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-							},
-						}}
-					>
-						{t('draftProfile') || '編集版'}
-					</Button>
+					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+						<Button
+							onClick={() => setViewingLive(true)}
+							variant={viewingLive ? 'contained' : 'outlined'}
+							size='small'
+							sx={{
+								minWidth: '120px',
+								backgroundColor: viewingLive ? '#5627DB' : 'transparent',
+								color: viewingLive ? '#fff' : '#5627DB',
+								borderColor: '#5627DB',
+								'&:hover': {
+									backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+								},
+							}}
+						>
+							{t('liveProfile') || '公開版'}
+						</Button>
+					</Box>
+					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+						<Button
+							onClick={() => setViewingLive(false)}
+							variant={!viewingLive ? 'contained' : 'outlined'}
+							size='small'
+							sx={{
+								minWidth: '120px',
+								backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
+								color: !viewingLive ? '#fff' : '#5627DB',
+								borderColor: '#5627DB',
+								'&:hover': {
+									backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+								},
+							}}
+						>
+							{t('draftProfile') || '編集版'}
+						</Button>
+					</Box>
 				</Box>
 			) : null}
 
@@ -1465,7 +1599,7 @@ const Top = () => {
 			</div>
 
 			{/* Staff Comment Display Section for Students - show feedback from pending draft */}
-			{role === 'Student' && subTabIndex === 0 && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
+			{role === 'Student' && subTabIndex === 'selfIntroduction' && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
 				<Box
 					sx={{
 						my: 2,
@@ -1478,7 +1612,7 @@ const Top = () => {
 					}}
 				>
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-						<span style={{ fontWeight: 'bold', color: '#e65100' }}>スタッフからのフィードバック</span>
+						<span style={{ fontWeight: 'bold', color: '#e65100' }}>{t('staffFeedbackTitle') || 'スタッフからのフィードバック'}</span>
 					</Box>
 					<Box
 						sx={{
@@ -1500,12 +1634,12 @@ const Top = () => {
 							{currentPending.comments}
 						</pre>
 					</Box>
-					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>プロフィールを修正して再度提出してください。</Box>
+					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>{t('staffFeedbackHint') || 'プロフィールを修正して再度提出してください。'}</Box>
 				</Box>
 			) : null}
 
 			{/* Past staff comment history block (Student sees own, Staff sees target student's) */}
-			{(role === 'Student' || role === 'Staff') && subTabIndex === 0 ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
+			{(role === 'Student' || role === 'Staff') && subTabIndex === 'selfIntroduction' ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
 
 			{/* self introduction */}
 			{subTabIndex === 'selfIntroduction' ? (
@@ -1529,17 +1663,17 @@ const Top = () => {
 								<div
 									style={{
 										position: 'absolute',
-										top: -10,
-										right: 10,
+										top: 8,
+										right: 8,
 										backgroundColor: '#ffc107',
-										color: '#fff',
+										color: '#000',
 										padding: '2px 8px',
 										borderRadius: '4px',
 										fontSize: '12px',
-										fontWeight: 'bold',
+										fontWeight: 600,
 									}}
 								>
-									変更あり
+									{t('changed') || 'Changed'}
 								</div>
 							)}
 							<div
@@ -1715,17 +1849,17 @@ const Top = () => {
 								<div
 									style={{
 										position: 'absolute',
-										top: -10,
-										right: 10,
+										top: 8,
+										right: 8,
 										backgroundColor: '#ffc107',
-										color: '#fff',
+										color: '#000',
 										padding: '2px 8px',
 										borderRadius: '4px',
 										fontSize: '12px',
-										fontWeight: 'bold',
+										fontWeight: 600,
 									}}
 								>
-									変更あり
+									{t('changed') || 'Changed'}
 								</div>
 							)}
 							<div
@@ -1887,10 +2021,10 @@ const Top = () => {
 					</div>
 					<div className={styles.twoCol} style={{ alignItems: 'flex-start' }}>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} />
+							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} placeholder={t('originPlaceholder') || 'Uzbekistan'} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} />
+							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} placeholder={t('addressFuriganaPlaceholder') || 'ウズファイスト'} />
 						</div>
 						<div style={{ flex: 1, minWidth: 280 }}>
 							<TextField title={t('major')} data={student.draft?.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
@@ -2063,7 +2197,7 @@ const Top = () => {
 
 						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
 
-						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('licenses')} />
 					</div>
 				</Box>
 			) : null}
@@ -2075,13 +2209,13 @@ const Top = () => {
 			) : null}
 			{subTabIndex === 'education' ? (
 				<Box my={2}>
-					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('education')} />
 				</Box>
 			) : null}
 			{subTabIndex === 'work_experience' ? (
 				<Box my={2}>
-					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} />
-					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} />
+					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('work_experience')} />
+					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('arubaito')} />
 				</Box>
 			) : null}
 			{/* Credits section is temporarily disabled */}
@@ -2218,6 +2352,8 @@ const Top = () => {
 
 // --- Helper component: Student's past staff comment history (from notifications) ---
 function HistoryComments({ targetStudentId }) {
+	const { language } = useLanguage()
+	const t = key => translations[language][key] || key
 	const [items, setItems] = useState([])
 	const [loaded, setLoaded] = useState(false)
 
@@ -2254,7 +2390,7 @@ function HistoryComments({ targetStudentId }) {
 				border: '1px solid #e0e0e0',
 			}}
 		>
-			<Typography sx={{ fontWeight: 600, mb: 1 }}>過去のスタッフコメント</Typography>
+			<Typography sx={{ fontWeight: 600, mb: 1 }}>{t('pastStaffComments') || '過去のスタッフコメント'}</Typography>
 			{items.map((n, idx) => {
 				const parts = n.message.split('|||COMMENT_SEPARATOR|||')
 				const commentRaw = parts[1] || ''

@@ -10,6 +10,17 @@ const generateUniqueFilename = require('../utils/uniqueFilename')
 const { Op } = require('sequelize')
 
 /**
+ * Escapes SQL LIKE wildcard characters to prevent SQL injection
+ * @param {string} value - The search value to escape
+ * @returns {string} Escaped search value
+ */
+function escapeSqlLike(value) {
+	if (!value || typeof value !== 'string') return ''
+	// Escape backslash first, then % and _
+	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+/**
  * Compares two objects and returns an array of keys that have changed.
  * @param {object} newData - The new data object.
  * @param {object} oldData - The old data object.
@@ -17,11 +28,18 @@ const { Op } = require('sequelize')
  */
 const getChangedKeys = (newData, oldData) => {
 	if (!oldData) return Object.keys(newData)
-	const allKeys = _.union(Object.keys(newData), Object.keys(oldData))
 
-	return allKeys.filter(key => {
+	// Only compare keys that exist in newData (the draft being submitted)
+	// We don't want to mark fields as "changed" if they're not in the draft at all
+	const keysToCompare = Object.keys(newData)
+
+	return keysToCompare.filter(key => {
+		const newVal = newData[key]
+		const oldVal = oldData[key]
+
 		// _.isEqual provides deep comparison for nested objects and arrays
-		return !_.isEqual(newData[key], oldData[key])
+		// It handles null, undefined, objects, arrays properly
+		return !_.isEqual(newVal, oldVal)
 	})
 }
 
@@ -191,13 +209,15 @@ class DraftService {
 			Object.keys(filter).forEach(key => {
 				if (key !== 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					if (key === 'search') {
+						// Escape SQL LIKE wildcards to prevent injection
+						const escapedSearch = escapeSqlLike(String(filter[key]).trim())
 						let searchConditions = searchableColumns.map(column => ({
-							[column]: { [Op.iLike]: `%${filter[key]}%` },
+							[column]: { [Op.iLike]: `%${escapedSearch}%` },
 						}))
 
 						// Add JSONB search conditions for skills and it_skills using sequelize.where
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.skills'), 'TEXT'), { [Op.iLike]: `%${filter[key]}%` }))
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.it_skills'), 'TEXT'), { [Op.iLike]: `%${filter[key]}%` }))
+						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
+						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.it_skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
 
 						querySearch[Op.or] = searchConditions
 					} else if (key === 'it_skills') {
@@ -365,6 +385,9 @@ class DraftService {
 	 * Creates a new draft or updates an existing one (upsert).
 	 * This is the primary method for student edits.
 	 * Always targets the 'draft' version_type.
+	 *
+	 * IMPORTANT: We don't track changed_fields here because this is the student's working copy.
+	 * changed_fields is only calculated when submitting for review (comparing vs live profile).
 	 */
 	static async upsertDraft(studentId, newProfileData) {
 		let draft = await Draft.findOne({
@@ -375,10 +398,9 @@ class DraftService {
 		})
 
 		if (draft) {
-			const oldProfileData = draft.profile_data || {}
-			const changedKeys = getChangedKeys(newProfileData, oldProfileData)
+			// Simply update the profile data - don't track changes
 			draft.profile_data = newProfileData
-			draft.changed_fields = _.union(draft.changed_fields || [], changedKeys)
+			draft.changed_fields = [] // Clear any accumulated fields
 
 			if (['submitted', 'approved', 'resubmission_required', 'disapproved'].includes(draft.status)) {
 				draft.status = 'draft'
@@ -388,12 +410,11 @@ class DraftService {
 			return { draft, created: false }
 		} else {
 			// If draft does not exist, create a new one
-			const changedKeys = Object.keys(newProfileData) // All fields are considered new
 			draft = await Draft.create({
 				student_id: studentId,
 				version_type: 'draft',
 				profile_data: newProfileData,
-				changed_fields: changedKeys,
+				changed_fields: [], // Empty for draft version
 				status: 'draft',
 			})
 			return { draft, created: true }
@@ -404,6 +425,8 @@ class DraftService {
 	 * Creates or updates a pending draft when staff members edit a student's profile under review.
 	 * This is used when staff/admin edit a student's pending draft.
 	 * Always targets the 'pending' version_type.
+	 *
+	 * When staff edits, we need to recalculate changed_fields vs the live profile.
 	 */
 	static async upsertPendingDraft(studentId, newProfileData) {
 		let pendingDraft = await Draft.findOne({
@@ -416,7 +439,6 @@ class DraftService {
 		// Check if student profile is already public (has been approved before)
 		const student = await Student.findOne({
 			where: { student_id: studentId },
-			attributes: ['visibility'],
 		})
 		const isAlreadyPublic = student && student.visibility === true
 
@@ -427,11 +449,59 @@ class DraftService {
 		// Only auto-approve if profile is public AND there's NO fresh student submission
 		const shouldAutoApprove = isAlreadyPublic && !hasFreshStudentSubmission
 
+		// Calculate changed_fields vs live profile
+		// ONLY compare fields that EXIST in the Students table
+		let changedFieldsVsLive = []
+
+		// These are the ONLY fields that exist in the Students table
+		const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+		// Fields that might be stored as JSON strings - need to parse both sides
+		const jsonTextFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills', 'other_skills']
+
+		if (student) {
+			const liveProfileData = {}
+			studentTableFields.forEach(key => {
+				let value = student[key]
+				if (jsonTextFields.includes(key) && typeof value === 'string') {
+					try {
+						value = JSON.parse(value)
+					} catch (e) {
+						// Keep as string if parsing fails
+					}
+				}
+				liveProfileData[key] = value
+			})
+
+			// Compare ONLY fields that exist in Students table
+			changedFieldsVsLive = studentTableFields.filter(key => {
+				if (!(key in newProfileData)) return false
+
+				let newVal = newProfileData[key]
+				let liveVal = liveProfileData[key]
+
+				// ✅ CRITICAL: Also parse JSON string fields from draft/newProfileData
+				if (jsonTextFields.includes(key) && typeof newVal === 'string') {
+					try {
+						newVal = JSON.parse(newVal)
+					} catch (e) {
+						// Keep as string if parsing fails
+					}
+				}
+
+				// Normalize null/undefined
+				newVal = newVal === undefined ? null : newVal
+				liveVal = liveVal === undefined ? null : liveVal
+
+				return !_.isEqual(newVal, liveVal)
+			})
+		} else {
+			changedFieldsVsLive = studentTableFields.filter(key => key in newProfileData)
+		}
+
 		if (pendingDraft) {
-			const oldProfileData = pendingDraft.profile_data || {}
-			const changedKeys = getChangedKeys(newProfileData, oldProfileData)
+			// Update pending draft with new data and recalculated changes
 			pendingDraft.profile_data = newProfileData
-			pendingDraft.changed_fields = _.union(pendingDraft.changed_fields || [], changedKeys)
+			pendingDraft.changed_fields = changedFieldsVsLive // REPLACE, don't accumulate
 
 			await pendingDraft.save()
 
@@ -454,12 +524,11 @@ class DraftService {
 			return { draft: pendingDraft, created: false }
 		} else {
 			// If pending draft does not exist, create a new one
-			const changedKeys = Object.keys(newProfileData) // All fields are considered new
 			pendingDraft = await Draft.create({
 				student_id: studentId,
 				version_type: 'pending',
 				profile_data: newProfileData,
-				changed_fields: changedKeys,
+				changed_fields: changedFieldsVsLive, // Use calculated changes
 				status: 'checking', // Staff is already reviewing
 				submit_count: 1,
 			})
@@ -607,10 +676,94 @@ class DraftService {
 			},
 		})
 
+		// ✅ CRITICAL FIX: Calculate changed_fields relative to LIVE profile (Students table)
+		// This ensures staff sees what actually changed from the approved public profile
+		const student = await Student.findOne({
+			where: { student_id: draft.student_id },
+		})
+
+		let changedFieldsVsLive = []
+		if (student) {
+			// ONLY compare fields that EXIST in BOTH the Students table AND the draft
+			// Fields that only exist in draft (like hobbies_description, special_skills_description, qa)
+			// should NOT be compared against the Students table since they don't exist there
+
+			// These are the ONLY fields that exist in the Students table and can be compared
+			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+
+			// Fields that might be stored as JSON strings (in Students table as TEXT, or in draft as string)
+			// Need to parse both sides before comparison to avoid type mismatches
+			const jsonTextFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills', 'other_skills']
+
+			// Build live profile data ONLY from fields that exist in Students table
+			const liveProfileData = {}
+			studentTableFields.forEach(key => {
+				let value = student[key]
+
+				// Parse JSON text fields if they contain JSON strings
+				if (jsonTextFields.includes(key) && typeof value === 'string') {
+					try {
+						value = JSON.parse(value)
+					} catch (e) {
+						// Keep as string if parsing fails
+					}
+				}
+
+				liveProfileData[key] = value
+			})
+
+			// Compare ONLY the fields that exist in Students table
+			changedFieldsVsLive = studentTableFields.filter(key => {
+				// Only compare if the field exists in the draft profile_data
+				if (!(key in draft.profile_data)) return false
+
+				let draftVal = draft.profile_data[key]
+				let liveVal = liveProfileData[key]
+
+				// ✅ CRITICAL: Also parse JSON string fields from draft
+				// Both Students table AND draft might store these as JSON strings
+				if (jsonTextFields.includes(key) && typeof draftVal === 'string') {
+					try {
+						draftVal = JSON.parse(draftVal)
+					} catch (e) {
+						// Keep as string if parsing fails
+					}
+				}
+
+				// Normalize null/undefined for comparison
+				const normalizedDraft = draftVal === undefined ? null : draftVal
+				const normalizedLive = liveVal === undefined ? null : liveVal
+
+				return !_.isEqual(normalizedDraft, normalizedLive)
+			})
+
+			console.log('=== SUBMIT: Changed fields vs Live profile ===')
+			console.log('Student ID:', draft.student_id)
+			console.log('Fields compared:', studentTableFields.length)
+			console.log('Changed keys:', changedFieldsVsLive)
+			console.log('Total changed:', changedFieldsVsLive.length)
+
+			// Debug: Show changed fields in detail
+			if (changedFieldsVsLive.length > 0) {
+				console.log('\n--- Detailed comparison ---')
+				changedFieldsVsLive.forEach(key => {
+					const draftVal = draft.profile_data[key]
+					const liveVal = liveProfileData[key]
+					console.log(`[${key}]: Draft="${JSON.stringify(draftVal).substring(0, 50)}" vs Live="${JSON.stringify(liveVal).substring(0, 50)}"`)
+				})
+				console.log('--- End ---\n')
+			}
+		} else {
+			// No student record found - only mark fields that exist in Students table as changed
+			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+			changedFieldsVsLive = studentTableFields.filter(key => key in draft.profile_data)
+			console.log('=== SUBMIT: No live profile found ===')
+		}
+
 		if (pendingDraft) {
 			// Update existing pending draft
 			pendingDraft.profile_data = draft.profile_data
-			pendingDraft.changed_fields = draft.changed_fields
+			pendingDraft.changed_fields = changedFieldsVsLive // Use live comparison
 			pendingDraft.status = 'submitted'
 			pendingDraft.submit_count += 1
 			pendingDraft.comments = null
@@ -622,7 +775,7 @@ class DraftService {
 				student_id: draft.student_id,
 				version_type: 'pending',
 				profile_data: draft.profile_data,
-				changed_fields: draft.changed_fields,
+				changed_fields: changedFieldsVsLive, // Use live comparison
 				status: 'submitted',
 				submit_count: 1,
 			})

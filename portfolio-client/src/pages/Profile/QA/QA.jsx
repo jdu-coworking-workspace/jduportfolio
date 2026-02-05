@@ -501,13 +501,14 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				comments: comment.comments,
 			})
 
-			// Update local draft status to reflect the change
+			// Update local draft status AND clear changed_fields (backend clears it too)
 			setPassedDraft(prevDraft => ({
 				...prevDraft,
 				status: value,
+				changed_fields: [], // ✅ Clear changed_fields after review
 			}))
-			// Update parent's currentDraft state
-			updateCurrentDraft(value)
+			// Update parent's currentDraft state with cleared changed_fields
+			updateCurrentDraft(value, true) // Pass flag to clear changed_fields
 			// Clear comment input after successful submission
 			setComment({ comments: '' })
 			try {
@@ -1252,7 +1253,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							{/* Staff approval controls */}
 							{role === 'Staff' && (
 								<>
-									<TextField title='コメント' data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+									<TextField title={t('staffComment') || 'コメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
 
 									<Box
 										sx={{
@@ -1262,7 +1263,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 										}}
 									>
 										<Button onClick={() => setStaffConfirm({ open: true, action: 'approved' })} variant='contained' color='primary' size='small'>
-											承認する
+											{t('approve') || '承認する'}
 										</Button>
 										<Button
 											onClick={() =>
@@ -1275,7 +1276,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 											color='primary'
 											size='small'
 										>
-											承認しない
+											{t('disapprove') || '承認しない'}
 										</Button>
 									</Box>
 								</>
@@ -1304,7 +1305,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							{/* Staff can reject after approval */}
 							{role === 'Staff' && (
 								<>
-									<TextField title='差し戻しコメント' data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+									<TextField title={t('resubmissionComment') || '差し戻しコメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
 									<Box
 										sx={{
 											display: 'flex',
@@ -1324,7 +1325,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 											color='warning'
 											size='small'
 										>
-											差し戻し
+											{t('sendBack') || '差し戻し'}
 										</Button>
 									</Box>
 								</>

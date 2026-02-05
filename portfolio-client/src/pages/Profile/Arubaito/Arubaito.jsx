@@ -5,7 +5,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconBut
 import * as React from 'react'
 import { useState } from 'react'
 
-const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key }) => {
+const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key, isChanged = false }) => {
 	const [editingIndex, setEditingIndex] = useState(null)
 	const [showForm, setShowForm] = useState(false)
 	const [formData, setFormData] = useState({
@@ -71,7 +71,33 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 	}
 
 	return (
-		<Box>
+		<Box
+			sx={{
+				backgroundColor: isChanged ? '#fff3cd' : 'transparent',
+				border: isChanged ? '2px solid #ffc107' : 'none',
+				borderRadius: isChanged ? '10px' : '0',
+				padding: isChanged ? 2 : 0,
+				position: 'relative',
+				marginTop: 2,
+			}}
+		>
+			{isChanged && (
+				<div
+					style={{
+						position: 'absolute',
+						top: 8,
+						right: 8,
+						backgroundColor: '#ffc107',
+						color: '#000',
+						padding: '2px 8px',
+						borderRadius: 4,
+						fontSize: 12,
+						fontWeight: 600,
+					}}
+				>
+					{t('changed') || 'Changed'}
+				</div>
+			)}
 			<div
 				style={{
 					fontSize: 20,
@@ -80,7 +106,7 @@ const Arubaito = ({ arubaito = [], editMode = false, onUpdate, t = key => key })
 					alignItems: 'center',
 					gap: 8,
 					marginBottom: 20,
-					marginTop: 40,
+					marginTop: isChanged ? 0 : 40,
 				}}
 			>
 				<WorkOutlineIcon sx={{ color: '#5627DB' }} />

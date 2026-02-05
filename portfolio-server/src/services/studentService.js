@@ -9,6 +9,17 @@ const kintoneCreditDetailsService = require('./kintoneCreditDetailsService')
 const { formatStudentWelcomeEmail } = require('../utils/emailToStudent')
 const { sendBulkEmails } = require('../utils/emailService')
 
+/**
+ * Escapes SQL LIKE wildcard characters to prevent SQL injection
+ * @param {string} value - The search value to escape
+ * @returns {string} Escaped search value
+ */
+function escapeSqlLike(value) {
+	if (!value || typeof value !== 'string') return ''
+	// Escape backslash first, then % and _
+	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 class StudentService {
 	// Service method to create a new student
 	static async createStudent(studentData) {
@@ -334,15 +345,18 @@ class StudentService {
 
 					// Only process if search value is not empty
 					if (searchValue) {
+						// Escape SQL LIKE wildcards to prevent injection
+						const escapedSearch = escapeSqlLike(searchValue)
+
 						// If search value is purely numeric, only search student_id with prefix match
 						// This prevents "66" from matching "21" in other columns
 						if (/^\d+$/.test(searchValue)) {
-							querySearch[Op.or] = [{ student_id: { [Op.iLike]: `${searchValue}%` } }]
+							querySearch[Op.or] = [{ student_id: { [Op.iLike]: `${escapedSearch}%` } }]
 						}
 						// If search value looks like a JLPT level (N1-N5), only search jlpt field with exact matching
 						// This prevents "N1" from matching "N3" or appearing in other columns
 						else if (/^N[1-5]$/i.test(searchValue)) {
-							const normalizedSearch = searchValue.toUpperCase()
+							const normalizedSearch = escapeSqlLike(searchValue.toUpperCase())
 							querySearch[Op.or] = [
 								{
 									jlpt: {
@@ -364,11 +378,11 @@ class StudentService {
 						else {
 							querySearch[Op.or] = [
 								// Search in first_name (substring match)
-								{ first_name: { [Op.iLike]: `%${searchValue}%` } },
+								{ first_name: { [Op.iLike]: `%${escapedSearch}%` } },
 								// Search in last_name (substring match)
-								{ last_name: { [Op.iLike]: `%${searchValue}%` } },
+								{ last_name: { [Op.iLike]: `%${escapedSearch}%` } },
 								// Search in student_id (prefix match)
-								{ student_id: { [Op.iLike]: `${searchValue}%` } },
+								{ student_id: { [Op.iLike]: `${escapedSearch}%` } },
 							]
 						}
 					}
@@ -654,7 +668,7 @@ class StudentService {
 					{
 						model: Draft,
 						as: 'pendingDraft',
-						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by'],
+						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by', 'changed_fields'],
 						required: false, // LEFT JOIN so students without pending drafts are still included
 					},
 				],
@@ -732,7 +746,7 @@ class StudentService {
 					{
 						model: Draft,
 						as: 'pendingDraft',
-						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by'],
+						attributes: ['id', 'status', 'submit_count', 'created_at', 'updated_at', 'profile_data', 'version_type', 'comments', 'reviewed_by', 'changed_fields'],
 						required: false, // LEFT JOIN so students without pending drafts are still included
 					},
 				],

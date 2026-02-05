@@ -69,7 +69,8 @@ const Student = ({ OnlyBookmarked = false }) => {
 		studentId: null,
 		timestamp: new Date().getTime(),
 	})
-	const recruiterId = JSON.parse(sessionStorage.getItem('loginUser')).id
+	const loginUser = sessionStorage.getItem('loginUser')
+	const recruiterId = loginUser ? JSON.parse(loginUser).id : null
 
 	// localStorage ga viewMode ni saqlash
 	useEffect(() => {
