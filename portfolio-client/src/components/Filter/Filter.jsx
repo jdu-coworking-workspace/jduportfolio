@@ -741,6 +741,8 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 	const isInitialMount = useRef(true)
 	/** @type {React.MutableRefObject<boolean>} */
 	const userChangedFilter = useRef(false)
+	/** @type {React.MutableRefObject<Map<string, HTMLDivElement | null>>} */
+	const filterGroupRefs = useRef(new Map())
 
 	// ========================================================================
 	// CUSTOM HOOKS
@@ -764,6 +766,29 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 			isInitialMount.current = false
 		}
 	}, [])
+
+	// Scroll to first active filter when modal opens
+	useEffect(() => {
+		if (showFilterModal) {
+			// Find first active filter field
+			const activeField = fields.find(field => {
+				if (field.key === 'search') return false
+				const value = tempFilterState[field.key]
+				if (Array.isArray(value)) return value.length > 0
+				return value && value !== ''
+			})
+
+			if (activeField) {
+				// Use requestAnimationFrame to scroll immediately after DOM paint
+				requestAnimationFrame(() => {
+					const element = filterGroupRefs.current.get(activeField.key)
+					if (element) {
+						element.scrollIntoView({ behavior: 'instant', block: 'start' })
+					}
+				})
+			}
+		}
+	}, [showFilterModal, tempFilterState, fields])
 
 	// ========================================================================
 	// MEMOIZED VALUES
@@ -1030,7 +1055,7 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 					}
 
 					return (
-						<div key={field.key} className={style.filterGroup}>
+						<div key={field.key} className={style.filterGroup} ref={el => filterGroupRefs.current.set(field.key, el)}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
 
 							{/* Match mode toggle for multi-select */}
@@ -1128,7 +1153,7 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 
 				case 'radio':
 					return (
-						<div key={field.key} className={style.filterGroup}>
+						<div key={field.key} className={style.filterGroup} ref={el => filterGroupRefs.current.set(field.key, el)}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
 							<div className={style.radioGroup}>
 								{field.options?.map(option => (
@@ -1143,7 +1168,7 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 
 				case 'select':
 					return (
-						<div key={field.key} className={style.filterGroup}>
+						<div key={field.key} className={style.filterGroup} ref={el => filterGroupRefs.current.set(field.key, el)}>
 							<h4 className={style.filterGroupTitle}>{field.label}</h4>
 							<select value={typeof value === 'string' ? value : ''} onChange={e => handleTempFilterChange(field.key, e.target.value)} className={style.select}>
 								<option value=''>{t('all') || '全て'}</option>

@@ -10,6 +10,17 @@ const generateUniqueFilename = require('../utils/uniqueFilename')
 const { Op } = require('sequelize')
 
 /**
+ * Escapes SQL LIKE wildcard characters to prevent SQL injection
+ * @param {string} value - The search value to escape
+ * @returns {string} Escaped search value
+ */
+function escapeSqlLike(value) {
+	if (!value || typeof value !== 'string') return ''
+	// Escape backslash first, then % and _
+	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+/**
  * Compares two objects and returns an array of keys that have changed.
  * @param {object} newData - The new data object.
  * @param {object} oldData - The old data object.
@@ -198,13 +209,15 @@ class DraftService {
 			Object.keys(filter).forEach(key => {
 				if (key !== 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					if (key === 'search') {
+						// Escape SQL LIKE wildcards to prevent injection
+						const escapedSearch = escapeSqlLike(String(filter[key]).trim())
 						let searchConditions = searchableColumns.map(column => ({
-							[column]: { [Op.iLike]: `%${filter[key]}%` },
+							[column]: { [Op.iLike]: `%${escapedSearch}%` },
 						}))
 
 						// Add JSONB search conditions for skills and it_skills using sequelize.where
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.skills'), 'TEXT'), { [Op.iLike]: `%${filter[key]}%` }))
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.it_skills'), 'TEXT'), { [Op.iLike]: `%${filter[key]}%` }))
+						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
+						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.it_skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
 
 						querySearch[Op.or] = searchConditions
 					} else if (key === 'it_skills') {

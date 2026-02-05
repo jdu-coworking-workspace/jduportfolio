@@ -552,7 +552,6 @@ const Setting = () => {
 													fullWidth
 													disabled={!isEditing}
 													className={SettingStyle.textField}
-													placeholder={t('furigana_help')}
 												/>
 											)}
 										/>
@@ -591,7 +590,6 @@ const Setting = () => {
 													fullWidth
 													disabled={!isEditing}
 													className={SettingStyle.textField}
-													placeholder={t('furigana_help')}
 												/>
 											)}
 										/>
