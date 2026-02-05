@@ -46,7 +46,9 @@ export const downloadCV = async cvData => {
 	sheet.getCell('C4').value = `${cvData.first_name} ${cvData.last_name}`
 
 	// Jinsi erkak yoki urgochi
-	sheet.getCell('F3').value = cvData.gender === 'Male' ? '男' : '女'
+	// Support both English ('Male'/'Female') and Japanese ('男'/'女') from Kintone
+	const isMale = cvData.gender === 'Male' || cvData.gender === '男'
+	sheet.getCell('F3').value = isMale ? '男' : '女'
 
 	// TUG'ILGAN SANA (C6)
 	const jpFormatted = formatJapaneseDateWithAge(cvData.date_of_birth)

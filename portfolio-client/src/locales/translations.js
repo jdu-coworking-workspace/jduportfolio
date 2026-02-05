@@ -1060,7 +1060,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		disapprove: '承認しない',
 		sendBack: '差し戻し',
 		originPlaceholder: 'Uzbekistan',
-		addressFuriganaPlaceholder: 'ウズファイスト',
+		addressFuriganaPlaceholder: 'ウズベキスタン',
 		studentNotApprovedByStaff: '学生はスタッフによる承認が必要です',
 		profileVisibilityEnabled: 'プロフィールの公開設定が正常に有効化されました',
 		profileHidden: 'プロフィールが正常に非公開になりました',

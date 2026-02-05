@@ -76,25 +76,6 @@
 	animation: pulse 1.5s infinite;
 }
 
-/* Blue pulse animation for new profile badges */
-@keyframes pulseBlue {
-	0% {
-		box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7);
-	}
-
-	70% {
-		box-shadow: 0 0 0 8px rgba(25, 118, 210, 0);
-	}
-
-	100% {
-		box-shadow: 0 0 0 0 rgba(25, 118, 210, 0);
-	}
-}
-
-.pulsingBlueBadge {
-	animation: pulseBlue 1.5s infinite;
-}
-
 /* Two-column container that stacks on small screens */
 .twoCol {
 	display: flex;

@@ -1095,6 +1095,7 @@ class StudentService {
 					date_of_birth: data.birthday,
 					gender: data.gender,
 					address: data.address,
+					postal_code: data.postalCode,
 					parents_phone_number: data.parentsPhoneNumber,
 					phone: data.phoneNumber,
 					enrollment_date: data.jduDate,

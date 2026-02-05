@@ -106,6 +106,7 @@ class KintoneService {
 						birthday: record.birthday?.value,
 						gender: record.gender?.value,
 						address: record.address?.value,
+						postalCode: record.postalCode?.value,
 						mail: record.mail?.value,
 						phoneNumber: record.phoneNumber?.value,
 						parentsPhoneNumber: record.parentsPhoneNumber?.value,
