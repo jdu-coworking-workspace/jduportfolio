@@ -383,37 +383,6 @@ const Top = () => {
 		)
 	}
 
-	// Helper function to create badge for new profiles that need to be filled
-	const getNewProfileBadge = (isStaff = false) => {
-		// For staff: descriptive status "Not filled yet"
-		// For student: call to action "Fill out profile"
-		const label = isStaff ? (language === 'ja' ? 'まだ記入されていません' : language === 'uz' ? "Hali to'ldirilmagan" : language === 'ru' ? 'Ещё не заполнено' : 'Not filled yet') : language === 'ja' ? '記入してください' : language === 'uz' ? "To'ldiring" : language === 'ru' ? 'Заполните' : 'Fill out profile'
-
-		const tooltipText = language === 'ja' ? 'プロフィールをまだ提出していません' : language === 'uz' ? 'Profil hali topshirilmagan' : language === 'ru' ? 'Профиль ещё не отправлен' : 'Profile has not been submitted yet'
-
-		return (
-			<Tooltip title={tooltipText} arrow placement='bottom'>
-				<Chip
-					size='small'
-					label={label}
-					className={styles.pulsingBlueBadge}
-					sx={{
-						backgroundColor: '#e3f2fd',
-						color: '#1565c0',
-						fontWeight: 600,
-						fontSize: '12px',
-						height: '40px',
-						border: '1px solid #1976d2',
-						cursor: 'pointer',
-						'& .MuiChip-label': {
-							px: 1.5,
-						},
-					}}
-				/>
-			</Tooltip>
-		)
-	}
-
 	// Handle language change event to save data before reload
 	useEffect(() => {
 		const handleBeforeLanguageChange = e => {
@@ -1447,7 +1416,7 @@ const Top = () => {
 						<DownloadIcon />
 						{t('download_cv')}
 					</Button>
-					{currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge()}
+					{currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
 				</>
 			)}
 			{editMode ? (
@@ -1484,7 +1453,7 @@ const Top = () => {
 								{t('editProfile')}
 							</Button>
 							{/* Show time badge for Staff/Admin viewing student profile - show LIVE profile update time (when approved) */}
-							{(role === 'Staff' || role === 'Admin') && (currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : getNewProfileBadge(true))}
+							{(role === 'Staff' || role === 'Admin') && currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
 						</>
 					)}
 
