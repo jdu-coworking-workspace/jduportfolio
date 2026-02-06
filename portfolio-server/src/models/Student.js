@@ -144,6 +144,10 @@ module.exports = (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: false,
 			},
+			visibility_updated_at: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
 			has_pending: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
@@ -240,6 +244,10 @@ module.exports = (sequelize, DataTypes) => {
 					if (student.changed('password')) {
 						const salt = await bcrypt.genSalt(10)
 						student.password = await bcrypt.hash(student.password, salt)
+					}
+					// Auto-update visibility_updated_at when visibility changes
+					if (student.changed('visibility')) {
+						student.visibility_updated_at = new Date()
 					}
 				},
 			},

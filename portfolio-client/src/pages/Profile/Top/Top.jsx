@@ -383,6 +383,50 @@ const Top = () => {
 		)
 	}
 
+	// Helper function to create visibility badge for Staff/Admin
+	const getVisibilityBadge = (isVisible, updatedAt) => {
+		// Don't show badge if no visibility_updated_at
+		if (!updatedAt) return null
+
+		// Calculate time since visibility was changed
+		let timeLabel = ''
+		const now = new Date()
+		const updated = new Date(updatedAt)
+		const diffMs = now - updated
+		const diffMins = Math.floor(diffMs / (1000 * 60))
+		const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+		const diffWeeks = Math.floor(diffDays / 7)
+		const diffMonths = Math.floor(diffDays / 30)
+
+		if (diffMins < 60) {
+			timeLabel = language === 'ja' ? `${diffMins}分前` : language === 'uz' ? `${diffMins} daqiqa oldin` : language === 'ru' ? `${diffMins} мин назад` : `${diffMins}m ago`
+		} else if (diffHours < 24) {
+			timeLabel = language === 'ja' ? `${diffHours}時間前` : language === 'uz' ? `${diffHours} soat oldin` : language === 'ru' ? `${diffHours} ч назад` : `${diffHours}h ago`
+		} else if (diffDays < 7) {
+			timeLabel = language === 'ja' ? `${diffDays}日前` : language === 'uz' ? `${diffDays} kun oldin` : language === 'ru' ? `${diffDays} д назад` : `${diffDays}d ago`
+		} else if (diffWeeks < 4) {
+			timeLabel = language === 'ja' ? `${diffWeeks}週間前` : language === 'uz' ? `${diffWeeks} hafta oldin` : language === 'ru' ? `${diffWeeks} нед назад` : `${diffWeeks}w ago`
+		} else {
+			timeLabel = language === 'ja' ? `${diffMonths}ヶ月前` : language === 'uz' ? `${diffMonths} oy oldin` : language === 'ru' ? `${diffMonths} мес назад` : `${diffMonths}mo ago`
+		}
+
+		return (
+			<Chip
+				size='small'
+				label={timeLabel}
+				sx={{
+					backgroundColor: isVisible ? '#e8f5e9' : '#e0e0e0',
+					color: isVisible ? '#2e7d32' : '#424242',
+					fontWeight: 600,
+					fontSize: '12px',
+					height: '40px',
+					ml: 1,
+				}}
+			/>
+		)
+	}
+
 	// Handle language change event to save data before reload
 	useEffect(() => {
 		const handleBeforeLanguageChange = e => {
@@ -1452,8 +1496,8 @@ const Top = () => {
 							>
 								{t('editProfile')}
 							</Button>
-							{/* Show time badge for Staff/Admin viewing student profile - show LIVE profile update time (when approved) */}
-							{(role === 'Staff' || role === 'Admin') && currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+							{/* Show visibility time badge for Staff/Admin */}
+							{(role === 'Staff' || role === 'Admin') && getVisibilityBadge(liveData?.visibility ?? statedata?.visibility, liveData?.visibility_updated_at ?? statedata?.visibility_updated_at)}
 						</>
 					)}
 
