@@ -737,8 +737,6 @@ const Top = () => {
 		try {
 			const response = await axios.get(`/api/students/${id}`)
 			const studentData = response.data
-
-			// Always parse JSON fields first using mapData
 			const parsedStudentData = mapData(studentData)
 
 			// Store Live data
@@ -1478,28 +1476,30 @@ const Top = () => {
 				<>
 					{!(role === 'Student' && viewingLive) && (
 						<>
-							<Button
-								onClick={() => {
-									// Clear any stale localStorage before entering edit mode
-									clearStorage()
-									setEditMode(true)
-									// Clear any old save status when entering edit mode
-									if (role === 'Student' || role === 'Recruiter') {
-										setSaveStatus({
-											isSaving: false,
-											lastSaved: null,
-											hasUnsavedChanges: false,
-										})
-									}
-								}}
-								variant='contained'
-								color='primary'
-								size='small'
-							>
-								{t('editProfile')}
-							</Button>
-							{/* Show visibility time badge for Staff/Admin */}
-							{(role === 'Staff' || role === 'Admin') && getVisibilityBadge(liveData?.visibility ?? statedata?.visibility, liveData?.visibility_updated_at ?? statedata?.visibility_updated_at)}
+							{role !== 'Recruiter' && (
+								<Button
+									onClick={() => {
+										// Clear any stale localStorage before entering edit mode
+										clearStorage()
+										setEditMode(true)
+										// Clear any old save status when entering edit mode
+										if (role === 'Student' || role === 'Recruiter') {
+											setSaveStatus({
+												isSaving: false,
+												lastSaved: null,
+												hasUnsavedChanges: false,
+											})
+										}
+									}}
+									variant='contained'
+									color='primary'
+									size='small'
+								>
+									{t('editProfile')}
+								</Button>
+							)}
+							{/* Show visibility time badge for Staff/Admin/Recruiter */}
+							{(role === 'Staff' || role === 'Admin' || role === 'Recruiter') && getVisibilityBadge(student?.visibility ?? liveData?.visibility ?? statedata?.visibility, student?.visibility_updated_at ?? liveData?.visibility_updated_at ?? statedata?.visibility_updated_at)}
 						</>
 					)}
 
@@ -1527,7 +1527,7 @@ const Top = () => {
 	return (
 		<Box mb={2}>
 			{/* Portal edit buttons for both Students and Staff — render null when not portaling so Box never receives non-ReactNode */}
-			{portalContainer && (role === 'Student' || role === 'Staff' || role === 'Admin') ? createPortal(portalContent, portalContainer) : null}
+			{portalContainer && (role === 'Student' || role === 'Staff' || role === 'Admin' || role === 'Recruiter') ? createPortal(portalContent, portalContainer) : null}
 
 			{/* Live/Draft Toggle for Students — use ternary so Box never receives boolean false */}
 			{role === 'Student' && !editMode && liveData ? (
@@ -1594,23 +1594,31 @@ const Top = () => {
 					borderEndStartRadius: 10,
 				}}
 			>
-				{['selfIntroduction', 'skill', 'deliverables', 'education', 'work_experience', 'qa'].map((item, ind) => (
-					<div
-						key={ind}
-						style={{
-							fontWeight: 500,
-							fontSize: 16,
-							color: subTabIndex === item ? '#5627db' : '#4b4b4b',
-							borderBottom: subTabIndex === item ? '2px solid #5627db' : '#4b4b4b',
-							cursor: 'pointer',
-						}}
-						onClick={() => {
-							setSubTabIndex(item)
-						}}
-					>
-						{t(item)}
-					</div>
-				))}
+				{['selfIntroduction', 'skill', 'deliverables', 'education', 'work_experience', 'qa']
+					.filter(item => {
+						// Hide education and work_experience tabs for recruiters
+						if (role === 'Recruiter' && (item === 'education' || item === 'work_experience')) {
+							return false
+						}
+						return true
+					})
+					.map((item, ind) => (
+						<div
+							key={ind}
+							style={{
+								fontWeight: 500,
+								fontSize: 16,
+								color: subTabIndex === item ? '#5627db' : '#4b4b4b',
+								borderBottom: subTabIndex === item ? '2px solid #5627db' : '#4b4b4b',
+								cursor: 'pointer',
+							}}
+							onClick={() => {
+								setSubTabIndex(item)
+							}}
+						>
+							{t(item)}
+						</div>
+					))}
 			</div>
 
 			{/* Staff Comment Display Section for Students - show feedback from pending draft */}
