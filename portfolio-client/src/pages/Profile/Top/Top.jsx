@@ -383,8 +383,10 @@ const Top = () => {
 		)
 	}
 
-	// Helper function to create visibility badge for Staff/Admin
+	// Helper function to create visibility badge for Staff/Admin (only for 公開)
 	const getVisibilityBadge = (isVisible, updatedAt) => {
+		// Only show badge for 公開 (visible) students
+		if (!isVisible) return null
 		// Don't show badge if no visibility_updated_at
 		if (!updatedAt) return null
 
