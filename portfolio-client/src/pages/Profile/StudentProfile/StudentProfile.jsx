@@ -310,7 +310,7 @@ const StudentProfile = ({ userId = 0 }) => {
 								)}
 							</div>
 						</Box>
-						{['Admin', 'Staff', 'Student'].includes(role) && (
+						{['Admin', 'Staff', 'Student', 'Recruiter'].includes(role) && (
 							<Box>
 								<a href={`mailto:${student.email}`} className={styles.email}>
 									<EmailIcon className={styles.emailIcon} />

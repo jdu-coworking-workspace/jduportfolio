@@ -1389,7 +1389,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													) : header.isJSON ? (
 														(() => {
 															const rawValue = row[header.id]
-															if (!rawValue) return '未提出'
+															if (!rawValue || rawValue === 'null') return '未提出'
 
 															// If value already looks like JSON, try to parse; otherwise treat as plain text (e.g. 'N1')
 															let parsed = rawValue
@@ -1398,16 +1398,16 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																	parsed = JSON.parse(rawValue)
 																} catch (e) {
 																	// Fallback to raw string if JSON.parse fails
-																	return rawValue || '未提出'
+																	return rawValue === 'null' ? '未提出' : rawValue || '未提出'
 																}
 															}
 
 															// When parsed is an object with "highest", use it; otherwise return the value or fallback text
 															if (parsed && typeof parsed === 'object' && 'highest' in parsed) {
-																return parsed.highest || '未提出'
+																return parsed.highest === 'null' ? '未提出' : parsed.highest || '未提出'
 															}
 
-															return parsed || '未提出'
+															return parsed === 'null' ? '未提出' : parsed || '未提出'
 														})()
 													) : header.id === 'graduation_year' ? (
 														// Format graduation_year from date format to Japanese format
