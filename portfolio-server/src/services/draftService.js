@@ -52,12 +52,33 @@ function isEmptyFilterValue(val) {
 }
 
 class DraftService {
-	static async getAll(filter, pagination = {}) {
+	static async getAll(filter, pagination = {}, sortOptions = {}) {
 		try {
 			if (!filter || typeof filter !== 'object') {
 				filter = {}
 			}
-			console.log('DraftService.getAll called with filter:', JSON.stringify(filter, null, 2))
+			let order = []
+			const { sortBy, sortOrder } = sortOptions
+			const validSortOrder = sortOrder && ['ASC', 'DESC'].includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'ASC'
+			const columnMap = {
+				name: ['first_name', 'last_name'], // Ism bo'yicha saralash uchun ikkita ustun
+				student_id: ['student_id'],
+				age: ['date_of_birth'],
+				email: ['email'],
+			}
+
+			const dbColumns = columnMap[sortBy]
+			if (dbColumns) {
+				if (sortBy === 'age') {
+					// Yosh bo'yicha o'sish tartibi -> tug'ilgan sana bo'yicha kamayish tartibi
+					const ageSortOrder = validSortOrder === 'ASC' ? 'DESC' : 'ASC'
+					order.push([dbColumns[0], ageSortOrder])
+				} else {
+					dbColumns.forEach(column => order.push([column, validSortOrder]))
+				}
+			} else {
+				order.push(['student_id', 'ASC']) // Standart saralash
+			}
 
 			const semesterMapping = {
 				'1年生': ['1', '2'],
@@ -345,6 +366,7 @@ class DraftService {
 				],
 				...(isPaginated && { limit: pagination.limit, offset: pagination.offset }),
 				distinct: true, // For accurate count with JOINs
+				order: order,
 			}
 
 			// Pagination bo'lsa findAndCountAll, aks holda findAll

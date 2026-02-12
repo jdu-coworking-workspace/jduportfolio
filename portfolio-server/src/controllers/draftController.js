@@ -302,6 +302,7 @@ class DraftController {
 	static async getAllDrafts(req, res, next) {
 		try {
 			let filter = {}
+			const { sortBy, sortOrder } = req.query
 
 			// Handle different filter formats
 			if (req.query.filter) {
@@ -328,7 +329,7 @@ class DraftController {
 
 			console.log('Parsed filter:', filter)
 
-			const result = await DraftService.getAll(filter, pagination)
+			const result = await DraftService.getAll(filter, pagination, { sortBy, sortOrder })
 
 			// Set cache control headers
 			res.set({
