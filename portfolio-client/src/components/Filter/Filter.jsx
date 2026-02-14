@@ -760,6 +760,21 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 	// EFFECTS
 	// ========================================================================
 
+	useEffect(() => {
+		if (persistKey) {
+			const saved = localStorage.getItem(persistKey)
+			if (saved) {
+				try {
+					const parsedState = JSON.parse(saved)
+					if (Object.keys(parsedState).length > 0) {
+						onFilterChange(parsedState)
+					}
+				} catch (e) {
+					console.error('Error parsing persisted state', e)
+				}
+			}
+		}
+	}, [])
 	// Mark initial mount as complete
 	useEffect(() => {
 		if (isInitialMount.current) {
