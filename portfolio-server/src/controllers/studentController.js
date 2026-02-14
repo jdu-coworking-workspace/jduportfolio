@@ -291,6 +291,13 @@ class StudentController {
 				if (pendingDraft && pendingDraft.status === 'approved') {
 					// Pending draftdan profile_data ni olish va uni yangilash payload'ga qo'shish
 					const profileData = pendingDraft.profile_data || {}
+					// Serialize fields that are TEXT in Student table but stored as objects in Draft
+					const textFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+					textFields.forEach(field => {
+						if (profileData[field] && typeof profileData[field] === 'object') {
+							profileData[field] = JSON.stringify(profileData[field])
+						}
+					})
 					updatePayload = {
 						...profileData, // Pending draftdan kelgan profil ma'lumotlari
 						visibility: true, // Tasdiqlanganidan keyin faollashtiramiz
