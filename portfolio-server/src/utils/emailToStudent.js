@@ -175,7 +175,7 @@ const _buildCommentSection = (comments, accentColor) => {
  * @returns {{ to, subject, text, html }}
  */
 const formatStudentDraftApprovedEmail = (email, studentName, staffName, comments, studentId) => {
-	const profileUrl = `https://portfolio.jdu.uz/checkprofile/profile/${studentId}`
+	const profileUrl = `https://portfolio.jdu.uz/profile/top`
 	const headerColor = '#4CAF50'
 
 	const bodyJA = `おめでとうございます！あなたのプロフィール情報が<strong>${staffName}</strong>によって承認されました。更新内容が正式に反映されています。`
@@ -213,7 +213,7 @@ const formatStudentDraftApprovedEmail = (email, studentName, staffName, comments
  * @returns {{ to, subject, text, html }}
  */
 const formatStudentDraftDisapprovedEmail = (email, studentName, staffName, comments, studentId) => {
-	const profileUrl = `https://portfolio.jdu.uz/checkprofile/profile/${studentId}`
+	const profileUrl = `https://portfolio.jdu.uz/profile/top`
 	const headerColor = '#f44336'
 
 	const bodyJA = `あなたのプロフィール情報が<strong>${staffName}</strong>によって差し戻されました。スタッフのコメントを確認し、内容を修正して再提出してください。`
@@ -251,7 +251,7 @@ const formatStudentDraftDisapprovedEmail = (email, studentName, staffName, comme
  * @returns {{ to, subject, text, html }}
  */
 const formatStudentDraftResubmissionEmail = (email, studentName, staffName, comments, studentId) => {
-	const profileUrl = `https://portfolio.jdu.uz/checkprofile/profile/${studentId}`
+	const profileUrl = `https://portfolio.jdu.uz/profile/top`
 	const headerColor = '#FF9800'
 
 	const bodyJA = `あなたのプロフィール情報について、<strong>${staffName}</strong>より修正が求められています。コメントを確認の上、修正して再提出をお願いいたします。`
@@ -287,7 +287,7 @@ const formatStudentDraftResubmissionEmail = (email, studentName, staffName, comm
  * @returns {{ to, subject, text, html }}
  */
 const formatStudentProfilePublicEmail = (email, studentName, studentId) => {
-	const profileUrl = `https://portfolio.jdu.uz/checkprofile/profile/${studentId}`
+	const profileUrl = `https://portfolio.jdu.uz/profile/top`
 	const headerColor = 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)'
 
 	const bodyJA = `🎊 おめでとうございます！あなたのプロフィールが<strong>公開</strong>されました。`
