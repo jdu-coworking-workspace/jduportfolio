@@ -1,5 +1,6 @@
 const { Student, Admin, Draft, Staff, Notification } = require('../models')
 const { sendEmail } = require('../utils/emailService')
+const { formatStudentDraftApprovedEmail, formatStudentDraftDisapprovedEmail, formatStudentDraftResubmissionEmail } = require('../utils/emailToStudent')
 const DraftService = require('../services/draftService')
 const NotificationService = require('../services/notificationService')
 const StaffService = require('../services/staffService')
@@ -263,6 +264,30 @@ class DraftController {
 				related_id: draft.id,
 				target_url: studentTargetUrl,
 			})
+
+			// Studentga email jo'natish (checking statusidan tashqari)
+			if (student.email && ['approved', 'disapproved', 'resubmission_required'].includes(statusKey)) {
+				try {
+					const studentFullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.student_id
+
+					// emailToStudent.js dagi format funksiyalaridan foydalanamiz
+					const emailFormatters = {
+						approved: formatStudentDraftApprovedEmail,
+						disapproved: formatStudentDraftDisapprovedEmail,
+						resubmission_required: formatStudentDraftResubmissionEmail,
+					}
+
+					const formatter = emailFormatters[statusKey]
+					if (formatter) {
+						const studentMailData = formatter(student.email, studentFullName, staffDisplayName, comments, student.student_id)
+						await sendEmail(studentMailData)
+						console.log(`✅ Student (${student.student_id}) ga "${statusKey}" email muvaffaqiyatli jo'natildi.`)
+					}
+				} catch (emailError) {
+					console.error(`❌ Student email jo'natishda xatolik (${student.student_id}):`, emailError.message)
+					// Email xatosi asosiy jarayonni to'xtatmasligi kerak
+				}
+			}
 
 			// Adminlarga bildirishnoma yuborish
 			if (status.toLowerCase() === 'approved') {

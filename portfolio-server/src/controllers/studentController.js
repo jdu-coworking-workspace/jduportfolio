@@ -3,7 +3,8 @@ const StudentService = require('../services/studentService')
 const DraftService = require('../services/draftService')
 const QAService = require('../services/qaService')
 const generatePassword = require('generate-password')
-const { sendStudentWelcomeEmail } = require('../utils/emailToStudent') // To'g'ri email funksiyasini import qilamiz
+const { sendStudentWelcomeEmail, formatStudentProfilePublicEmail } = require('../utils/emailToStudent')
+const { sendEmail } = require('../utils/emailService')
 const { Student } = require('../models')
 
 class StudentController {
@@ -352,6 +353,18 @@ class StudentController {
 								})
 							)
 						)
+					}
+				}
+
+				// Studentga koukai (public) bo'lgani haqida email jo'natish
+				if (student.email) {
+					try {
+						const studentFullName = `${updatedStudent.first_name || ''} ${updatedStudent.last_name || ''}`.trim() || id
+						const koukaMailData = formatStudentProfilePublicEmail(student.email, studentFullName, updatedStudent.student_id || id)
+						await sendEmail(koukaMailData)
+						console.log(`✅ Student (${updatedStudent.student_id || id}) ga koukai email muvaffaqiyatli jo'natildi.`)
+					} catch (emailErr) {
+						console.error(`❌ Student koukai email jo'natishda xatolik:`, emailErr.message)
 					}
 				}
 			} catch (e) {
