@@ -99,6 +99,10 @@ export const downloadCV = async cvData => {
 			sheet.getCell(`C${17 + index}`).value = item.month
 			sheet.getCell(`D${17 + index}`).value = item.institution
 			sheet.getCell(`G${17 + index}`).value = item.status
+			const cell = sheet.getCell(`B${17 + index}`)
+			cell.value = item.year
+			cell.font = { size: 11 }
+			cell.alignment = { vertical: 'middle', horizontal: 'center' }
 		})
 	}
 	// workExperience (B9)
@@ -167,10 +171,14 @@ export const downloadCV = async cvData => {
 	// arubaito (A20)
 	if (arubaito.length > 0) {
 		arubaito.map((item, index) => {
-			sheet2.getCell(`A${20 + index}`).value = item.company
-			sheet2.getCell(`B${20 + index}`).value = item.role
-
-			sheet2.getCell(`C${20 + index}`).value = item.period
+			const row = 20 + index
+			sheet2.mergeCells(`A${row}:D${row}`)
+			sheet2.getCell(`A${row}`).value = `${item.period}  ${item.role}  ${item.company}`
+			sheet2.getCell(`A${row}`).alignment = {
+				vertical: 'middle',
+				horizontal: 'left',
+				wrapText: true,
+			}
 		})
 	}
 	// ■資格など (A33)
@@ -186,21 +194,33 @@ export const downloadCV = async cvData => {
 			name: 'Calibri',
 		},
 	}
+
 	if (cvData.licenses.length > 0) {
 		cvData.licenses.map((item, index) => {
-			const yearCell = sheet2.getCell(`A${33 + index}`)
+			const row = 33 + index
+
+			// YEAR
+			const yearCell = sheet2.getCell(`A${row}`)
 			yearCell.value = item.year
 			yearCell.alignment = rightRegularStyle.alignment
 			yearCell.font = rightRegularStyle.font
 
-			const monthCell = sheet2.getCell(`B${33 + index}`)
+			// MONTH
+			const monthCell = sheet2.getCell(`B${row}`)
 			monthCell.value = item.month
 			monthCell.alignment = rightRegularStyle.alignment
 			monthCell.font = rightRegularStyle.font
 
-			const certCell = sheet2.getCell(`C${33 + index}`)
+			// C–D MERGE
+			sheet2.mergeCells(`C${row}:D${row}`)
+
+			const certCell = sheet2.getCell(`C${row}`)
 			certCell.value = item.certifacateName
-			certCell.alignment = rightRegularStyle.alignment
+			certCell.alignment = {
+				horizontal: 'left',
+				vertical: 'middle',
+				wrapText: true,
+			}
 			certCell.font = rightRegularStyle.font
 		})
 	}

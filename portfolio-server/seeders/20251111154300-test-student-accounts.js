@@ -14,9 +14,9 @@ module.exports = {
 
 		const testStudents = []
 
-		// Create 10 test student accounts
-		for (let i = 0; i < 10; i++) {
-			const studentNumber = String(i).padStart(2, '0')
+		// Create 100 test student accounts
+		for (let i = 0; i < 100; i++) {
+			const studentNumber = String(i).padStart(3, '0')
 			const email = i === 0 ? 'student@jdu.uz' : `student${studentNumber}@jdu.uz`
 			const studentId = `TEST${studentNumber}`
 
@@ -62,7 +62,7 @@ module.exports = {
 				graduation_year: '2025年',
 				graduation_season: '春',
 				visibility: false, // Hidden by default
-				active: false,
+				active: true,
 				has_pending: false,
 				kintone_id: 99999 + i, // Unique kintone_id for each test student
 				// CV download / additional student fields

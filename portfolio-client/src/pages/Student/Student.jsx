@@ -185,7 +185,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'partner_university',
 			label: t('partner_university'),
 			type: 'checkbox',
-			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science')],
+			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science'), '未所属'],
 		},
 		{
 			key: 'other_information',
@@ -302,7 +302,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		// Pass filter options for header dropdowns
 		filterOptions: {
 			jlpt: ['N1', 'N2', 'N3', 'N4', 'N5', '未提出'],
-			partner_university: ['東京通信大学', '産業能率大学', '新潟産業大学', '京都橘大学', '大手前大学', '自由が丘産能短期大学', '40単位モデル'],
+			partner_university: ['東京通信大学', '産業能率大学', '新潟産業大学', '京都橘大学', '大手前大学', '自由が丘産能短期大学', '岡山理科大学', '未所属', 'なし'],
 			graduation_year: graduationYearOptions,
 			graduation_year_format: formatGraduationYear,
 		},

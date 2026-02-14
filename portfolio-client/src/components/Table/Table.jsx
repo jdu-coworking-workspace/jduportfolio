@@ -548,7 +548,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 										flex: 1,
 									}}
 								>
-									{row.partner_university || 'N/A'}
+									{row.partner_university === '40単位モデル' ? 'なし' : row.partner_university || 'N/A'}
 								</Typography>
 							</Box>
 
@@ -1425,7 +1425,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 														})()
 													) : row[header.id] ? (
 														<>
-															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : row[header.id] ? row[header.id] : 'N/A'}
+															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : header.id === 'partner_university' && row[header.id] === '40単位モデル' ? 'なし' : row[header.id] ? row[header.id] : 'N/A'}
 															{header.suffix ? header.suffix : ''}
 														</>
 													) : (

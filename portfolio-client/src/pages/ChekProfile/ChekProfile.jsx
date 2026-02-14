@@ -124,7 +124,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'partner_university',
 			label: t('partner_university'),
 			type: 'checkbox',
-			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science')],
+			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science'), '未所属'],
 			minWidth: '160px',
 		},
 		{
