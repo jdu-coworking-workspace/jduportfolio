@@ -279,15 +279,17 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 					localStorage.setItem('visibleRowsStudentIds', JSON.stringify(filteredRows))
 					setRows(students)
 					setTotalCount(total)
+					setLoading(false)
 				})
 				.catch(error => {
 					// Ignore aborted requests (expected behavior)
+					// CRITICAL: Do NOT set loading=false for aborted requests,
+					// because a new request is always in flight after an abort.
+					// Setting loading=false here would cause a brief "no data found" flash.
 					if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
 						console.error('Error fetching students:', error)
+						setLoading(false)
 					}
-				})
-				.finally(() => {
-					setLoading(false)
 				})
 		},
 		[tableProps.dataLink, tableProps.filter, tableProps.recruiterId, tableProps.OnlyBookmarked, sortBy, sortOrder, page, rowsPerPage]
