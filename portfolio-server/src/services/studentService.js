@@ -10,6 +10,29 @@ const { formatStudentWelcomeEmail } = require('../utils/emailToStudent')
 const { sendBulkEmails } = require('../utils/emailService')
 
 /**
+ * Fields stored as TEXT in the Student model that may arrive as objects/arrays
+ * from draft profile_data. Must be JSON.stringify'd before saving.
+ * Note: other_skills is JSONB, NOT TEXT — do NOT include it here.
+ */
+const TEXT_FIELDS_NEEDING_SERIALIZATION = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills']
+
+/**
+ * Serializes object/array values to JSON strings for TEXT columns in the Student model.
+ * Prevents Sequelize "string violation" errors when draft profile_data is spread
+ * directly into a Student.update() call.
+ * @param {object} data - The data object to sanitize (mutated in place)
+ * @returns {object} The same data object with TEXT fields serialized
+ */
+function serializeTextFields(data) {
+	TEXT_FIELDS_NEEDING_SERIALIZATION.forEach(field => {
+		if (data[field] !== undefined && data[field] !== null && typeof data[field] === 'object') {
+			data[field] = JSON.stringify(data[field])
+		}
+	})
+	return data
+}
+
+/**
  * Escapes SQL LIKE wildcard characters to prevent SQL injection
  * @param {string} value - The search value to escape
  * @returns {string} Escaped search value
@@ -864,6 +887,9 @@ class StudentService {
 				console.log('Merged additional_info:', studentData.additional_info)
 			}
 
+			// Serialize TEXT fields that may contain objects from draft profile_data
+			serializeTextFields(studentData)
+
 			// Update the student with the provided data
 			await student.update(studentData)
 
@@ -940,6 +966,9 @@ class StudentService {
 				}
 			}
 
+			// Serialize TEXT fields that may contain objects from draft profile_data
+			serializeTextFields(studentData)
+
 			// Update the student with the provided data
 			await student.update(studentData)
 
@@ -972,6 +1001,9 @@ class StudentService {
 					...studentData.additional_info,
 				}
 			}
+
+			// Serialize TEXT fields that may contain objects from draft profile_data
+			serializeTextFields(studentData)
 
 			// Update the student with the provided data
 			await student.update(studentData)

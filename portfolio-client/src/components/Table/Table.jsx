@@ -75,7 +75,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [rows, setRows] = useState([])
 	const [totalCount, setTotalCount] = useState(0) // Server-side pagination uchun
-	const [loading, setLoading] = useState(false)
+	const [loading, setLoading] = useState(true)
 	const [_refresher, setRefresher] = useState(0)
 	const [anchorEls, setAnchorEls] = useState({})
 	const [deleteModal, setDeleteModal] = useState({
@@ -325,6 +325,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 		// Filter o'zgarganini tekshirish
 		if (JSON.stringify(prevFilterRef.current) !== JSON.stringify(tableProps.filter)) {
 			setPage(0)
+			setLoading(true) // Immediately show loading to prevent "no data found" flash
 			prevFilterRef.current = tableProps.filter
 		}
 	}, [tableProps.filter])

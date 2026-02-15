@@ -21,6 +21,63 @@ function escapeSqlLike(value) {
 }
 
 /**
+ * Normalizes a value for comparison to avoid false positives.
+ * Treats null, undefined, "", [], {} as equivalent "empty" values.
+ * Trims strings and sorts arrays of primitives for order-insensitive comparison.
+ */
+const normalizeForComparison = value => {
+	if (value === undefined || value === null) return null
+	if (typeof value === 'string') {
+		const trimmed = value.trim()
+		if (trimmed === '' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'undefined') return null
+		return trimmed
+	}
+	if (Array.isArray(value)) {
+		if (value.length === 0) return null
+		return value
+	}
+	if (typeof value === 'object' && Object.keys(value).length === 0) return null
+	return value
+}
+
+/**
+ * Normalizes certificate fields (jlpt, jdu_japanese_certification, etc.) to a
+ * consistent shape for comparison. Both sides may store the value differently:
+ * - Student table (TEXT): '{"highest":"N2","list":[]}' or 'N2' or null
+ * - Draft profile_data: 'N2' or '未提出' or null or {highest: 'N2', list: []}
+ * This function extracts just the meaningful "highest" value for comparison.
+ */
+const normalizeCertificateField = value => {
+	if (value === null || value === undefined) return null
+	if (typeof value === 'string') {
+		const trimmed = value.trim()
+		if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined' || trimmed === '未提出') return null
+		// Try parsing as JSON
+		try {
+			const parsed = JSON.parse(trimmed)
+			if (parsed === null) return null
+			if (typeof parsed === 'object' && parsed.highest) {
+				const h = String(parsed.highest).trim()
+				return h === '' || h === 'null' || h === '未提出' ? null : h
+			}
+			// Parsed but not an object with .highest — treat original as plain value
+			return trimmed
+		} catch {
+			// Not JSON — treat as plain value (e.g., 'N2')
+			return trimmed
+		}
+	}
+	if (typeof value === 'object' && value !== null) {
+		if (value.highest) {
+			const h = String(value.highest).trim()
+			return h === '' || h === 'null' || h === '未提出' ? null : h
+		}
+		return null
+	}
+	return value
+}
+
+/**
  * Compares two objects and returns an array of keys that have changed.
  * @param {object} newData - The new data object.
  * @param {object} oldData - The old data object.
@@ -477,6 +534,8 @@ class DraftService {
 
 		// These are the ONLY fields that exist in the Students table
 		const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
+		// Certificate fields need special normalization (stored as JSON TEXT in Students, plain string in draft)
+		const certificateFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest']
 		// Fields that might be stored as JSON strings - need to parse both sides
 		const jsonTextFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills', 'other_skills']
 
@@ -501,7 +560,12 @@ class DraftService {
 				let newVal = newProfileData[key]
 				let liveVal = liveProfileData[key]
 
-				// ✅ CRITICAL: Also parse JSON string fields from draft/newProfileData
+				// Certificate fields: normalize to just the "highest" string for comparison
+				if (certificateFields.includes(key)) {
+					return normalizeCertificateField(newVal) !== normalizeCertificateField(liveVal)
+				}
+
+				// Parse JSON string fields from draft/newProfileData
 				if (jsonTextFields.includes(key) && typeof newVal === 'string') {
 					try {
 						newVal = JSON.parse(newVal)
@@ -510,9 +574,9 @@ class DraftService {
 					}
 				}
 
-				// Normalize null/undefined
-				newVal = newVal === undefined ? null : newVal
-				liveVal = liveVal === undefined ? null : liveVal
+				// Normalize empty equivalents: null, undefined, "", [], {}
+				newVal = normalizeForComparison(newVal)
+				liveVal = normalizeForComparison(liveVal)
 
 				return !_.isEqual(newVal, liveVal)
 			})
@@ -713,6 +777,9 @@ class DraftService {
 			// These are the ONLY fields that exist in the Students table and can be compared
 			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
 
+			// Certificate fields need special normalization (stored as JSON TEXT in Students, plain string in draft)
+			const certificateFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest']
+
 			// Fields that might be stored as JSON strings (in Students table as TEXT, or in draft as string)
 			// Need to parse both sides before comparison to avoid type mismatches
 			const jsonTextFields = ['jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'ielts', 'language_skills', 'other_skills']
@@ -742,7 +809,12 @@ class DraftService {
 				let draftVal = draft.profile_data[key]
 				let liveVal = liveProfileData[key]
 
-				// ✅ CRITICAL: Also parse JSON string fields from draft
+				// Certificate fields: normalize to just the "highest" string for comparison
+				if (certificateFields.includes(key)) {
+					return normalizeCertificateField(draftVal) !== normalizeCertificateField(liveVal)
+				}
+
+				// Parse JSON string fields from draft
 				// Both Students table AND draft might store these as JSON strings
 				if (jsonTextFields.includes(key) && typeof draftVal === 'string') {
 					try {
@@ -752,11 +824,11 @@ class DraftService {
 					}
 				}
 
-				// Normalize null/undefined for comparison
-				const normalizedDraft = draftVal === undefined ? null : draftVal
-				const normalizedLive = liveVal === undefined ? null : liveVal
+				// Normalize empty equivalents: null, undefined, "", [], {}
+				draftVal = normalizeForComparison(draftVal)
+				liveVal = normalizeForComparison(liveVal)
 
-				return !_.isEqual(normalizedDraft, normalizedLive)
+				return !_.isEqual(draftVal, liveVal)
 			})
 
 			console.log('=== SUBMIT: Changed fields vs Live profile ===')
