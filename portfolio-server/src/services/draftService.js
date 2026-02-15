@@ -952,8 +952,35 @@ class DraftService {
 
 		// Separate drafts by version_type for easier frontend consumption
 		const studentData = student.toJSON()
-		const draftVersion = studentData.drafts?.find(d => d.version_type === 'draft') || null
+		let draftVersion = studentData.drafts?.find(d => d.version_type === 'draft') || null
 		const pendingVersion = studentData.drafts?.find(d => d.version_type === 'pending') || null
+
+		// Read-time defensive merge: if draft exists but has missing fields from pending, merge them
+		if (draftVersion && pendingVersion && pendingVersion.profile_data) {
+			const draftData = draftVersion.profile_data || {}
+			const pendingData = pendingVersion.profile_data || {}
+			const changedFields = draftVersion.changed_fields || []
+
+			const mergedData = { ...draftData }
+
+			// For each key in pending, if it's missing/null/empty in draft and not in changed_fields, copy it
+			Object.keys(pendingData).forEach(key => {
+				const draftValue = draftData[key]
+				const isEmpty = draftValue === null || draftValue === undefined || draftValue === '' || (Array.isArray(draftValue) && draftValue.length === 0) || (typeof draftValue === 'object' && !Array.isArray(draftValue) && Object.keys(draftValue).length === 0)
+
+				const notChanged = !changedFields.includes(key)
+
+				if (isEmpty && notChanged && pendingData[key] !== null && pendingData[key] !== undefined) {
+					mergedData[key] = pendingData[key]
+				}
+			})
+
+			// Update draft with merged data (in memory only, not persisted)
+			draftVersion = {
+				...draftVersion,
+				profile_data: mergedData,
+			}
+		}
 
 		return {
 			...studentData,
