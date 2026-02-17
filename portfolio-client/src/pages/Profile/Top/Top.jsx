@@ -2056,6 +2056,7 @@ const Top = () => {
 							<TextField title={t('jobType')} data={student.draft?.job_type} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='job_type' parentKey='draft' icon={BusinessCenterOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('job_type')} />
 						</div>
 					</div>
+					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
 				</Box>
 			) : null}
 			{/* skills */}
@@ -2222,23 +2223,27 @@ const Top = () => {
 
 						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('licenses')} />
 					</div>
+					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
 				</Box>
 			) : null}
 			{/* deliverables */}
 			{subTabIndex === 'deliverables' ? (
 				<Box my={2}>
 					<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
+					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
 				</Box>
 			) : null}
 			{subTabIndex === 'education' ? (
 				<Box my={2}>
 					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('education')} />
+					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
 				</Box>
 			) : null}
 			{subTabIndex === 'work_experience' ? (
 				<Box my={2}>
 					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('work_experience')} />
 					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('arubaito')} />
+					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
 				</Box>
 			) : null}
 			{/* Credits section is temporarily disabled */}
