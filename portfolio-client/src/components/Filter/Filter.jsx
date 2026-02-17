@@ -408,6 +408,13 @@ const filterReducer = (state, action) => {
 				...state,
 				tempFilterState: action.payload,
 			}
+		case 'SET_FILTER_VALUE_ALL':
+			return {
+				...state,
+				filterState: action.payload,
+				// Agar modal ochiq bo'lsa, tempFilterState ni ham yangilash kerak bo'lishi mumkin
+				tempFilterState: action.payload,
+			}
 
 		case ActionType.SET_TEMP_FILTER_VALUE: {
 			const nextState = {
@@ -759,7 +766,15 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 	// ========================================================================
 	// EFFECTS
 	// ========================================================================
-
+	useEffect(() => {
+		// Faqat initialMount tugagandan keyin ishlasin desa ham bo'ladi
+		if (initialFilterState) {
+			dispatch({
+				type: 'SET_FILTER_VALUE_ALL', // Reducerda barcha stateni yangilaydigan action
+				payload: initialFilterState,
+			})
+		}
+	}, [initialFilterState])
 	useEffect(() => {
 		if (persistKey) {
 			const saved = localStorage.getItem(persistKey)

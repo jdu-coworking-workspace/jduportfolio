@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom'
 import Filter from '../../components/Filter/Filter'
 import Table from '../../components/Table/Table'
 
+import { useAtom } from 'jotai'
+import { listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom } from '../../atoms/store'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
-import { useAtom } from 'jotai'
-import { listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom } from '../../atoms/store'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -197,6 +197,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const handleFilterChange = useCallback(newFilterState => {
 		setFilterState(newFilterState)
+		localStorage.setItem('students-filter-v1', JSON.stringify(newFilterState))
 		// console.log('Filter changed:', newFilterState)
 	}, [])
 
