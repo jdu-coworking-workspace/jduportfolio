@@ -1,0 +1,148 @@
+.container {
+	max-width: 900px;
+	margin: 0 auto;
+	padding: 24px;
+}
+
+.header {
+	margin-bottom: 8px;
+}
+
+.header h1 {
+	font-size: 1.5rem;
+	font-weight: 700;
+	color: #333;
+	margin: 0;
+}
+
+.tabContent {
+	margin-top: 24px;
+}
+
+.section {
+	background: #fff;
+	border-radius: 12px;
+	padding: 24px;
+	margin-bottom: 20px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sectionHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.sectionHeader h3 {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: #333;
+	margin: 0;
+}
+
+.formGroup {
+	margin-bottom: 20px;
+}
+
+.formGroup label {
+	display: block;
+	font-weight: 500;
+	font-size: 0.875rem;
+	color: #555;
+	margin-bottom: 6px;
+}
+
+.selectRow {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
+.selectRow > * {
+	flex: 1;
+	min-width: 200px;
+}
+
+.updatedBy {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.8rem;
+	color: #888;
+	margin-top: 4px;
+}
+
+.studentList {
+	margin-top: 16px;
+}
+
+.studentCount {
+	font-size: 0.95rem;
+	font-weight: 500;
+	color: #333;
+	padding: 12px 16px;
+	background: #f0f7ff;
+	border-radius: 8px;
+	margin-bottom: 12px;
+}
+
+.studentCount.noStudents {
+	background: #fff3e0;
+	color: #e65100;
+}
+
+.studentTable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.875rem;
+}
+
+.studentTable th,
+.studentTable td {
+	text-align: left;
+	padding: 10px 14px;
+	border-bottom: 1px solid #eee;
+}
+
+.studentTable th {
+	font-weight: 600;
+	color: #555;
+	background: #fafafa;
+}
+
+.studentTable tr:hover td {
+	background: #f5f8ff;
+}
+
+.actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	margin-top: 20px;
+}
+
+.resultBox {
+	margin-top: 16px;
+	padding: 16px;
+	border-radius: 8px;
+	font-size: 0.9rem;
+}
+
+.resultBox.success {
+	background: #e8f5e9;
+	color: #2e7d32;
+}
+
+.resultBox.error {
+	background: #ffebee;
+	color: #c62828;
+}
+
+.loadingOverlay {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px;
+}
