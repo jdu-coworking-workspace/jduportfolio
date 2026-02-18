@@ -20,6 +20,7 @@ const QAAccordion = ({
 	onToggle, // optional toggle handler (for controlled mode)
 	showExpandIcon = true, // controls visibility of expand icon and click behavior
 	allowToggleWhenNotExpand = false, // allow header toggle even if details are disabled
+	isChanged = false, // highlight this answer as changed (for staff review)
 }) => {
 	// Local state for uncontrolled usage
 	const [localExpanded, setLocalExpanded] = useState(false)
@@ -28,7 +29,25 @@ const QAAccordion = ({
 	const isExpanded = isControlled ? expanded : localExpanded
 
 	return (
-		<div>
+		<div style={{ position: 'relative' }}>
+			{isChanged && (
+				<div
+					style={{
+						position: 'absolute',
+						top: -10,
+						right: 10,
+						backgroundColor: '#ffc107',
+						color: '#fff',
+						padding: '2px 8px',
+						borderRadius: '4px',
+						fontSize: '12px',
+						fontWeight: 'bold',
+						zIndex: 1,
+					}}
+				>
+					Changed
+				</div>
+			)}
 			<Accordion
 				TransitionProps={{ timeout: 500 }}
 				className={styles.accordion}
@@ -40,6 +59,13 @@ const QAAccordion = ({
 					'&:hover': {
 						boxShadow: '0px 3px 3px 0px rgb(187, 187, 187)',
 					},
+					...(isChanged
+						? {
+								backgroundColor: '#fff3cd',
+								border: '2px solid #ffc107',
+								borderRadius: '8px !important',
+							}
+						: {}),
 				}}
 			>
 				<StyledAccordionSummary
@@ -68,7 +94,7 @@ const QAAccordion = ({
 					<div className={styles.qPart}>
 						<HelpOutlineIcon sx={{ color: '#2563eb' }} />
 					</div>
-					<Typography sx={{ pl: '10px', fontSize: 18, userSelect: 'text', cursor: 'text' }}>{question}</Typography>
+					<Typography sx={{ pl: '10px', fontSize: 18, userSelect: 'text', cursor: 'text', flex: 1 }}>{question}</Typography>
 				</StyledAccordionSummary>
 				{!notExpand && (
 					<AccordionDetails className={styles.answer}>
@@ -99,6 +125,7 @@ QAAccordion.propTypes = {
 	onToggle: PropTypes.func,
 	showExpandIcon: PropTypes.bool,
 	allowToggleWhenNotExpand: PropTypes.bool,
+	isChanged: PropTypes.bool,
 }
 
 export default QAAccordion

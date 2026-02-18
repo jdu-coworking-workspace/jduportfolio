@@ -1364,35 +1364,45 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			{id && !isFromTopPage && portalContent && document.getElementById('saveButton') && ReactDOM.createPortal(portalContent, document.getElementById('saveButton'))}
 
 			<div className={styles.categoriesRow}>
-				{qaQuestions.map((item, ind) => (
-					<div
-						key={ind}
-						className={styles.qaBox}
-						style={{
-							backgroundColor: subTabIndex === ind ? '#d8e1f0' : 'transparent',
-						}}
-						onClick={() => {
-							setSubTabIndex(ind)
-						}}
-					>
+				{qaQuestions.map((item, ind) => {
+					// Check if this category has any changed answers (from backend changed_fields)
+					const categoryLabel = labels[ind]
+					const changedFields = currentDraft?.changed_fields || []
+					const hasCategoryChange = role === 'Staff' && isFromTopPage && changedFields.some(f => f.startsWith(`qa:${categoryLabel}:`))
+
+					return (
 						<div
-							className={styles.iconBox}
+							key={ind}
+							className={styles.qaBox}
 							style={{
-								backgroundColor: item.iconColor,
+								backgroundColor: hasCategoryChange ? '#fff8e1' : subTabIndex === ind ? '#d8e1f0' : 'transparent',
+								border: hasCategoryChange ? '2px solid #ffc107' : 'none',
+								borderRadius: hasCategoryChange ? 8 : 0,
+								position: 'relative',
+							}}
+							onClick={() => {
+								setSubTabIndex(ind)
 							}}
 						>
-							<item.icon style={{ color: '#FFFFFF', fontSize: 25 }} />
+							<div
+								className={styles.iconBox}
+								style={{
+									backgroundColor: item.iconColor,
+								}}
+							>
+								<item.icon style={{ color: '#FFFFFF', fontSize: 25 }} />
+							</div>
+							<div
+								style={{
+									fontSize: 14,
+									color: subTabIndex === ind ? item.iconColor : 'inherit',
+								}}
+							>
+								{item.label}
+							</div>
 						</div>
-						<div
-							style={{
-								fontSize: 14,
-								color: subTabIndex === ind ? item.iconColor : 'inherit',
-							}}
-						>
-							{item.label}
-						</div>
-					</div>
-				))}
+					)
+				})}
 			</div>
 
 			{/* <Tabs
@@ -1442,7 +1452,11 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							// Ensure question has a value (fallback to key if undefined)
 							const questionText = question || key
 
-							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} />
+							// Check if this specific answer is changed (from backend changed_fields)
+							const changedFields = currentDraft?.changed_fields || []
+							const isAnswerChanged = role === 'Staff' && isFromTopPage && changedFields.includes(`qa:${labels[subTabIndex]}:${key}`)
+
+							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} />
 						})
 					})()}
 			</Box>

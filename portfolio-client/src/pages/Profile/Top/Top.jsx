@@ -2250,12 +2250,6 @@ const Top = () => {
 			{/* QA */}
 			{subTabIndex === 'qa' ? (
 				<Box my={2}>
-					{/* Debug */}
-					{/* {console.log('=== TOP.JSX QA DEBUG ===')}
-					{console.log('editData:', editData)}
-					{console.log('editData.draft:', editData.draft)}
-					{console.log('editData.draft.qa:', editData.draft?.qa)}
-					{console.log('typeof qa:', typeof editData.draft?.qa)} */}
 					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} />
 				</Box>
 			) : null}
