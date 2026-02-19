@@ -7,42 +7,26 @@ import styles from './MailService.module.css'
 
 /**
  * Period options for periodic email (Tab 1):
- * 1,2,3,4 weeks / 3,6,9 months / 1 year
+ * 1 month, 3 months, 6 months, 1 year
  */
 const PERIODIC_OPTIONS = [
-	{ value: 7, labelKey: 'ms_1_week' },
-	{ value: 14, labelKey: 'ms_2_weeks' },
-	{ value: 21, labelKey: 'ms_3_weeks' },
-	{ value: 28, labelKey: 'ms_4_weeks' },
+	{ value: 30, labelKey: 'ms_1_month' },
 	{ value: 90, labelKey: 'ms_3_months' },
 	{ value: 180, labelKey: 'ms_6_months' },
-	{ value: 270, labelKey: 'ms_9_months' },
-	{ value: 365, labelKey: 'ms_1_year' },
+	{ value: 365, labelKey: 'ms_1_year_plus' },
 ]
 
 /**
- * Generate search period options for inactive student search (Tab 2):
- * 1 day through 1 year (365 days) with friendly labels
+ * Search period options for inactive student search (Tab 2):
+ * 1 week, 2 weeks, 1 month, 3 months, 6 months
  */
-const generateSearchPeriodOptions = t => {
-	const options = []
-	for (let days = 1; days <= 365; days++) {
-		const years = Math.floor(days / 365)
-		const months = Math.floor((days % 365) / 30)
-		const weeks = Math.floor(((days % 365) % 30) / 7)
-		const remainingDays = ((days % 365) % 30) % 7
-
-		const parts = []
-		if (years > 0) parts.push(`${years} ${t('ms_year')}`)
-		if (months > 0) parts.push(`${months} ${t('ms_month')}`)
-		if (weeks > 0) parts.push(`${weeks} ${t('ms_week')}`)
-		if (remainingDays > 0) parts.push(`${remainingDays} ${t('ms_day')}`)
-
-		const label = parts.join(' ') + ` (${days} ${t('ms_days')})`
-		options.push({ value: days, label })
-	}
-	return options
-}
+const INACTIVE_SEARCH_OPTIONS = [
+	{ value: 7, labelKey: 'ms_1_week' },
+	{ value: 14, labelKey: 'ms_2_weeks' },
+	{ value: 30, labelKey: 'ms_1_month' },
+	{ value: 90, labelKey: 'ms_3_months' },
+	{ value: 180, labelKey: 'ms_6_months_plus' },
+]
 
 const MailService = () => {
 	const { language } = useLanguage()
@@ -67,7 +51,13 @@ const MailService = () => {
 	const [inactiveBody, setInactiveBody] = useState('')
 	const [sendResult, setSendResult] = useState(null)
 
-	const searchPeriodOptions = generateSearchPeriodOptions(t)
+	// Tab 2 - Never Active Students state (Condition 2)
+	const [neverActiveStudents, setNeverActiveStudents] = useState(null)
+	const [searchingNeverActive, setSearchingNeverActive] = useState(false)
+	const [sendingNeverActive, setSendingNeverActive] = useState(false)
+	const [neverActiveSubject, setNeverActiveSubject] = useState('')
+	const [neverActiveBody, setNeverActiveBody] = useState('')
+	const [neverActiveSendResult, setNeverActiveSendResult] = useState(null)
 
 	useEffect(() => {
 		fetchSettings()
@@ -87,6 +77,8 @@ const MailService = () => {
 				setInactiveSetting(inactive)
 				setInactiveSubject(inactive.message_subject || '')
 				setInactiveBody(inactive.message_body || '')
+				setNeverActiveSubject(inactive.message_subject || '')
+				setNeverActiveBody(inactive.message_body || '')
 			}
 		} catch (error) {
 			console.error('Error fetching mail service settings:', error)
@@ -147,6 +139,13 @@ const MailService = () => {
 		}
 	}
 
+	// Reset inactive students search
+	const handleResetInactive = () => {
+		setSearchPeriod('')
+		setInactiveStudents(null)
+		setSendResult(null)
+	}
+
 	// Send emails to inactive students
 	const handleSendInactiveEmails = async () => {
 		if (!searchPeriod || !inactiveSubject || !inactiveBody) {
@@ -167,6 +166,47 @@ const MailService = () => {
 			showSnackbar(t('ms_error_sending'), 'error')
 		} finally {
 			setSendingInactive(false)
+		}
+	}
+
+	// Search for never-active students (Condition 2)
+	const handleSearchNeverActive = async () => {
+		try {
+			setSearchingNeverActive(true)
+			setNeverActiveSendResult(null)
+			const res = await axios.get('/api/mail-service/never-active-students/search')
+			setNeverActiveStudents(res.data)
+		} catch (error) {
+			console.error('Error searching never-active students:', error)
+			showSnackbar(t('ms_error_searching'), 'error')
+		} finally {
+			setSearchingNeverActive(false)
+		}
+	}
+
+	// Reset never-active students search
+	const handleResetNeverActive = () => {
+		setNeverActiveStudents(null)
+		setNeverActiveSendResult(null)
+	}
+	const handleSendNeverActiveEmails = async () => {
+		if (!neverActiveSubject || !neverActiveBody) {
+			showSnackbar(t('ms_fill_all_fields'), 'error')
+			return
+		}
+		try {
+			setSendingNeverActive(true)
+			const res = await axios.post('/api/mail-service/never-active-students/send', {
+				subject: neverActiveSubject,
+				body: neverActiveBody,
+			})
+			setNeverActiveSendResult(res.data)
+			showSnackbar(`${t('ms_emails_sent')}: ${res.data.successful}/${res.data.total}`, res.data.failed > 0 ? 'warning' : 'success')
+		} catch (error) {
+			console.error('Error sending never-active student emails:', error)
+			showSnackbar(t('ms_error_sending'), 'error')
+		} finally {
+			setSendingNeverActive(false)
 		}
 	}
 
@@ -277,99 +317,183 @@ const MailService = () => {
 				{activeTab === 'inactive' && (
 					<div className={styles.section}>
 						<h3 style={{ marginBottom: 8 }}>{t('ms_inactive_student_email')}</h3>
-						<p style={{ color: '#666', fontSize: '0.875rem', marginBottom: 20 }}>{t('ms_inactive_description')}</p>
 
 						{formatUpdatedBy(inactiveSetting) && (
-							<div className={styles.updatedBy} style={{ marginBottom: 16 }}>
+							<div className={styles.updatedBy} style={{ marginBottom: 20 }}>
 								{t('ms_last_updated_by')}: {formatUpdatedBy(inactiveSetting)}
 							</div>
 						)}
 
-						<div className={styles.selectRow}>
-							<FormControl fullWidth size='small'>
-								<InputLabel>{t('ms_search_period')}</InputLabel>
-								<Select
-									value={searchPeriod}
-									label={t('ms_search_period')}
-									onChange={e => {
-										setSearchPeriod(e.target.value)
-										setInactiveStudents(null)
-										setSendResult(null)
-									}}
-								>
-									{searchPeriodOptions.map(opt => (
-										<MenuItem key={opt.value} value={opt.value}>
-											{opt.label}
-										</MenuItem>
-									))}
-								</Select>
-							</FormControl>
+						{/* ── Section 1: Period-based inactive search ── */}
+						<div className={styles.subsection}>
+							<h4 className={styles.subsectionTitle}>{t('ms_inactive_period_title')}</h4>
+							<p className={styles.subsectionDesc}>{t('ms_inactive_description')}</p>
 
-							<Button variant='outlined' onClick={handleSearchInactive} disabled={!searchPeriod || searching} sx={{ minWidth: 120, height: 40 }}>
-								{searching ? <CircularProgress size={20} /> : t('ms_search')}
-							</Button>
+							<div className={styles.selectRow}>
+								<FormControl fullWidth size='small'>
+									<InputLabel>{t('ms_search_period')}</InputLabel>
+									<Select
+										value={searchPeriod}
+										label={t('ms_search_period')}
+										onChange={e => {
+											setSearchPeriod(e.target.value)
+											setInactiveStudents(null)
+											setSendResult(null)
+										}}
+									>
+										{INACTIVE_SEARCH_OPTIONS.map(opt => (
+											<MenuItem key={opt.value} value={opt.value}>
+												{t(opt.labelKey)}
+											</MenuItem>
+										))}
+									</Select>
+								</FormControl>
+
+								<Button variant='outlined' onClick={handleSearchInactive} disabled={!searchPeriod || searching} sx={{ minWidth: 120, height: 40 }}>
+									{searching ? <CircularProgress size={20} /> : t('ms_search')}
+								</Button>
+
+								<Button variant={inactiveStudents !== null ? 'outlined' : 'text'} color={inactiveStudents !== null ? 'error' : 'inherit'} onClick={handleResetInactive} disabled={!searchPeriod && inactiveStudents === null} sx={{ minWidth: 100, height: 40, ...(inactiveStudents === null ? { color: '#aaa' } : {}) }}>
+									{t('ms_reset')}
+								</Button>
+							</div>
+
+							{/* Period search results */}
+							{inactiveStudents !== null && (
+								<div className={styles.studentList}>
+									{inactiveStudents.count === 0 ? (
+										<div className={`${styles.studentCount} ${styles.noStudents}`}>{t('ms_no_students_found')}</div>
+									) : (
+										<>
+											<div className={styles.studentCount}>
+												{t('ms_students_found')}: {inactiveStudents.count}
+											</div>
+
+											<table className={styles.studentTable}>
+												<thead>
+													<tr>
+														<th>#</th>
+														<th>{t('ms_student_id')}</th>
+														<th>{t('ms_student_name')}</th>
+														<th>{t('ms_email')}</th>
+														<th>{t('ms_last_activity')}</th>
+													</tr>
+												</thead>
+												<tbody>
+													{inactiveStudents.students.map((student, idx) => (
+														<tr key={student.id}>
+															<td>{idx + 1}</td>
+															<td>{student.student_id}</td>
+															<td>{student.name}</td>
+															<td>{student.email}</td>
+															<td>{student.last_activity ? new Date(student.last_activity).toLocaleDateString(langKey === 'ja' ? 'ja-JP' : 'en-US') : '—'}</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+
+											<div className={styles.formGroup} style={{ marginTop: 20 }}>
+												<TextField fullWidth size='small' label={t('ms_email_subject')} value={inactiveSubject} onChange={e => setInactiveSubject(e.target.value)} />
+											</div>
+
+											<div className={styles.formGroup}>
+												<TextField fullWidth multiline rows={5} label={t('ms_email_body')} value={inactiveBody} onChange={e => setInactiveBody(e.target.value)} helperText={t('ms_plain_text_hint')} />
+											</div>
+
+											<div className={styles.actions}>
+												<Button variant='contained' color='primary' onClick={handleSendInactiveEmails} disabled={sendingInactive || !inactiveSubject || !inactiveBody}>
+													{sendingInactive ? <CircularProgress size={20} /> : `${t('ms_send_email')} (${inactiveStudents.count})`}
+												</Button>
+											</div>
+										</>
+									)}
+								</div>
+							)}
+
+							{sendResult && (
+								<div className={`${styles.resultBox} ${sendResult.failed > 0 ? styles.error : styles.success}`}>
+									{t('ms_send_result')}: {sendResult.successful}/{sendResult.total} {t('ms_successful')}
+									{sendResult.failed > 0 && ` | ${sendResult.failed} ${t('ms_failed')}`}
+								</div>
+							)}
 						</div>
 
-						{/* Search results */}
-						{inactiveStudents !== null && (
-							<div className={styles.studentList}>
-								{inactiveStudents.count === 0 ? (
-									<div className={`${styles.studentCount} ${styles.noStudents}`}>{t('ms_no_students_found')}</div>
-								) : (
-									<>
-										<div className={styles.studentCount}>
-											{t('ms_students_found')}: {inactiveStudents.count}
-										</div>
+						<hr className={styles.sectionDivider} />
 
-										<table className={styles.studentTable}>
-											<thead>
-												<tr>
-													<th>#</th>
-													<th>{t('ms_student_id')}</th>
-													<th>{t('ms_student_name')}</th>
-													<th>{t('ms_email')}</th>
-													<th>{t('ms_last_updated')}</th>
-												</tr>
-											</thead>
-											<tbody>
-												{inactiveStudents.students.map((student, idx) => (
-													<tr key={student.id}>
-														<td>{idx + 1}</td>
-														<td>{student.student_id}</td>
-														<td>{student.name}</td>
-														<td>{student.email}</td>
-														<td>{new Date(student.last_updated).toLocaleDateString(langKey === 'ja' ? 'ja-JP' : 'en-US')}</td>
+						{/* ── Section 2: Never Active Students ── */}
+						<div className={styles.subsection}>
+							<h4 className={styles.subsectionTitle}>{t('ms_never_active_title')}</h4>
+							<p className={styles.subsectionDesc}>{t('ms_never_active_description')}</p>
+
+							<div style={{ display: 'flex', gap: 12 }}>
+								<Button variant='outlined' color='warning' onClick={handleSearchNeverActive} disabled={searchingNeverActive} sx={{ minWidth: 120, height: 40 }}>
+									{searchingNeverActive ? <CircularProgress size={20} /> : t('ms_search')}
+								</Button>
+
+								<Button variant={neverActiveStudents !== null ? 'outlined' : 'text'} color={neverActiveStudents !== null ? 'error' : 'inherit'} onClick={handleResetNeverActive} disabled={neverActiveStudents === null} sx={{ minWidth: 100, height: 40, ...(neverActiveStudents === null ? { color: '#aaa' } : {}) }}>
+									{t('ms_reset')}
+								</Button>
+							</div>
+
+							{/* Never-active results */}
+							{neverActiveStudents !== null && (
+								<div className={styles.studentList}>
+									{neverActiveStudents.count === 0 ? (
+										<div className={`${styles.studentCount} ${styles.noStudents}`}>{t('ms_no_students_found')}</div>
+									) : (
+										<>
+											<div className={styles.studentCount}>
+												{t('ms_students_found')}: {neverActiveStudents.count}
+											</div>
+
+											<table className={styles.studentTable}>
+												<thead>
+													<tr>
+														<th>#</th>
+														<th>{t('ms_student_id')}</th>
+														<th>{t('ms_student_name')}</th>
+														<th>{t('ms_email')}</th>
+														<th>{t('ms_registered_at')}</th>
 													</tr>
-												))}
-											</tbody>
-										</table>
+												</thead>
+												<tbody>
+													{neverActiveStudents.students.map((student, idx) => (
+														<tr key={student.id}>
+															<td>{idx + 1}</td>
+															<td>{student.student_id}</td>
+															<td>{student.name}</td>
+															<td>{student.email}</td>
+															<td>{new Date(student.registered_at).toLocaleDateString(langKey === 'ja' ? 'ja-JP' : 'en-US')}</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
 
-										{/* Message input for manual send */}
-										<div className={styles.formGroup} style={{ marginTop: 20 }}>
-											<TextField fullWidth size='small' label={t('ms_email_subject')} value={inactiveSubject} onChange={e => setInactiveSubject(e.target.value)} />
-										</div>
+											<div className={styles.formGroup} style={{ marginTop: 20 }}>
+												<TextField fullWidth size='small' label={t('ms_email_subject')} value={neverActiveSubject} onChange={e => setNeverActiveSubject(e.target.value)} />
+											</div>
 
-										<div className={styles.formGroup}>
-											<TextField fullWidth multiline rows={5} label={t('ms_email_body')} value={inactiveBody} onChange={e => setInactiveBody(e.target.value)} helperText={t('ms_plain_text_hint')} />
-										</div>
+											<div className={styles.formGroup}>
+												<TextField fullWidth multiline rows={5} label={t('ms_email_body')} value={neverActiveBody} onChange={e => setNeverActiveBody(e.target.value)} helperText={t('ms_plain_text_hint')} />
+											</div>
 
-										<div className={styles.actions}>
-											<Button variant='contained' color='primary' onClick={handleSendInactiveEmails} disabled={sendingInactive || !inactiveSubject || !inactiveBody}>
-												{sendingInactive ? <CircularProgress size={20} /> : `${t('ms_send_email')} (${inactiveStudents.count})`}
-											</Button>
-										</div>
-									</>
-								)}
-							</div>
-						)}
+											<div className={styles.actions}>
+												<Button variant='contained' color='warning' onClick={handleSendNeverActiveEmails} disabled={sendingNeverActive || !neverActiveSubject || !neverActiveBody}>
+													{sendingNeverActive ? <CircularProgress size={20} /> : `${t('ms_send_email')} (${neverActiveStudents.count})`}
+												</Button>
+											</div>
+										</>
+									)}
+								</div>
+							)}
 
-						{/* Send result */}
-						{sendResult && (
-							<div className={`${styles.resultBox} ${sendResult.failed > 0 ? styles.error : styles.success}`}>
-								{t('ms_send_result')}: {sendResult.successful}/{sendResult.total} {t('ms_successful')}
-								{sendResult.failed > 0 && ` | ${sendResult.failed} ${t('ms_failed')}`}
-							</div>
-						)}
+							{neverActiveSendResult && (
+								<div className={`${styles.resultBox} ${neverActiveSendResult.failed > 0 ? styles.error : styles.success}`}>
+									{t('ms_send_result')}: {neverActiveSendResult.successful}/{neverActiveSendResult.total} {t('ms_successful')}
+									{neverActiveSendResult.failed > 0 && ` | ${neverActiveSendResult.failed} ${t('ms_failed')}`}
+								</div>
+							)}
+						</div>
 					</div>
 				)}
 			</div>

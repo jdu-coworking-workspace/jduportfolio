@@ -78,7 +78,7 @@ class MailServiceController {
 	}
 
 	/**
-	 * Find inactive students for preview (Tab 2)
+	 * Condition 1: Find period-inactive students (visibility=true, no recent drafts)
 	 */
 	static async findInactiveStudents(req, res) {
 		try {
@@ -100,7 +100,7 @@ class MailServiceController {
 					student_id: s.student_id,
 					email: s.email,
 					name: `${s.last_name} ${s.first_name}`,
-					last_updated: s.last_updated,
+					last_activity: s.last_activity,
 				})),
 			})
 		} catch (error) {
@@ -110,7 +110,34 @@ class MailServiceController {
 	}
 
 	/**
-	 * Send emails to inactive students (Tab 2 - manual trigger)
+	 * Condition 2: Find never-active students (zero drafts ever)
+	 */
+	static async findNeverActiveStudents(req, res) {
+		try {
+			const userType = req.user.userType || req.user.role
+			if (!['Admin', 'Staff'].includes(userType)) {
+				return res.status(403).json({ error: 'Only Admin and Staff can access this feature' })
+			}
+
+			const students = await MailServiceService.findNeverActiveStudents()
+			res.json({
+				count: students.length,
+				students: students.map(s => ({
+					id: s.id,
+					student_id: s.student_id,
+					email: s.email,
+					name: `${s.last_name} ${s.first_name}`,
+					registered_at: s.registered_at,
+				})),
+			})
+		} catch (error) {
+			console.error('Error finding never-active students:', error)
+			res.status(500).json({ error: 'Internal server error' })
+		}
+	}
+
+	/**
+	 * Send emails to period-inactive students (Condition 1)
 	 */
 	static async sendInactiveStudentEmails(req, res) {
 		try {
@@ -125,10 +152,32 @@ class MailServiceController {
 			}
 
 			const result = await MailServiceService.sendInactiveStudentEmails(Number(periodDays), subject, body, req.user)
-
 			res.json(result)
 		} catch (error) {
 			console.error('Error sending inactive student emails:', error)
+			res.status(500).json({ error: 'Internal server error' })
+		}
+	}
+
+	/**
+	 * Send emails to never-active students (Condition 2)
+	 */
+	static async sendNeverActiveStudentEmails(req, res) {
+		try {
+			const userType = req.user.userType || req.user.role
+			if (!['Admin', 'Staff'].includes(userType)) {
+				return res.status(403).json({ error: 'Only Admin and Staff can send emails' })
+			}
+
+			const { subject, body } = req.body
+			if (!subject || !body) {
+				return res.status(400).json({ error: 'subject and body are required' })
+			}
+
+			const result = await MailServiceService.sendNeverActiveStudentEmails(subject, body, req.user)
+			res.json(result)
+		} catch (error) {
+			console.error('Error sending never-active student emails:', error)
 			res.status(500).json({ error: 'Internal server error' })
 		}
 	}

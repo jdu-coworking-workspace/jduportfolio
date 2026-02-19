@@ -8,7 +8,7 @@ module.exports = {
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type t
           JOIN pg_enum e ON t.oid = e.enumtypid
-          WHERE t.typname = 'enum_Drafts_status' AND e.enumlabel = 'checking') THEN
+          WHERE t.typname = 'ts_status' AND e.enumlabel = 'checking') THEN
           ALTER TYPE "enum_Drafts_status" ADD VALUE 'checking';
         END IF;
       END

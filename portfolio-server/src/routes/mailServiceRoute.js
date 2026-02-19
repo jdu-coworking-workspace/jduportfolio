@@ -89,8 +89,26 @@ router.get('/inactive-students/search', authMiddleware, MailServiceController.fi
  * /api/mail-service/inactive-students/send:
  *   post:
  *     tags: [MailService]
- *     summary: Send emails to inactive students
+ *     summary: Send emails to period-inactive students (Condition 1)
  */
 router.post('/inactive-students/send', authMiddleware, MailServiceController.sendInactiveStudentEmails)
+
+/**
+ * @swagger
+ * /api/mail-service/never-active-students/search:
+ *   get:
+ *     tags: [MailService]
+ *     summary: Find students who have never submitted a draft (Condition 2)
+ */
+router.get('/never-active-students/search', authMiddleware, MailServiceController.findNeverActiveStudents)
+
+/**
+ * @swagger
+ * /api/mail-service/never-active-students/send:
+ *   post:
+ *     tags: [MailService]
+ *     summary: Send emails to never-active students (Condition 2)
+ */
+router.post('/never-active-students/send', authMiddleware, MailServiceController.sendNeverActiveStudentEmails)
 
 module.exports = router

@@ -85,10 +85,13 @@ class MailServiceService {
 	}
 
 	/**
-	 * Find inactive students who are NOT public (visibility=false)
-	 * and have not submitted a profile within the given period.
-	 * These are students whose profile has not been updated for a long time
-	 * and is still not public.
+	 * Condition 1: Find students whose profile is NOT public (visibility=false)
+	 * and have no draft activity within the given period.
+	 *
+	 * Conditions:
+	 * 1. active = true
+	 * 2. visibility = false (profile is not public)
+	 * 3. Has drafts, but none updated within the period
 	 */
 	static async findInactiveStudents(periodDays) {
 		const thresholdDate = new Date()
@@ -97,18 +100,24 @@ class MailServiceService {
 		const students = await sequelize.query(
 			`
 			SELECT s.id, s.email, s.student_id, s.first_name, s.last_name,
-			       s."updatedAt" AS last_updated
+			       (
+			         SELECT MAX(d."updated_at")
+			         FROM "Drafts" d
+			         WHERE d.student_id = s.student_id
+			       ) AS last_activity
 			FROM "Students" s
 			WHERE s.active = true
 			  AND s.visibility = false
-			  AND s."updatedAt" < :thresholdDate
+			  AND EXISTS (
+			    SELECT 1 FROM "Drafts" d
+			    WHERE d.student_id = s.student_id
+			  )
 			  AND NOT EXISTS (
 			    SELECT 1 FROM "Drafts" d
 			    WHERE d.student_id = s.student_id
-			      AND d.status = 'submitted'
 			      AND d."updated_at" >= :thresholdDate
 			  )
-			ORDER BY s."updatedAt" ASC
+			ORDER BY last_activity ASC
 			`,
 			{
 				replacements: { thresholdDate },
@@ -120,7 +129,34 @@ class MailServiceService {
 	}
 
 	/**
-	 * Send emails to inactive students (Tab 2 - manual trigger)
+	 * Condition 2: Find students who have NEVER submitted a single draft.
+	 * No period needed — these students have zero draft activity ever.
+	 *
+	 * Conditions:
+	 * 1. active = true
+	 * 2. No drafts at all
+	 */
+	static async findNeverActiveStudents() {
+		const students = await sequelize.query(
+			`
+			SELECT s.id, s.email, s.student_id, s.first_name, s.last_name,
+			       s."createdAt" AS registered_at
+			FROM "Students" s
+			WHERE s.active = true
+			  AND NOT EXISTS (
+			    SELECT 1 FROM "Drafts" d
+			    WHERE d.student_id = s.student_id
+			  )
+			ORDER BY s."createdAt" ASC
+			`,
+			{ type: sequelize.QueryTypes.SELECT }
+		)
+
+		return students
+	}
+
+	/**
+	 * Send emails to period-inactive students (Condition 1 - manual trigger)
 	 */
 	static async sendInactiveStudentEmails(periodDays, subject, body, user) {
 		const students = await MailServiceService.findInactiveStudents(periodDays)
@@ -138,14 +174,7 @@ class MailServiceService {
 
 		const report = await sendBulkEmails(emailTasks)
 
-		// Update the setting with who performed this action
-		await MailServiceSetting.update(
-			{
-				updated_by_id: user.id,
-				updated_by_type: user.userType,
-			},
-			{ where: { key: 'inactive_student_email' } }
-		)
+		await MailServiceSetting.update({ updated_by_id: user.id, updated_by_type: user.userType }, { where: { key: 'inactive_student_email' } })
 
 		return {
 			...report,
@@ -154,7 +183,39 @@ class MailServiceService {
 				student_id: s.student_id,
 				email: s.email,
 				name: `${s.last_name} ${s.first_name}`,
-				last_updated: s.last_updated,
+				last_activity: s.last_activity,
+			})),
+		}
+	}
+
+	/**
+	 * Send emails to never-active students (Condition 2 - manual trigger)
+	 */
+	static async sendNeverActiveStudentEmails(subject, body, user) {
+		const students = await MailServiceService.findNeverActiveStudents()
+
+		if (students.length === 0) {
+			return { total: 0, successful: 0, failed: 0, students: [] }
+		}
+
+		const emailTasks = students.map(student => ({
+			to: student.email,
+			subject: subject,
+			text: body,
+			html: MailServiceService.buildEmailHtml(body),
+		}))
+
+		const report = await sendBulkEmails(emailTasks)
+
+		await MailServiceSetting.update({ updated_by_id: user.id, updated_by_type: user.userType }, { where: { key: 'inactive_student_email' } })
+
+		return {
+			...report,
+			students: students.map(s => ({
+				id: s.id,
+				student_id: s.student_id,
+				email: s.email,
+				name: `${s.last_name} ${s.first_name}`,
 			})),
 		}
 	}
