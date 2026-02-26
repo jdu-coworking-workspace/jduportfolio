@@ -1442,7 +1442,7 @@ const Top = () => {
 
 	const portalContent = (
 		<Box className={styles.buttonsContainer}>
-			{role === 'Student' && viewingLive && (
+			{role === 'Student' && viewingLive ? (
 				<>
 					<Button
 						variant='contained'
@@ -1452,7 +1452,6 @@ const Top = () => {
 								downloadCV(student)
 							} catch (err) {
 								console.log(err)
-								// alert('Failed to fetch CV data. Check console for details.')
 							}
 						}}
 						sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
@@ -1460,9 +1459,9 @@ const Top = () => {
 						<DownloadIcon />
 						{t('download_cv')}
 					</Button>
-					{currentPending?.status === 'approved' && currentPending?.updated_at && getTimeBadge(currentPending.updated_at)}
+					{currentPending?.status === 'approved' && currentPending?.updated_at ? getTimeBadge(currentPending.updated_at) : null}
 				</>
-			)}
+			) : null}
 			{editMode ? (
 				<>
 					<Button onClick={handleDraftUpsert} variant='contained' color='primary' size='small'>
@@ -1474,15 +1473,13 @@ const Top = () => {
 				</>
 			) : (
 				<>
-					{!(role === 'Student' && viewingLive) && (
+					{!(role === 'Student' && viewingLive) ? (
 						<>
-							{role !== 'Recruiter' && (
+							{role !== 'Recruiter' ? (
 								<Button
 									onClick={() => {
-										// Clear any stale localStorage before entering edit mode
 										clearStorage()
 										setEditMode(true)
-										// Clear any old save status when entering edit mode
 										if (role === 'Student' || role === 'Recruiter') {
 											setSaveStatus({
 												isSaving: false,
@@ -1497,20 +1494,19 @@ const Top = () => {
 								>
 									{t('editProfile')}
 								</Button>
-							)}
-							{/* Show visibility time badge for Staff/Admin/Recruiter */}
-							{(role === 'Staff' || role === 'Admin' || role === 'Recruiter') && getVisibilityBadge(student?.visibility ?? liveData?.visibility ?? statedata?.visibility, student?.visibility_updated_at ?? liveData?.visibility_updated_at ?? statedata?.visibility_updated_at)}
+							) : null}
+							{role === 'Staff' || role === 'Admin' || role === 'Recruiter' ? getVisibilityBadge(student?.visibility ?? liveData?.visibility ?? statedata?.visibility, student?.visibility_updated_at ?? liveData?.visibility_updated_at ?? statedata?.visibility_updated_at) : null}
 						</>
-					)}
+					) : null}
 
-					{role === 'Student' && hasDraft && currentDraft && !viewingLive && (
+					{role === 'Student' && hasDraft && currentDraft && !viewingLive ? (
 						<>
 							<Button onClick={toggleConfirmMode} variant='contained' color='success' size='small' sx={{ ml: 1 }}>
 								{t('submitAgree')}
 							</Button>
-							{currentDraft?.updated_at && getTimeBadge(currentDraft.updated_at)}
+							{currentDraft?.updated_at ? getTimeBadge(currentDraft.updated_at) : null}
 						</>
-					)}
+					) : null}
 				</>
 			)}
 		</Box>
@@ -1525,850 +1521,850 @@ const Top = () => {
 		[partnerUniversityName]: student.partner_university_credits,
 	}
 	return (
-		<Box mb={2}>
-			{/* Portal edit buttons for both Students and Staff — render null when not portaling so Box never receives non-ReactNode */}
+		<>
 			{portalContainer && (role === 'Student' || role === 'Staff' || role === 'Admin' || role === 'Recruiter') ? createPortal(portalContent, portalContainer) : null}
-
-			{/* Live/Draft Toggle for Students — use ternary so Box never receives boolean false */}
-			{role === 'Student' && !editMode && liveData ? (
-				<Box
-					sx={{
-						display: 'flex',
-						justifyContent: 'center',
-						alignItems: 'center',
-						borderRadius: '8px',
-						padding: '8px',
-						margin: '16px',
-						gap: '16px',
-					}}
-				>
-					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-						<Button
-							onClick={() => setViewingLive(true)}
-							variant={viewingLive ? 'contained' : 'outlined'}
-							size='small'
-							sx={{
-								minWidth: '120px',
-								backgroundColor: viewingLive ? '#5627DB' : 'transparent',
-								color: viewingLive ? '#fff' : '#5627DB',
-								borderColor: '#5627DB',
-								'&:hover': {
-									backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-								},
-							}}
-						>
-							{t('liveProfile') || '公開版'}
-						</Button>
-					</Box>
-					<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-						<Button
-							onClick={() => setViewingLive(false)}
-							variant={!viewingLive ? 'contained' : 'outlined'}
-							size='small'
-							sx={{
-								minWidth: '120px',
-								backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
-								color: !viewingLive ? '#fff' : '#5627DB',
-								borderColor: '#5627DB',
-								'&:hover': {
-									backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
-								},
-							}}
-						>
-							{t('draftProfile') || '編集版'}
-						</Button>
-					</Box>
-				</Box>
-			) : null}
-
-			<div
-				style={{
-					borderTop: '1px solid #e1e1e1',
-					backgroundColor: '#ffffff',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'start',
-					padding: '20px 16px',
-					gap: 32,
-					borderEndEndRadius: 10,
-					borderEndStartRadius: 10,
-				}}
-			>
-				{['selfIntroduction', 'skill', 'deliverables', 'education', 'work_experience', 'qa']
-					.filter(item => {
-						// Hide education and work_experience tabs for recruiters
-						if (role === 'Recruiter' && (item === 'education' || item === 'work_experience')) {
-							return false
-						}
-						return true
-					})
-					.map((item, ind) => (
-						<div
-							key={ind}
-							style={{
-								fontWeight: 500,
-								fontSize: 16,
-								color: subTabIndex === item ? '#5627db' : '#4b4b4b',
-								borderBottom: subTabIndex === item ? '2px solid #5627db' : '#4b4b4b',
-								cursor: 'pointer',
-							}}
-							onClick={() => {
-								setSubTabIndex(item)
-							}}
-						>
-							{t(item)}
-						</div>
-					))}
-			</div>
-
-			{/* Staff Comment Display Section for Students - show feedback from pending draft */}
-			{role === 'Student' && subTabIndex === 'selfIntroduction' && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
-				<Box
-					sx={{
-						my: 2,
-						mx: 2,
-						p: 2,
-						backgroundColor: '#fff3e0',
-						border: '1px solid #ff9800',
-						borderRadius: '8px',
-						borderLeft: '4px solid #ff9800',
-					}}
-				>
-					<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-						<span style={{ fontWeight: 'bold', color: '#e65100' }}>{t('staffFeedbackTitle') || 'スタッフからのフィードバック'}</span>
-					</Box>
+			<Box mb={2}>
+				{/* Live/Draft Toggle for Students */}
+				{role === 'Student' && !editMode && liveData ? (
 					<Box
 						sx={{
-							backgroundColor: '#ffffff',
-							p: 2,
-							borderRadius: '4px',
-							border: '1px solid #ffcc80',
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'center',
+							borderRadius: '8px',
+							padding: '8px',
+							margin: '16px',
+							gap: '16px',
 						}}
 					>
-						<pre
-							style={{
-								whiteSpace: 'pre-wrap',
-								wordWrap: 'break-word',
-								fontFamily: 'inherit',
-								margin: 0,
-								color: '#424242',
-							}}
-						>
-							{currentPending.comments}
-						</pre>
-					</Box>
-					<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>{t('staffFeedbackHint') || 'プロフィールを修正して再度提出してください。'}</Box>
-				</Box>
-			) : null}
-
-			{/* Past staff comment history block (Student sees own, Staff sees target student's) */}
-			{(role === 'Student' || role === 'Staff') && subTabIndex === 'selfIntroduction' ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
-
-			{/* self introduction */}
-			{subTabIndex === 'selfIntroduction' ? (
-				<Box my={2}>
-					<TextField title={t('selfIntroduction')} data={student.draft.self_introduction} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='self_introduction' parentKey='draft' icon={BadgeOutlinedIcon} imageUrl={student.photo} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('self_introduction')} maxLength={1000} showCounter stackOnSmall />
-					{/* New Design for Hobbies and Special Skills */}
-					<div className={styles.twoCol} style={{ marginTop: 25, alignItems: 'flex-start' }}>
-						{/* Hobbies Section */}
-						<div
-							className={styles.hobbiesSpaced}
-							style={{
-								flex: 1,
-								backgroundColor: role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) ? '#fff3cd' : '#ffffff',
-								padding: 20,
-								borderRadius: 10,
-								border: role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) ? '2px solid #ffc107' : '1px solid #e1e1e1',
-								position: 'relative',
-							}}
-						>
-							{role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) && (
-								<div
-									style={{
-										position: 'absolute',
-										top: 8,
-										right: 8,
-										backgroundColor: '#ffc107',
-										color: '#000',
-										padding: '2px 8px',
-										borderRadius: '4px',
-										fontSize: '12px',
-										fontWeight: 600,
-									}}
-								>
-									{t('changed') || 'Changed'}
-								</div>
-							)}
-							<div
-								style={{
-									fontSize: 20,
-									fontWeight: 600,
-									display: 'flex',
-									alignItems: 'center',
-									gap: 8,
-									marginBottom: 15,
-									color: '#5627DB',
+						<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+							<Button
+								onClick={() => setViewingLive(true)}
+								variant={viewingLive ? 'contained' : 'outlined'}
+								size='small'
+								sx={{
+									minWidth: '120px',
+									backgroundColor: viewingLive ? '#5627DB' : 'transparent',
+									color: viewingLive ? '#fff' : '#5627DB',
+									borderColor: '#5627DB',
+									'&:hover': {
+										backgroundColor: viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+									},
 								}}
 							>
-								<FavoriteBorderTwoToneIcon sx={{ color: '#5627DB' }} />
-								{t('hobbies')}
+								{t('liveProfile') || '公開版'}
+							</Button>
+						</Box>
+						<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+							<Button
+								onClick={() => setViewingLive(false)}
+								variant={!viewingLive ? 'contained' : 'outlined'}
+								size='small'
+								sx={{
+									minWidth: '120px',
+									backgroundColor: !viewingLive ? '#5627DB' : 'transparent',
+									color: !viewingLive ? '#fff' : '#5627DB',
+									borderColor: '#5627DB',
+									'&:hover': {
+										backgroundColor: !viewingLive ? '#4520A6' : 'rgba(86, 39, 219, 0.1)',
+									},
+								}}
+							>
+								{t('draftProfile') || '編集版'}
+							</Button>
+						</Box>
+					</Box>
+				) : null}
+
+				<div
+					style={{
+						borderTop: '1px solid #e1e1e1',
+						backgroundColor: '#ffffff',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'start',
+						padding: '20px 16px',
+						gap: 32,
+						borderEndEndRadius: 10,
+						borderEndStartRadius: 10,
+					}}
+				>
+					{['selfIntroduction', 'skill', 'deliverables', 'education', 'work_experience', 'qa']
+						.filter(item => {
+							// Hide education and work_experience tabs for recruiters
+							if (role === 'Recruiter' && (item === 'education' || item === 'work_experience')) {
+								return false
+							}
+							return true
+						})
+						.map((item, ind) => (
+							<div
+								key={ind}
+								style={{
+									fontWeight: 500,
+									fontSize: 16,
+									color: subTabIndex === item ? '#5627db' : '#4b4b4b',
+									borderBottom: subTabIndex === item ? '2px solid #5627db' : '#4b4b4b',
+									cursor: 'pointer',
+								}}
+								onClick={() => {
+									setSubTabIndex(item)
+								}}
+							>
+								{t(item)}
 							</div>
+						))}
+				</div>
 
-							{editMode ? (
-								<>
-									{/* Description Input */}
-									<div style={{ marginBottom: 20 }}>
-										<div style={{ marginBottom: 8, color: '#666', fontSize: 14 }}>{t('hobbiesDetailDescription')}</div>
-										<MuiTextField
-											fullWidth
-											multiline
-											rows={3}
-											placeholder={t('hobbiesDescriptionPlaceholder')}
-											value={editData.draft.hobbies_description || ''}
-											onChange={e => handleHobbiesDescriptionUpdate(e.target.value)}
-											sx={{
-												'& .MuiOutlinedInput-root': {
-													borderRadius: 2,
-												},
-											}}
-										/>
+				{/* Staff Comment Display Section for Students - show feedback from pending draft */}
+				{role === 'Student' && subTabIndex === 'selfIntroduction' && currentPending && currentPending.comments && (currentPending.status === 'resubmission_required' || currentPending.status === 'disapproved') ? (
+					<Box
+						sx={{
+							my: 2,
+							mx: 2,
+							p: 2,
+							backgroundColor: '#fff3e0',
+							border: '1px solid #ff9800',
+							borderRadius: '8px',
+							borderLeft: '4px solid #ff9800',
+						}}
+					>
+						<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+							<span style={{ fontWeight: 'bold', color: '#e65100' }}>{t('staffFeedbackTitle') || 'スタッフからのフィードバック'}</span>
+						</Box>
+						<Box
+							sx={{
+								backgroundColor: '#ffffff',
+								p: 2,
+								borderRadius: '4px',
+								border: '1px solid #ffcc80',
+							}}
+						>
+							<pre
+								style={{
+									whiteSpace: 'pre-wrap',
+									wordWrap: 'break-word',
+									fontFamily: 'inherit',
+									margin: 0,
+									color: '#424242',
+								}}
+							>
+								{currentPending.comments}
+							</pre>
+						</Box>
+						<Box sx={{ mt: 1, fontSize: '0.9em', color: '#666' }}>{t('staffFeedbackHint') || 'プロフィールを修正して再度提出してください。'}</Box>
+					</Box>
+				) : null}
+
+				{/* Past staff comment history block (Student sees own, Staff sees target student's) */}
+				{(role === 'Student' || role === 'Staff') && subTabIndex === 'selfIntroduction' ? <HistoryComments targetStudentId={role === 'Student' ? null : studentId} /> : null}
+
+				{/* self introduction */}
+				{subTabIndex === 'selfIntroduction' ? (
+					<Box my={2}>
+						<TextField title={t('selfIntroduction')} data={student.draft.self_introduction} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='self_introduction' parentKey='draft' icon={BadgeOutlinedIcon} imageUrl={student.photo} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('self_introduction')} maxLength={1000} showCounter stackOnSmall />
+						{/* New Design for Hobbies and Special Skills */}
+						<div className={styles.twoCol} style={{ marginTop: 25, alignItems: 'flex-start' }}>
+							{/* Hobbies Section */}
+							<div
+								className={styles.hobbiesSpaced}
+								style={{
+									flex: 1,
+									backgroundColor: role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) ? '#fff3cd' : '#ffffff',
+									padding: 20,
+									borderRadius: 10,
+									border: role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) ? '2px solid #ffc107' : '1px solid #e1e1e1',
+									position: 'relative',
+								}}
+							>
+								{role === 'Staff' && (currentDraft?.changed_fields?.includes('hobbies') || currentDraft?.changed_fields?.includes('hobbies_description')) && (
+									<div
+										style={{
+											position: 'absolute',
+											top: 8,
+											right: 8,
+											backgroundColor: '#ffc107',
+											color: '#000',
+											padding: '2px 8px',
+											borderRadius: '4px',
+											fontSize: '12px',
+											fontWeight: 600,
+										}}
+									>
+										{t('changed') || 'Changed'}
 									</div>
+								)}
+								<div
+									style={{
+										fontSize: 20,
+										fontWeight: 600,
+										display: 'flex',
+										alignItems: 'center',
+										gap: 8,
+										marginBottom: 15,
+										color: '#5627DB',
+									}}
+								>
+									<FavoriteBorderTwoToneIcon sx={{ color: '#5627DB' }} />
+									{t('hobbies')}
+								</div>
 
-									{/* Tag Creation Section */}
-									<div style={{ marginBottom: 20 }}>
-										<div style={{ marginBottom: 10, color: '#666', fontSize: 14 }}>{t('hobbiesTags')}</div>
-										{!showHobbiesInput ? (
-											<Button
-												onClick={showAddHobbyInput}
-												startIcon={<AddIcon />}
+								{editMode ? (
+									<>
+										{/* Description Input */}
+										<div style={{ marginBottom: 20 }}>
+											<div style={{ marginBottom: 8, color: '#666', fontSize: 14 }}>{t('hobbiesDetailDescription')}</div>
+											<MuiTextField
+												fullWidth
+												multiline
+												rows={3}
+												placeholder={t('hobbiesDescriptionPlaceholder')}
+												value={editData.draft.hobbies_description || ''}
+												onChange={e => handleHobbiesDescriptionUpdate(e.target.value)}
 												sx={{
-													color: '#5627DB',
-													borderColor: '#5627DB',
-													'&:hover': {
-														backgroundColor: '#5627DB',
-														color: 'white',
+													'& .MuiOutlinedInput-root': {
+														borderRadius: 2,
 													},
 												}}
-												variant='outlined'
-												size='small'
-											>
-												{t('addTag')}
-											</Button>
-										) : (
-											<div
-												style={{
-													display: 'flex',
-													flexDirection: 'column',
-													gap: 10,
-												}}
-											>
-												<MuiTextField
-													fullWidth
-													size='small'
-													placeholder={t('hobbiesTagPlaceholder')}
-													value={hobbiesInput}
-													onChange={e => setHobbiesInput(e.target.value)}
-													onKeyPress={e => {
-														if (e.key === 'Enter') {
-															handleAddHobby()
-														}
-													}}
+											/>
+										</div>
+
+										{/* Tag Creation Section */}
+										<div style={{ marginBottom: 20 }}>
+											<div style={{ marginBottom: 10, color: '#666', fontSize: 14 }}>{t('hobbiesTags')}</div>
+											{!showHobbiesInput ? (
+												<Button
+													onClick={showAddHobbyInput}
+													startIcon={<AddIcon />}
 													sx={{
-														'& .MuiOutlinedInput-root': {
-															borderRadius: 2,
+														color: '#5627DB',
+														borderColor: '#5627DB',
+														'&:hover': {
+															backgroundColor: '#5627DB',
+															color: 'white',
 														},
 													}}
-												/>
-												<div style={{ display: 'flex', gap: 10 }}>
-													<Button
-														onClick={handleAddHobby}
-														variant='contained'
+													variant='outlined'
+													size='small'
+												>
+													{t('addTag')}
+												</Button>
+											) : (
+												<div
+													style={{
+														display: 'flex',
+														flexDirection: 'column',
+														gap: 10,
+													}}
+												>
+													<MuiTextField
+														fullWidth
+														size='small'
+														placeholder={t('hobbiesTagPlaceholder')}
+														value={hobbiesInput}
+														onChange={e => setHobbiesInput(e.target.value)}
+														onKeyPress={e => {
+															if (e.key === 'Enter') {
+																handleAddHobby()
+															}
+														}}
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: 2,
+															},
+														}}
+													/>
+													<div style={{ display: 'flex', gap: 10 }}>
+														<Button
+															onClick={handleAddHobby}
+															variant='contained'
+															size='small'
+															sx={{
+																backgroundColor: '#5627DB',
+																'&:hover': {
+																	backgroundColor: '#4520A6',
+																},
+															}}
+															disabled={!hobbiesInput.trim()}
+														>
+															{t('save')}
+														</Button>
+														<Button
+															onClick={cancelAddHobby}
+															variant='outlined'
+															size='small'
+															sx={{
+																color: '#666',
+																borderColor: '#666',
+															}}
+														>
+															{t('cancel')}
+														</Button>
+													</div>
+												</div>
+											)}
+
+											<div
+												style={{
+													marginTop: 15,
+													display: 'flex',
+													gap: 8,
+													flexWrap: 'wrap',
+												}}
+											>
+												{parseTagsFromString(editData.draft.hobbies || '').map((hobby, index) => (
+													<Chip
+														key={index}
+														label={hobby}
+														onDelete={() => handleRemoveHobby(index)}
+														deleteIcon={<CloseIcon />}
 														size='small'
 														sx={{
 															backgroundColor: '#5627DB',
-															'&:hover': {
-																backgroundColor: '#4520A6',
+															color: 'white',
+															'& .MuiChip-deleteIcon': {
+																color: 'white',
 															},
 														}}
-														disabled={!hobbiesInput.trim()}
-													>
-														{t('save')}
-													</Button>
-													<Button
-														onClick={cancelAddHobby}
-														variant='outlined'
-														size='small'
-														sx={{
-															color: '#666',
-															borderColor: '#666',
-														}}
-													>
-														{t('cancel')}
-													</Button>
-												</div>
+													/>
+												))}
 											</div>
-										)}
-
-										<div
-											style={{
-												marginTop: 15,
-												display: 'flex',
-												gap: 8,
-												flexWrap: 'wrap',
-											}}
-										>
-											{parseTagsFromString(editData.draft.hobbies || '').map((hobby, index) => (
+										</div>
+									</>
+								) : (
+									<>
+										<div style={{ marginBottom: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{editData.draft.hobbies_description || student.draft.hobbies || t('notEntered')}</div>
+										<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+											{parseTagsFromString(student.draft.hobbies || '').map((hobby, index) => (
 												<Chip
 													key={index}
 													label={hobby}
-													onDelete={() => handleRemoveHobby(index)}
-													deleteIcon={<CloseIcon />}
 													size='small'
 													sx={{
 														backgroundColor: '#5627DB',
 														color: 'white',
-														'& .MuiChip-deleteIcon': {
-															color: 'white',
-														},
 													}}
 												/>
 											))}
 										</div>
-									</div>
-								</>
-							) : (
-								<>
-									<div style={{ marginBottom: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{editData.draft.hobbies_description || student.draft.hobbies || t('notEntered')}</div>
-									<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-										{parseTagsFromString(student.draft.hobbies || '').map((hobby, index) => (
-											<Chip
-												key={index}
-												label={hobby}
-												size='small'
-												sx={{
-													backgroundColor: '#5627DB',
-													color: 'white',
-												}}
-											/>
-										))}
-									</div>
-								</>
-							)}
-						</div>
-
-						{/* Special Skills Section */}
-						<div
-							className={styles.tokuchoSpaced}
-							style={{
-								flex: 1,
-								backgroundColor: role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) ? '#fff3cd' : '#ffffff',
-								padding: 20,
-								borderRadius: 10,
-								border: role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) ? '2px solid #ffc107' : '1px solid #e1e1e1',
-								position: 'relative',
-							}}
-						>
-							{role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) && (
-								<div
-									style={{
-										position: 'absolute',
-										top: 8,
-										right: 8,
-										backgroundColor: '#ffc107',
-										color: '#000',
-										padding: '2px 8px',
-										borderRadius: '4px',
-										fontSize: '12px',
-										fontWeight: 600,
-									}}
-								>
-									{t('changed') || 'Changed'}
-								</div>
-							)}
-							<div
-								style={{
-									fontSize: 20,
-									fontWeight: 600,
-									display: 'flex',
-									alignItems: 'center',
-									gap: 8,
-									marginBottom: 15,
-									color: '#5627DB',
-								}}
-							>
-								<ElectricBoltIcon sx={{ color: '#5627DB' }} />
-								{t('specialSkills')}
+									</>
+								)}
 							</div>
 
-							{editMode ? (
-								<>
-									{/* Description Input */}
-									<div style={{ marginBottom: 20 }}>
-										<div style={{ marginBottom: 8, color: '#666', fontSize: 14 }}>{t('specialSkillsDetailDescription')}</div>
-										<MuiTextField
-											fullWidth
-											multiline
-											rows={3}
-											placeholder={t('specialSkillsDescriptionPlaceholder')}
-											value={editData.draft.special_skills_description || ''}
-											onChange={e => handleSpecialSkillsDescriptionUpdate(e.target.value)}
-											sx={{
-												'& .MuiOutlinedInput-root': {
-													borderRadius: 2,
-												},
-											}}
-										/>
+							{/* Special Skills Section */}
+							<div
+								className={styles.tokuchoSpaced}
+								style={{
+									flex: 1,
+									backgroundColor: role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) ? '#fff3cd' : '#ffffff',
+									padding: 20,
+									borderRadius: 10,
+									border: role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) ? '2px solid #ffc107' : '1px solid #e1e1e1',
+									position: 'relative',
+								}}
+							>
+								{role === 'Staff' && (currentDraft?.changed_fields?.includes('special_skills') || currentDraft?.changed_fields?.includes('special_skills_description')) && (
+									<div
+										style={{
+											position: 'absolute',
+											top: 8,
+											right: 8,
+											backgroundColor: '#ffc107',
+											color: '#000',
+											padding: '2px 8px',
+											borderRadius: '4px',
+											fontSize: '12px',
+											fontWeight: 600,
+										}}
+									>
+										{t('changed') || 'Changed'}
 									</div>
+								)}
+								<div
+									style={{
+										fontSize: 20,
+										fontWeight: 600,
+										display: 'flex',
+										alignItems: 'center',
+										gap: 8,
+										marginBottom: 15,
+										color: '#5627DB',
+									}}
+								>
+									<ElectricBoltIcon sx={{ color: '#5627DB' }} />
+									{t('specialSkills')}
+								</div>
 
-									{/* Tag Creation Section */}
-									<div style={{ marginBottom: 20 }}>
-										<div style={{ marginBottom: 10, color: '#666', fontSize: 14 }}>{t('specialSkillsTags')}</div>
-										{!showSpecialSkillsInput ? (
-											<Button
-												onClick={showAddSpecialSkillInput}
-												startIcon={<AddIcon />}
+								{editMode ? (
+									<>
+										{/* Description Input */}
+										<div style={{ marginBottom: 20 }}>
+											<div style={{ marginBottom: 8, color: '#666', fontSize: 14 }}>{t('specialSkillsDetailDescription')}</div>
+											<MuiTextField
+												fullWidth
+												multiline
+												rows={3}
+												placeholder={t('specialSkillsDescriptionPlaceholder')}
+												value={editData.draft.special_skills_description || ''}
+												onChange={e => handleSpecialSkillsDescriptionUpdate(e.target.value)}
 												sx={{
-													color: '#5627DB',
-													borderColor: '#5627DB',
-													'&:hover': {
-														backgroundColor: '#5627DB',
-														color: 'white',
+													'& .MuiOutlinedInput-root': {
+														borderRadius: 2,
 													},
 												}}
-												variant='outlined'
-												size='small'
-											>
-												{t('addTag')}
-											</Button>
-										) : (
-											<div
-												style={{
-													display: 'flex',
-													flexDirection: 'column',
-													gap: 10,
-												}}
-											>
-												<MuiTextField
-													fullWidth
-													size='small'
-													placeholder={t('specialSkillsTagPlaceholder')}
-													value={specialSkillsInput}
-													onChange={e => setSpecialSkillsInput(e.target.value)}
-													onKeyPress={e => {
-														if (e.key === 'Enter') {
-															handleAddSpecialSkill()
-														}
-													}}
+											/>
+										</div>
+
+										{/* Tag Creation Section */}
+										<div style={{ marginBottom: 20 }}>
+											<div style={{ marginBottom: 10, color: '#666', fontSize: 14 }}>{t('specialSkillsTags')}</div>
+											{!showSpecialSkillsInput ? (
+												<Button
+													onClick={showAddSpecialSkillInput}
+													startIcon={<AddIcon />}
 													sx={{
-														'& .MuiOutlinedInput-root': {
-															borderRadius: 2,
+														color: '#5627DB',
+														borderColor: '#5627DB',
+														'&:hover': {
+															backgroundColor: '#5627DB',
+															color: 'white',
 														},
 													}}
-												/>
-												<div style={{ display: 'flex', gap: 10 }}>
-													<Button
-														onClick={handleAddSpecialSkill}
-														variant='contained'
+													variant='outlined'
+													size='small'
+												>
+													{t('addTag')}
+												</Button>
+											) : (
+												<div
+													style={{
+														display: 'flex',
+														flexDirection: 'column',
+														gap: 10,
+													}}
+												>
+													<MuiTextField
+														fullWidth
+														size='small'
+														placeholder={t('specialSkillsTagPlaceholder')}
+														value={specialSkillsInput}
+														onChange={e => setSpecialSkillsInput(e.target.value)}
+														onKeyPress={e => {
+															if (e.key === 'Enter') {
+																handleAddSpecialSkill()
+															}
+														}}
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: 2,
+															},
+														}}
+													/>
+													<div style={{ display: 'flex', gap: 10 }}>
+														<Button
+															onClick={handleAddSpecialSkill}
+															variant='contained'
+															size='small'
+															sx={{
+																backgroundColor: '#5627DB',
+																'&:hover': {
+																	backgroundColor: '#4520A6',
+																},
+															}}
+															disabled={!specialSkillsInput.trim()}
+														>
+															{t('save')}
+														</Button>
+														<Button
+															onClick={cancelAddSpecialSkill}
+															variant='outlined'
+															size='small'
+															sx={{
+																color: '#666',
+																borderColor: '#666',
+															}}
+														>
+															{t('cancel')}
+														</Button>
+													</div>
+												</div>
+											)}
+
+											<div
+												style={{
+													marginTop: 15,
+													display: 'flex',
+													gap: 8,
+													flexWrap: 'wrap',
+												}}
+											>
+												{parseTagsFromString(editData.draft.other_information || '').map((skill, index) => (
+													<Chip
+														key={index}
+														label={skill}
+														onDelete={() => handleRemoveSpecialSkill(index)}
+														deleteIcon={<CloseIcon />}
 														size='small'
 														sx={{
 															backgroundColor: '#5627DB',
-															'&:hover': {
-																backgroundColor: '#4520A6',
+															color: 'white',
+															'& .MuiChip-deleteIcon': {
+																color: 'white',
 															},
 														}}
-														disabled={!specialSkillsInput.trim()}
-													>
-														{t('save')}
-													</Button>
-													<Button
-														onClick={cancelAddSpecialSkill}
-														variant='outlined'
-														size='small'
-														sx={{
-															color: '#666',
-															borderColor: '#666',
-														}}
-													>
-														{t('cancel')}
-													</Button>
-												</div>
+													/>
+												))}
 											</div>
-										)}
-
-										<div
-											style={{
-												marginTop: 15,
-												display: 'flex',
-												gap: 8,
-												flexWrap: 'wrap',
-											}}
-										>
-											{parseTagsFromString(editData.draft.other_information || '').map((skill, index) => (
+										</div>
+									</>
+								) : (
+									<>
+										<div style={{ marginBottom: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{editData.draft.special_skills_description || student.draft.other_information || t('notEntered')}</div>
+										<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+											{parseTagsFromString(student.draft.other_information || '').map((skill, index) => (
 												<Chip
 													key={index}
 													label={skill}
-													onDelete={() => handleRemoveSpecialSkill(index)}
-													deleteIcon={<CloseIcon />}
 													size='small'
 													sx={{
 														backgroundColor: '#5627DB',
 														color: 'white',
-														'& .MuiChip-deleteIcon': {
-															color: 'white',
-														},
 													}}
 												/>
 											))}
 										</div>
-									</div>
-								</>
-							) : (
-								<>
-									<div style={{ marginBottom: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{editData.draft.special_skills_description || student.draft.other_information || t('notEntered')}</div>
-									<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-										{parseTagsFromString(student.draft.other_information || '').map((skill, index) => (
-											<Chip
-												key={index}
-												label={skill}
-												size='small'
-												sx={{
-													backgroundColor: '#5627DB',
-													color: 'white',
-												}}
-											/>
-										))}
-									</div>
-								</>
-							)}
+									</>
+								)}
+							</div>
 						</div>
-					</div>
-					<div className={styles.twoCol} style={{ alignItems: 'flex-start' }}>
-						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} placeholder={t('originPlaceholder') || 'Uzbekistan'} />
+						<div className={styles.twoCol} style={{ alignItems: 'flex-start' }}>
+							<div style={{ flex: 1, minWidth: 280 }}>
+								<TextField title={t('origin')} data={student.draft?.address} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address')} placeholder={t('originPlaceholder') || 'Uzbekistan'} />
+							</div>
+							<div style={{ flex: 1, minWidth: 280 }}>
+								<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} placeholder={t('addressFuriganaPlaceholder') || 'ウズファイスト'} />
+							</div>
+							<div style={{ flex: 1, minWidth: 280 }}>
+								<TextField title={t('major')} data={student.draft?.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
+							</div>
+							<div style={{ flex: 1, minWidth: 280 }}>
+								<TextField title={t('jobType')} data={student.draft?.job_type} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='job_type' parentKey='draft' icon={BusinessCenterOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('job_type')} />
+							</div>
 						</div>
-						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('address_furigana')} data={student.draft?.address_furigana || student.address_furigana} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='address_furigana' parentKey='draft' icon={LocationOnOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('address_furigana')} placeholder={t('addressFuriganaPlaceholder') || 'ウズファイスト'} />
-						</div>
-						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('major')} data={student.draft?.major} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='major' parentKey='draft' icon={SchoolOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('major')} />
-						</div>
-						<div style={{ flex: 1, minWidth: 280 }}>
-							<TextField title={t('jobType')} data={student.draft?.job_type} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='job_type' parentKey='draft' icon={BusinessCenterOutlinedIcon} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('job_type')} />
-						</div>
-					</div>
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
-				</Box>
-			) : null}
-			{/* skills */}
-			{subTabIndex === 'skill' ? (
-				<Box my={2}>
-					<div className={styles.gridBox}>
-						<SkillSelector
-							title={t('itSkills')}
-							headers={{
-								上級: t('threeYearsOrMore'),
-								中級: t('lessThanThreeYears'),
-								初級: t('oneToOneAndHalfYears'),
-							}}
-							data={student.draft}
-							editData={editData}
-							editMode={editMode}
-							updateEditData={handleUpdateEditData}
-							showAutocomplete={true}
-							keyName='it_skills'
-							parentKey='draft'
-							icon={<CodeIcon sx={{ color: '#5627DB' }} />}
-							isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('it_skills')}
-						/>
-						<div
-							style={{
-								padding: '20px',
-								backgroundColor: '#ffffff',
-								borderRadius: '12px',
-								boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)',
-								// maxHeight removed to avoid forcing equal heights
-							}}
-						>
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
+					</Box>
+				) : null}
+				{/* skills */}
+				{subTabIndex === 'skill' ? (
+					<Box my={2}>
+						<div className={styles.gridBox}>
+							<SkillSelector
+								title={t('itSkills')}
+								headers={{
+									上級: t('threeYearsOrMore'),
+									中級: t('lessThanThreeYears'),
+									初級: t('oneToOneAndHalfYears'),
+								}}
+								data={student.draft}
+								editData={editData}
+								editMode={editMode}
+								updateEditData={handleUpdateEditData}
+								showAutocomplete={true}
+								keyName='it_skills'
+								parentKey='draft'
+								icon={<CodeIcon sx={{ color: '#5627DB' }} />}
+								isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('it_skills')}
+							/>
 							<div
 								style={{
-									fontSize: 20,
-									fontWeight: 600,
-									display: 'flex',
-									alignItems: 'center',
-									gap: 8,
-									marginBottom: 20,
+									padding: '20px',
+									backgroundColor: '#ffffff',
+									borderRadius: '12px',
+									boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)',
+									// maxHeight removed to avoid forcing equal heights
 								}}
 							>
-								<WorkspacePremiumOutlinedIcon sx={{ color: '#5627DB' }} />
-								{t('Qualifications')}
+								<div
+									style={{
+										fontSize: 20,
+										fontWeight: 600,
+										display: 'flex',
+										alignItems: 'center',
+										gap: 8,
+										marginBottom: 20,
+									}}
+								>
+									<WorkspacePremiumOutlinedIcon sx={{ color: '#5627DB' }} />
+									{t('Qualifications')}
+								</div>
+
+								<div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+									{/* JLPT */}
+									<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+										<span style={{ minWidth: 160, fontWeight: 500 }}>JLPT:</span>
+										<span
+											style={{
+												padding: '6px 20px',
+												fontWeight: 500,
+												fontSize: 14,
+												border: '1px solid #e0e0e0',
+												borderRadius: 6,
+												background: editMode ? '#f5f5f5' : '#fff',
+												color: editMode ? '#666' : '#000',
+												cursor: editMode ? 'not-allowed' : 'default',
+											}}
+											title={editMode ? 'この情報はKintoneから管理されています' : ''}
+										>
+											{(() => {
+												const jlptData = editData.draft.jlpt ? getJLPTData(editData.draft.jlpt).highest : getJLPTData(student.jlpt).highest
+												return jlptData || t('none')
+											})()}
+										</span>
+									</div>
+
+									{/* JDU Certification */}
+									<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+										<span style={{ minWidth: 160, fontWeight: 500 }}>{t('jdu_certification')}:</span>
+										<span
+											style={{
+												padding: '6px 20px',
+												fontWeight: 500,
+												fontSize: 14,
+												border: '1px solid #e0e0e0',
+												borderRadius: 6,
+												background: editMode ? '#f5f5f5' : '#fff',
+												color: editMode ? '#666' : '#000',
+												cursor: editMode ? 'not-allowed' : 'default',
+											}}
+											title={editMode ? 'この情報はKintoneから管理されています' : ''}
+										>
+											{(() => {
+												const jduData = editData.draft.jdu_japanese_certification ? getJLPTData(editData.draft.jdu_japanese_certification).highest : getJLPTData(student.jdu_japanese_certification).highest
+												return jduData || t('none')
+											})()}
+										</span>
+									</div>
+
+									{/* Japanese Speech Contest */}
+									<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+										<span style={{ minWidth: 160, fontWeight: 500 }}>{t('japaneseSpeechContest')}:</span>
+										<span
+											style={{
+												padding: '6px 20px',
+												fontWeight: 500,
+												fontSize: 14,
+												border: '1px solid #e0e0e0',
+												borderRadius: 6,
+												background: editMode ? '#f5f5f5' : '#fff',
+												color: editMode ? '#666' : '#000',
+												cursor: editMode ? 'not-allowed' : 'default',
+											}}
+											title={editMode ? 'この情報はKintoneから管理されています' : ''}
+										>
+											{(() => {
+												const speechData = editData.draft.japanese_speech_contest ? getCertificateData(editData.draft.japanese_speech_contest).highest : getCertificateData(student.japanese_speech_contest).highest
+												return speechData || t('none')
+											})()}
+										</span>
+										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
+									</div>
+
+									{/* IT Contest */}
+									<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+										<span style={{ minWidth: 160, fontWeight: 500 }}>{t('itContest')}:</span>
+										<span
+											style={{
+												padding: '6px 20px',
+												fontWeight: 500,
+												fontSize: 14,
+												border: '1px solid #e0e0e0',
+												borderRadius: 6,
+												background: editMode ? '#f5f5f5' : '#fff',
+												color: editMode ? '#666' : '#000',
+												cursor: editMode ? 'not-allowed' : 'default',
+											}}
+											title={editMode ? 'この情報はKintoneから管理されています' : ''}
+										>
+											{(() => {
+												const itData = editData.draft.it_contest ? getCertificateData(editData.draft.it_contest).highest : getCertificateData(student.it_contest).highest
+												return itData || t('none')
+											})()}
+										</span>
+										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
+									</div>
+								</div>
 							</div>
 
-							<div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-								{/* JLPT */}
-								<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-									<span style={{ minWidth: 160, fontWeight: 500 }}>JLPT:</span>
-									<span
-										style={{
-											padding: '6px 20px',
-											fontWeight: 500,
-											fontSize: 14,
-											border: '1px solid #e0e0e0',
-											borderRadius: 6,
-											background: editMode ? '#f5f5f5' : '#fff',
-											color: editMode ? '#666' : '#000',
-											cursor: editMode ? 'not-allowed' : 'default',
-										}}
-										title={editMode ? 'この情報はKintoneから管理されています' : ''}
-									>
-										{(() => {
-											const jlptData = editData.draft.jlpt ? getJLPTData(editData.draft.jlpt).highest : getJLPTData(student.jlpt).highest
-											return jlptData || t('none')
-										})()}
-									</span>
-								</div>
+							<LanguageSkillSelector
+								title={t('languageSkills')}
+								headers={{
+									上級: '3年間以上',
+									中級: '1年間〜1年間半',
+									初級: '基礎',
+								}}
+								data={student.draft}
+								editMode={editMode}
+								editData={editData}
+								updateEditData={handleUpdateEditData}
+								showAutocomplete={true}
+								showHeaders={false}
+								keyName='language_skills'
+								parentKey='draft'
+								icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />}
+								isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('language_skills')}
+							/>
 
-								{/* JDU Certification */}
-								<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-									<span style={{ minWidth: 160, fontWeight: 500 }}>{t('jdu_certification')}:</span>
-									<span
-										style={{
-											padding: '6px 20px',
-											fontWeight: 500,
-											fontSize: 14,
-											border: '1px solid #e0e0e0',
-											borderRadius: 6,
-											background: editMode ? '#f5f5f5' : '#fff',
-											color: editMode ? '#666' : '#000',
-											cursor: editMode ? 'not-allowed' : 'default',
-										}}
-										title={editMode ? 'この情報はKintoneから管理されています' : ''}
-									>
-										{(() => {
-											const jduData = editData.draft.jdu_japanese_certification ? getJLPTData(editData.draft.jdu_japanese_certification).highest : getJLPTData(student.jdu_japanese_certification).highest
-											return jduData || t('none')
-										})()}
-									</span>
-								</div>
+							<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
 
-								{/* Japanese Speech Contest */}
-								<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-									<span style={{ minWidth: 160, fontWeight: 500 }}>{t('japaneseSpeechContest')}:</span>
-									<span
-										style={{
-											padding: '6px 20px',
-											fontWeight: 500,
-											fontSize: 14,
-											border: '1px solid #e0e0e0',
-											borderRadius: 6,
-											background: editMode ? '#f5f5f5' : '#fff',
-											color: editMode ? '#666' : '#000',
-											cursor: editMode ? 'not-allowed' : 'default',
-										}}
-										title={editMode ? 'この情報はKintoneから管理されています' : ''}
-									>
-										{(() => {
-											const speechData = editData.draft.japanese_speech_contest ? getCertificateData(editData.draft.japanese_speech_contest).highest : getCertificateData(student.japanese_speech_contest).highest
-											return speechData || t('none')
-										})()}
-									</span>
-									<span style={{ marginLeft: 8 }}>{t('rank')}</span>
-								</div>
-
-								{/* IT Contest */}
-								<div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-									<span style={{ minWidth: 160, fontWeight: 500 }}>{t('itContest')}:</span>
-									<span
-										style={{
-											padding: '6px 20px',
-											fontWeight: 500,
-											fontSize: 14,
-											border: '1px solid #e0e0e0',
-											borderRadius: 6,
-											background: editMode ? '#f5f5f5' : '#fff',
-											color: editMode ? '#666' : '#000',
-											cursor: editMode ? 'not-allowed' : 'default',
-										}}
-										title={editMode ? 'この情報はKintoneから管理されています' : ''}
-									>
-										{(() => {
-											const itData = editData.draft.it_contest ? getCertificateData(editData.draft.it_contest).highest : getCertificateData(student.it_contest).highest
-											return itData || t('none')
-										})()}
-									</span>
-									<span style={{ marginLeft: 8 }}>{t('rank')}</span>
-								</div>
-							</div>
+							<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('licenses')} />
 						</div>
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
+					</Box>
+				) : null}
+				{/* deliverables */}
+				{subTabIndex === 'deliverables' ? (
+					<Box my={2}>
+						<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
+					</Box>
+				) : null}
+				{subTabIndex === 'education' ? (
+					<Box my={2}>
+						<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('education')} />
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
+					</Box>
+				) : null}
+				{subTabIndex === 'work_experience' ? (
+					<Box my={2}>
+						<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('work_experience')} />
+						<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('arubaito')} />
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
+					</Box>
+				) : null}
+				{/* Credits section is temporarily disabled */}
+				{/* QA */}
+				{subTabIndex === 'qa' ? (
+					<Box my={2}>
+						<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} />
+					</Box>
+				) : null}
+				<ProfileConfirmDialog open={confirmMode} onClose={toggleConfirmMode} onConfirm={handleSubmitDraft} />
 
-						<LanguageSkillSelector
-							title={t('languageSkills')}
-							headers={{
-								上級: '3年間以上',
-								中級: '1年間〜1年間半',
-								初級: '基礎',
-							}}
-							data={student.draft}
-							editMode={editMode}
-							editData={editData}
-							updateEditData={handleUpdateEditData}
-							showAutocomplete={true}
-							showHeaders={false}
-							keyName='language_skills'
-							parentKey='draft'
-							icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />}
-							isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('language_skills')}
-						/>
+				{/* Auto-save indicator */}
+				{editMode && role === 'Student' ? (
+					<Snackbar open={saveStatus.isSaving || !!saveStatus.lastSaved} autoHideDuration={saveStatus.isSaving ? null : 2000} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} onClose={() => setSaveStatus(prev => ({ ...prev, lastSaved: null }))}>
+						<Alert severity='info' icon={saveStatus.isSaving ? <SaveIcon /> : <SaveIcon />} sx={{ alignItems: 'center' }}>
+							{saveStatus.isSaving ? t('savingChanges') || 'Saving...' : t('changesSaved') || 'Changes saved'}
+							{saveStatus.isSaving ? <LinearProgress color='inherit' sx={{ ml: 2, width: 100 }} /> : null}
+						</Alert>
+					</Snackbar>
+				) : null}
 
-						<OtherSkillsSelector title={t('otherSkills')} data={student.draft} editData={editData} editMode={editMode} updateEditData={handleUpdateEditData} keyName='other_skills' parentKey='draft' icon={<ExtensionOutlinedIcon sx={{ color: '#5627DB' }} />} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('other_skills')} />
-
-						<Licenses licenses={viewingLive ? liveData?.licenses || [] : editMode ? editData?.draft?.licenses || [] : currentDraft?.profile_data?.licenses || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('licenses')} />
-					</div>
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
-				</Box>
-			) : null}
-			{/* deliverables */}
-			{subTabIndex === 'deliverables' ? (
-				<Box my={2}>
-					<Deliverables data={student?.draft?.deliverables || []} editMode={editMode} editData={editData?.draft || {}} updateEditData={handleUpdateEditData} onImageUpload={handleImageUpload} keyName='deliverables' resetPreviews={resetDeliverablePreviews} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('deliverables')} studentId={student?.student_id || id} />
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
-				</Box>
-			) : null}
-			{subTabIndex === 'education' ? (
-				<Box my={2}>
-					<Education education={viewingLive ? liveData?.education || [] : editMode ? editData?.draft?.education || [] : currentDraft?.profile_data?.education || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('education')} />
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
-				</Box>
-			) : null}
-			{subTabIndex === 'work_experience' ? (
-				<Box my={2}>
-					<WorkExperience workExperience={viewingLive ? liveData?.work_experience || [] : editMode ? editData?.draft?.work_experience || [] : currentDraft?.profile_data?.work_experience || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} editData={editData} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('work_experience')} />
-					<Arubaito arubaito={viewingLive ? liveData?.arubaito || [] : editMode ? editData?.draft?.arubaito || [] : currentDraft?.profile_data?.arubaito || []} editMode={editMode} onUpdate={handleUpdateEditData} t={t} isChanged={role === 'Staff' && currentDraft?.changed_fields?.includes('arubaito')} />
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} onlyCommentInput />
-				</Box>
-			) : null}
-			{/* Credits section is temporarily disabled */}
-			{/* QA */}
-			{subTabIndex === 'qa' ? (
-				<Box my={2}>
-					<QA updateQA={updateQA} data={editData.draft?.qa || {}} currentDraft={currentDraft} handleQAUpdate={handleQAUpdate} isFromTopPage={true} topEditMode={editMode} handleDraftUpsert={handleDraftUpsert} isHonban={currentDraft && currentDraft.status === 'approved'} setTopEditMode={setTopEditMode} updateCurrentDraft={updateCurrentDraft} studentId={student?.student_id || id} />
-				</Box>
-			) : null}
-			<ProfileConfirmDialog open={confirmMode} onClose={toggleConfirmMode} onConfirm={handleSubmitDraft} />
-
-			{/* Auto-save indicator */}
-			{editMode && role === 'Student' ? (
-				<Snackbar open={saveStatus.isSaving || !!saveStatus.lastSaved} autoHideDuration={saveStatus.isSaving ? null : 2000} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} onClose={() => setSaveStatus(prev => ({ ...prev, lastSaved: null }))}>
-					<Alert severity='info' icon={saveStatus.isSaving ? <SaveIcon /> : <SaveIcon />} sx={{ alignItems: 'center' }}>
-						{saveStatus.isSaving ? t('savingChanges') || 'Saving...' : t('changesSaved') || 'Changes saved'}
-						{saveStatus.isSaving ? <LinearProgress color='inherit' sx={{ ml: 2, width: 100 }} /> : null}
-					</Alert>
-				</Snackbar>
-			) : null}
-
-			{/* Recovery dialog */}
-			<Dialog open={showRecoveryDialog} onClose={() => setShowRecoveryDialog(false)}>
-				<DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-					<RestoreIcon color='info' />
-					{t('recoverUnsavedChanges') || 'Recover Unsaved Changes?'}
-				</DialogTitle>
-				<DialogContent>
-					<Typography>{t('unsavedChangesFound') || 'We found unsaved changes from your previous editing session. Would you like to restore them?'}</Typography>
-					{persistedData.timestamp && (
-						<Typography variant='caption' color='text.secondary' sx={{ mt: 1, display: 'block' }}>
-							{t('lastModified') || 'Last modified'}: {new Date(persistedData.timestamp).toLocaleString()}
-						</Typography>
-					)}
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleDiscardRecovery} color='error'>
-						{t('discard') || 'Discard'}
-					</Button>
-					<Button onClick={handleRecoverData} variant='contained' startIcon={<RestoreIcon />}>
-						{t('restore') || 'Restore'}
-					</Button>
-				</DialogActions>
-			</Dialog>
-
-			{/* Unsaved changes warning */}
-			<Dialog
-				open={showUnsavedWarning}
-				onClose={() => {
-					setShowUnsavedWarning(false)
-					if (pendingLanguageChange) {
-						cancelLanguageChange()
-					}
-					if (pendingNavigation) {
-						setPendingNavigation(null)
-					}
-				}}
-			>
-				<DialogTitle>{pendingLanguageChange ? t('unsavedChangesLanguageTitle') || 'Save changes before switching language?' : pendingNavigation ? t('unsavedChangesNavigationTitle') || 'Save changes before leaving?' : t('unsavedChangesTitle') || 'Unsaved Changes'}</DialogTitle>
-				<DialogContent>
-					<Typography>{pendingLanguageChange ? t('unsavedChangesLanguageMessage') || 'You have unsaved changes. Would you like to save them before changing the language?' : pendingNavigation ? t('unsavedChangesNavigationMessage') || 'You have unsaved changes. Would you like to save them before leaving this page?' : t('unsavedChangesMessage') || 'You have unsaved changes. Are you sure you want to discard them?'}</Typography>
-				</DialogContent>
-				<DialogActions>
-					<Button
-						onClick={() => {
-							setShowUnsavedWarning(false)
-							if (pendingLanguageChange) {
-								cancelLanguageChange()
-							}
-							if (pendingNavigation) {
-								setPendingNavigation(null)
-							}
-						}}
-					>
-						{t('continueEditing') || 'Continue Editing'}
-					</Button>
-					{pendingLanguageChange ? (
-						<>
-							<Button
-								onClick={() => {
-									// Discard changes and switch language
-									setEditData(student)
-									setEditMode(false)
-									clearStorage()
-									setShowUnsavedWarning(false)
-									confirmLanguageChange()
-								}}
-								color='error'
-							>
-								{t('discardAndSwitch') || 'Discard & Switch'}
-							</Button>
-							<Button onClick={handleConfirmCancel} variant='contained' color='primary'>
-								{t('saveAndSwitch') || 'Save & Switch'}
-							</Button>
-						</>
-					) : pendingNavigation ? (
-						<>
-							<Button onClick={handleConfirmCancel} color='error'>
-								{t('discardAndLeave') || 'Discard & Leave'}
-							</Button>
-							<Button onClick={handleSaveAndNavigate} variant='contained' color='primary'>
-								{t('saveAndLeave') || 'Save & Leave'}
-							</Button>
-						</>
-					) : (
-						<Button onClick={handleConfirmCancel} color='error' variant='contained'>
-							{t('discardChanges') || 'Discard Changes'}
+				{/* Recovery dialog */}
+				<Dialog open={showRecoveryDialog} onClose={() => setShowRecoveryDialog(false)}>
+					<DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<RestoreIcon color='info' />
+						{t('recoverUnsavedChanges') || 'Recover Unsaved Changes?'}
+					</DialogTitle>
+					<DialogContent>
+						<Typography>{t('unsavedChangesFound') || 'We found unsaved changes from your previous editing session. Would you like to restore them?'}</Typography>
+						{persistedData.timestamp && (
+							<Typography variant='caption' color='text.secondary' sx={{ mt: 1, display: 'block' }}>
+								{t('lastModified') || 'Last modified'}: {new Date(persistedData.timestamp).toLocaleString()}
+							</Typography>
+						)}
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={handleDiscardRecovery} color='error'>
+							{t('discard') || 'Discard'}
 						</Button>
-					)}
-				</DialogActions>
-			</Dialog>
+						<Button onClick={handleRecoverData} variant='contained' startIcon={<RestoreIcon />}>
+							{t('restore') || 'Restore'}
+						</Button>
+					</DialogActions>
+				</Dialog>
 
-			{/* Submit warning modal (e.g., missing required QA answers) */}
-			<Dialog open={warningModal.open} onClose={() => setWarningModal({ open: false, message: '' })} aria-labelledby='submit-warning-title' aria-describedby='submit-warning-desc'>
-				<DialogTitle id='submit-warning-title'>{t('warning') || 'Warning'}</DialogTitle>
-				<DialogContent>
-					<DialogContentText id='submit-warning-desc'>{warningModal.message}</DialogContentText>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={() => setWarningModal({ open: false, message: '' })} color='primary' autoFocus>
-						{t('ok')}
-					</Button>
-				</DialogActions>
-			</Dialog>
-		</Box>
+				{/* Unsaved changes warning */}
+				<Dialog
+					open={showUnsavedWarning}
+					onClose={() => {
+						setShowUnsavedWarning(false)
+						if (pendingLanguageChange) {
+							cancelLanguageChange()
+						}
+						if (pendingNavigation) {
+							setPendingNavigation(null)
+						}
+					}}
+				>
+					<DialogTitle>{pendingLanguageChange ? t('unsavedChangesLanguageTitle') || 'Save changes before switching language?' : pendingNavigation ? t('unsavedChangesNavigationTitle') || 'Save changes before leaving?' : t('unsavedChangesTitle') || 'Unsaved Changes'}</DialogTitle>
+					<DialogContent>
+						<Typography>{pendingLanguageChange ? t('unsavedChangesLanguageMessage') || 'You have unsaved changes. Would you like to save them before changing the language?' : pendingNavigation ? t('unsavedChangesNavigationMessage') || 'You have unsaved changes. Would you like to save them before leaving this page?' : t('unsavedChangesMessage') || 'You have unsaved changes. Are you sure you want to discard them?'}</Typography>
+					</DialogContent>
+					<DialogActions>
+						<Button
+							onClick={() => {
+								setShowUnsavedWarning(false)
+								if (pendingLanguageChange) {
+									cancelLanguageChange()
+								}
+								if (pendingNavigation) {
+									setPendingNavigation(null)
+								}
+							}}
+						>
+							{t('continueEditing') || 'Continue Editing'}
+						</Button>
+						{pendingLanguageChange ? (
+							<>
+								<Button
+									onClick={() => {
+										// Discard changes and switch language
+										setEditData(student)
+										setEditMode(false)
+										clearStorage()
+										setShowUnsavedWarning(false)
+										confirmLanguageChange()
+									}}
+									color='error'
+								>
+									{t('discardAndSwitch') || 'Discard & Switch'}
+								</Button>
+								<Button onClick={handleConfirmCancel} variant='contained' color='primary'>
+									{t('saveAndSwitch') || 'Save & Switch'}
+								</Button>
+							</>
+						) : pendingNavigation ? (
+							<>
+								<Button onClick={handleConfirmCancel} color='error'>
+									{t('discardAndLeave') || 'Discard & Leave'}
+								</Button>
+								<Button onClick={handleSaveAndNavigate} variant='contained' color='primary'>
+									{t('saveAndLeave') || 'Save & Leave'}
+								</Button>
+							</>
+						) : (
+							<Button onClick={handleConfirmCancel} color='error' variant='contained'>
+								{t('discardChanges') || 'Discard Changes'}
+							</Button>
+						)}
+					</DialogActions>
+				</Dialog>
+
+				{/* Submit warning modal (e.g., missing required QA answers) */}
+				<Dialog open={warningModal.open} onClose={() => setWarningModal({ open: false, message: '' })} aria-labelledby='submit-warning-title' aria-describedby='submit-warning-desc'>
+					<DialogTitle id='submit-warning-title'>{t('warning') || 'Warning'}</DialogTitle>
+					<DialogContent>
+						<DialogContentText id='submit-warning-desc'>{warningModal.message}</DialogContentText>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={() => setWarningModal({ open: false, message: '' })} color='primary' autoFocus>
+							{t('ok')}
+						</Button>
+					</DialogActions>
+				</Dialog>
+			</Box>
+		</>
 	)
 }
 

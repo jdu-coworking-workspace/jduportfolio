@@ -39,7 +39,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	const { language } = useLanguage()
 	const t = key => translations[language][key] || key
 
-	const role = sessionStorage.getItem('role')
+	const role = tableProps.role || sessionStorage.getItem('role')
 
 	const [searchParams, setSearchParams] = useSearchParams()
 
@@ -296,23 +296,18 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 	)
 
 	useEffect(() => {
-		// ✅ Create AbortController for this effect
 		const controller = new AbortController()
-
-		// ✅ Call fetchUserData with abort signal
-		fetchUserData(controller.signal)
-
-		// ✅ Cleanup: abort request when component unmounts or dependencies change
+		// Defer to a macrotask so that React.StrictMode's synchronous
+		// unmount→remount cycle cancels the first call via clearTimeout,
+		// resulting in exactly one network request instead of two.
+		const timerId = setTimeout(() => {
+			fetchUserData(controller.signal)
+		}, 0)
 		return () => {
+			clearTimeout(timerId)
 			controller.abort()
 		}
-	}, [
-		fetchUserData,
-		tableProps.filter, // ✅ CRITICAL: Include filter in dependencies to trigger refetch when filter changes
-		tableProps.refreshTrigger,
-		page, // Server-side pagination uchun
-		rowsPerPage, // Server-side pagination uchun
-	])
+	}, [fetchUserData, tableProps.refreshTrigger])
 
 	useEffect(() => {
 		if (updatedBookmark?.studentId) {

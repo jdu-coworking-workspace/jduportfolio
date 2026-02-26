@@ -1,10 +1,10 @@
-// Home.jsx - to'liq o'zgartirilgan versiya
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import axios from '../../utils/axiosUtils'
 import { useAlert } from '../../contexts/AlertContext'
 import { useLanguage } from '../../contexts/LanguageContext'
+import { UserContext } from '../../contexts/UserContext'
 
 import RichTextEditor from '../../components/RichTextEditor/RichTextEditor'
 
@@ -18,20 +18,20 @@ import translations from '../../locales/translations'
 const Home = () => {
 	const navigate = useNavigate()
 	const { language } = useLanguage()
+	const { role } = useContext(UserContext)
 	const t = key => translations[language][key] || key
-	const [role, setRole] = useState(null)
 	const [editData, setEditData] = useState('')
 	const [editMode, setEditMode] = useState(false)
 	const showAlert = useAlert()
 
-	const fetchHomePageData = async () => {
-		const userRole = sessionStorage.getItem('role')
-		setRole(userRole)
+	const fetchHomePageData = async signal => {
 		try {
-			const response = await axios.get('/api/settings/homepage')
-			setEditData(response.data.value)
+			const response = await axios.get('/api/settings/homepage', { signal })
+			setEditData(response.data.value || '')
 		} catch (error) {
-			console.error('Error fetching homepage data:', error)
+			if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
+				console.error('Error fetching homepage data:', error)
+			}
 		}
 	}
 
@@ -81,7 +81,14 @@ const Home = () => {
 	}
 
 	useEffect(() => {
-		fetchHomePageData()
+		const controller = new AbortController()
+		const timerId = setTimeout(() => {
+			fetchHomePageData(controller.signal)
+		}, 0)
+		return () => {
+			clearTimeout(timerId)
+			controller.abort()
+		}
 	}, [])
 
 	return (

@@ -233,7 +233,7 @@ const StudentProfile = ({ userId = 0 }) => {
 			}}
 		>
 			<Box className={styles.topControlButtons}>
-				{role !== 'Student' && (
+				{role !== 'Student' ? (
 					<>
 						<Button onClick={handleBackClick} className={styles.topBtn}>
 							<ArrowBackIosNewOutlinedIcon />
@@ -245,7 +245,7 @@ const StudentProfile = ({ userId = 0 }) => {
 							<ArrowBackIosNewOutlinedIcon sx={{ transform: 'rotate(180deg)' }} />
 						</Button>
 					</>
-				)}
+				) : null}
 			</Box>
 			<Box className={styles.container}>
 				<Box className={styles.avatarContainer}>
@@ -266,11 +266,11 @@ const StudentProfile = ({ userId = 0 }) => {
 								{student.first_name} {student.last_name}
 							</div>
 							{/* furigana */}
-							{(student.first_name_furigana || student.last_name_furigana) && (
+							{student.first_name_furigana || student.last_name_furigana ? (
 								<div style={{ fontSize: 14, color: '#666' }}>
 									{student.last_name_furigana || ''} {student.first_name_furigana || ''}
 								</div>
-							)}
+							) : null}
 							{/* student id and birthday */}
 							<div className={styles.inlineInfoRow}>
 								<div className={styles.infoPair}>
@@ -310,18 +310,18 @@ const StudentProfile = ({ userId = 0 }) => {
 								)}
 							</div>
 						</Box>
-						{['Admin', 'Staff', 'Student', 'Recruiter'].includes(role) && (
+						{['Admin', 'Staff', 'Student', 'Recruiter'].includes(role) ? (
 							<Box>
 								<a href={`mailto:${student.email}`} className={styles.email}>
 									<EmailIcon className={styles.emailIcon} />
 									{student.email}
 								</a>
 								<Box className={styles.statusChipContainer}>
-									<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t.published}</div> : <div style={{ color: '#812958' }}>{t.private}</div>}</div>
+									<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</div>
 									<Box id='saveButton'></Box>
 								</Box>
 							</Box>
-						)}
+						) : null}
 					</Box>
 				</Box>
 			</Box>

@@ -35,7 +35,7 @@ class NotificationController {
 			let filter = { status: { [Op.ne]: 'read' } }
 
 			if (user_role === 'admin') {
-				filter = { user_role: 'admin', status: { [Op.ne]: 'read' } }
+				filter.user_role = 'admin'
 			} else if (user_role === 'student') {
 				filter.user_role = 'student'
 			} else if (user_role === 'staff') {
@@ -97,6 +97,7 @@ class NotificationController {
 			}
 
 			let user_id = id
+			const user_role = userType.toLowerCase()
 
 			if (userType === 'Student') {
 				const student = await getStudentById(id)
@@ -108,6 +109,7 @@ class NotificationController {
 
 			const notifications = await NotificationService.getByUserId(user_id, {
 				status: 'read',
+				user_role,
 			})
 
 			return res.status(200).json({

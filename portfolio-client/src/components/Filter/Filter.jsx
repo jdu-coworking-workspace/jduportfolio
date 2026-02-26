@@ -775,21 +775,9 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 			})
 		}
 	}, [initialFilterState])
-	useEffect(() => {
-		if (persistKey) {
-			const saved = localStorage.getItem(persistKey)
-			if (saved) {
-				try {
-					const parsedState = JSON.parse(saved)
-					if (Object.keys(parsedState).length > 0) {
-						onFilterChange(parsedState)
-					}
-				} catch (e) {
-					console.error('Error parsing persisted state', e)
-				}
-			}
-		}
-	}, [])
+	// Persisted filter state is already loaded via createInitialState and
+	// passed as the initial filterState prop by the parent component.
+	// Calling onFilterChange here would trigger a redundant fetch cycle.
 	// Mark initial mount as complete
 	useEffect(() => {
 		if (isInitialMount.current) {

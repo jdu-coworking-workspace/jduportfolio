@@ -5,10 +5,7 @@ class SettingsController {
 		try {
 			const { key } = req.params
 			const value = await SettingsService.getSetting(key)
-			if (value === null) {
-				return res.status(404).json({ error: 'Setting not found' })
-			}
-			res.json({ key, value })
+			res.json({ key, value: value ?? '' })
 		} catch (error) {
 			res.status(500).json({ error: 'Internal server error' })
 		}
@@ -53,10 +50,7 @@ class SettingsController {
 	static async getHomepageSetting(req, res) {
 		try {
 			const homepageValue = await SettingsService.getSetting('homepage')
-			if (homepageValue === null) {
-				return res.status(404).json({ error: 'Homepage setting not found' })
-			}
-			res.json({ key: 'homepage', value: homepageValue })
+			res.json({ key: 'homepage', value: homepageValue ?? '' })
 		} catch (error) {
 			res.status(500).json({ error: 'Internal server error' })
 		}

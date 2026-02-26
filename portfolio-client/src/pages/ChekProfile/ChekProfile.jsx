@@ -31,46 +31,42 @@ const Student = ({ OnlyBookmarked = false }) => {
 		studentId: null,
 		timestamp: new Date().getTime(),
 	})
-	const userId = JSON.parse(sessionStorage.getItem('loginUser')).id
+	const { userId } = useContext(UserContext)
 
 	const [itSkillOptions, setItSkillOptions] = useState(['JS', 'Python', 'Java', 'SQL'])
 	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
-		let cancelled = false
-		const fetchItSkills = async () => {
+		const controller = new AbortController()
+		const timerId = setTimeout(async () => {
 			try {
-				const res = await axios.get('/api/itskills')
-				if (!cancelled) {
-					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
-					if (names.length > 0) setItSkillOptions(names)
-				}
+				const res = await axios.get('/api/itskills', { signal: controller.signal })
+				const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+				if (names.length > 0) setItSkillOptions(names)
 			} catch {
 				// fallback silently
 			}
-		}
-		fetchItSkills()
+		}, 0)
 		return () => {
-			cancelled = true
+			clearTimeout(timerId)
+			controller.abort()
 		}
 	}, [])
 
 	useEffect(() => {
-		let cancelled = false
-		const fetchLanguageSkills = async () => {
+		const controller = new AbortController()
+		const timerId = setTimeout(async () => {
 			try {
-				const res = await axios.get('/api/skills')
-				if (!cancelled) {
-					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
-					if (names.length > 0) setLanguageSkillOptions(names)
-				}
+				const res = await axios.get('/api/skills', { signal: controller.signal })
+				const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+				if (names.length > 0) setLanguageSkillOptions(names)
 			} catch {
 				// fallback silently
 			}
-		}
-		fetchLanguageSkills()
+		}, 0)
 		return () => {
-			cancelled = true
+			clearTimeout(timerId)
+			controller.abort()
 		}
 	}, [])
 
