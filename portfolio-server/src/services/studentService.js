@@ -525,6 +525,10 @@ class StudentService {
 								}),
 							})
 						}
+					} else if (key === 'partner_university' && Array.isArray(filter[key]) && filter[key].length > 0) {
+						// Map display values to DB values (なし → 40単位モデル)
+						const mappedValues = filter[key].map(v => (v === 'なし' ? '40単位モデル' : v))
+						queryOther[key] = { [Op.in]: mappedValues }
 					} else if (Array.isArray(filter[key]) && filter[key].length > 0) {
 						queryOther[key] = { [Op.in]: filter[key] }
 					} else if (typeof filter[key] === 'string') {

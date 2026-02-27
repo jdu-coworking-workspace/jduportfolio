@@ -1,6 +1,8 @@
 import ArrowBackIosNewOutlinedIcon from '@mui/icons-material/ArrowBackIosNewOutlined'
 import EmailIcon from '@mui/icons-material/Email'
-import { Avatar, Box, Button } from '@mui/material'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
+import { Avatar, Box, Button, IconButton, Tooltip } from '@mui/material'
 import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
 import { useContext, useEffect, useState } from 'react'
@@ -61,6 +63,8 @@ const StudentProfile = ({ userId = 0 }) => {
 	const [student, setStudent] = useState(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState(null)
+	const [isBookmarked, setIsBookmarked] = useState(false)
+	const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
 	useEffect(() => {
 		// Wait for context initialization before attempting to fetch
@@ -93,6 +97,36 @@ const StudentProfile = ({ userId = 0 }) => {
 
 		fetchStudent()
 	}, [id, studentId, userId, role, isInitializing])
+
+	// Check bookmark status for Recruiter
+	useEffect(() => {
+		if (role !== 'Recruiter' || !student?.id) return
+		const checkBookmark = async () => {
+			try {
+				const response = await axios.get(`/api/bookmarks/check/${student.id}`)
+				setIsBookmarked(response.data.isBookmarked)
+			} catch (err) {
+				console.error('Error checking bookmark status:', err)
+			}
+		}
+		checkBookmark()
+	}, [student?.id, role])
+
+	const handleToggleBookmark = async () => {
+		if (bookmarkLoading || !student?.id) return
+		setBookmarkLoading(true)
+		try {
+			await axios.post('/api/bookmarks/toggle', {
+				studentId: student.id,
+				recruiterId: activeUser?.id,
+			})
+			setIsBookmarked(prev => !prev)
+		} catch (err) {
+			console.error('Error toggling bookmark:', err)
+		} finally {
+			setBookmarkLoading(false)
+		}
+	}
 
 	const handleBackClick = () => {
 		const isRootPath = location.pathname.endsWith('/top')
@@ -262,8 +296,24 @@ const StudentProfile = ({ userId = 0 }) => {
 					<Box className={styles.nameEmailContainer}>
 						<Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 							{/* name and lastname */}
-							<div style={{ fontSize: 20, fontWeight: 500 }}>
+							<div style={{ fontSize: 20, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
 								{student.first_name} {student.last_name}
+								{role === 'Recruiter' && (
+									<Tooltip title={t('bookmarked')}>
+										<IconButton
+											onClick={handleToggleBookmark}
+											disabled={bookmarkLoading}
+											sx={{
+												padding: '4px',
+												color: isBookmarked ? '#faaf00' : '#ccc',
+												transition: 'color 0.2s ease',
+												'&:hover': { color: '#faaf00' },
+											}}
+										>
+											{isBookmarked ? <StarIcon /> : <StarBorderIcon />}
+										</IconButton>
+									</Tooltip>
+								)}
 							</div>
 							{/* furigana */}
 							{student.first_name_furigana || student.last_name_furigana ? (
@@ -274,24 +324,24 @@ const StudentProfile = ({ userId = 0 }) => {
 							{/* student id and birthday */}
 							<div className={styles.inlineInfoRow}>
 								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>学籍番号:</div>
+									<div style={{ color: '#787878' }}>{t('student_id')}:</div>
 									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.student_id || 'N/A'}</div>
 								</div>
 								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>年齢:</div>
+									<div style={{ color: '#787878' }}>{t('age')}:</div>
 									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.date_of_birth ? calculateAge(student.date_of_birth) : '0'}</div>
 								</div>
 								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>JDU卒業予定年月:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.expected_graduation_year || '未設定'}</div>
+									<div style={{ color: '#787878' }}>{t('expected_graduation_month')}:</div>
+									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.expected_graduation_year || t('not_set')}</div>
 								</div>
 							</div>
 							{/* partner university info - desktop */}
 							<div className={styles.desktopUniversityGroup}>
 								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 									<div style={{ display: 'flex' }}>
-										<div style={{ color: '#787878' }}>在籍提携大学:</div>
-										<div>{student.partner_university && student.faculty && student.department ? [student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') : student.partner_university || '未設定'}</div>
+										<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
+										<div>{student.partner_university && student.faculty && student.department ? [student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') : student.partner_university || t('not_set')}</div>
 									</div>
 								</div>
 							</div>
@@ -299,8 +349,7 @@ const StudentProfile = ({ userId = 0 }) => {
 							{/* partner university info - mobile */}
 							<div className={`${styles.mobileUniversityGroup} ${styles.mobileOnly}`}>
 								<div className={styles.uniLabel}>
-									在籍提携大学:
-									<div className={styles.uniValueLine}>{student.partner_university || '未設定'}</div>
+									{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{student.partner_university || t('not_set')}</div>
 								</div>
 								{(student.faculty || student.department) && (
 									<>

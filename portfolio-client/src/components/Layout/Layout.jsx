@@ -184,7 +184,7 @@ const Layout = () => {
 				{
 					to: '/maintenance',
 					icon: <AnnouncementIcon style={{ width: '24px', height: '24px' }} />,
-					label: 'Maintenance',
+					label: t('maintenance'),
 					roles: ['Admin'],
 				},
 			],

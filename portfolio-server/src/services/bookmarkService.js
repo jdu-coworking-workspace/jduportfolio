@@ -20,6 +20,17 @@ class BookmarkService {
 		}
 	}
 
+	static async checkBookmarkStatus(recruiterId, studentId) {
+		try {
+			const bookmark = await Bookmark.findOne({
+				where: { recruiterId, studentId },
+			})
+			return !!bookmark
+		} catch (error) {
+			throw error
+		}
+	}
+
 	// Service method to retrieve all students with bookmark status for a recruiter
 	static async getStudentsWithBookmarkStatus(recruiterId) {
 		try {

@@ -718,6 +718,11 @@ Please make sure that your profile does not fall under any of the prohibited act
 		ms_week: 'week',
 		ms_day: 'day',
 		ms_days: 'days',
+		// Sidebar & profile header
+		maintenance: 'Maintenance',
+		expected_graduation_month: 'Expected Graduation',
+		enrolled_partner_university: 'Partner University',
+		not_set: 'Not set',
 	},
 	ja: {
 		tagline: '一行PR',
@@ -1447,6 +1452,11 @@ Please make sure that your profile does not fall under any of the prohibited act
 		ms_week: '週間',
 		ms_day: '日',
 		ms_days: '日間',
+		// Sidebar & profile header
+		maintenance: 'メンテナンス',
+		expected_graduation_month: 'JDU卒業予定年月',
+		enrolled_partner_university: '在籍提携大学',
+		not_set: '未設定',
 	},
 	uz: {
 		tagline: 'Bir jumlalik PR',
@@ -2160,6 +2170,11 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		ms_week: 'hafta',
 		ms_day: 'kun',
 		ms_days: 'kun',
+		// Sidebar & profile header
+		maintenance: 'Texnik xizmat',
+		expected_graduation_month: 'Kutilayotgan bitirish sanasi',
+		enrolled_partner_university: 'Hamkor universitet',
+		not_set: 'Belgilanmagan',
 	},
 	ru: {
 		rank: 'Ранг',
@@ -2844,6 +2859,11 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		ms_week: 'нед.',
 		ms_day: 'дн.',
 		ms_days: 'дн.',
+		// Sidebar & profile header
+		maintenance: 'Техническое обслуживание',
+		expected_graduation_month: 'Ожидаемая дата выпуска',
+		enrolled_partner_university: 'Партнёрский университет',
+		not_set: 'Не задано',
 	},
 }
 
