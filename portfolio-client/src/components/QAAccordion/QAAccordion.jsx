@@ -21,6 +21,7 @@ const QAAccordion = ({
 	showExpandIcon = true, // controls visibility of expand icon and click behavior
 	allowToggleWhenNotExpand = false, // allow header toggle even if details are disabled
 	isChanged = false, // highlight this answer as changed (for staff review)
+	t = key => key,
 }) => {
 	// Local state for uncontrolled usage
 	const [localExpanded, setLocalExpanded] = useState(false)
@@ -45,7 +46,7 @@ const QAAccordion = ({
 						zIndex: 1,
 					}}
 				>
-					Changed
+					{t('changed')}
 				</div>
 			)}
 			<Accordion
@@ -126,6 +127,7 @@ QAAccordion.propTypes = {
 	showExpandIcon: PropTypes.bool,
 	allowToggleWhenNotExpand: PropTypes.bool,
 	isChanged: PropTypes.bool,
+	t: PropTypes.func,
 }
 
 export default QAAccordion

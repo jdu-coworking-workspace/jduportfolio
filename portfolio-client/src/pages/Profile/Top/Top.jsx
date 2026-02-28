@@ -2117,7 +2117,8 @@ const Top = () => {
 										>
 											{(() => {
 												const jlptData = editData.draft.jlpt ? getJLPTData(editData.draft.jlpt).highest : getJLPTData(student.jlpt).highest
-												return jlptData || t('none')
+												const v = jlptData || ''
+												return v === '未提出' || !v ? t('not_submitted') : v
 											})()}
 										</span>
 									</div>
@@ -2140,7 +2141,8 @@ const Top = () => {
 										>
 											{(() => {
 												const jduData = editData.draft.jdu_japanese_certification ? getJLPTData(editData.draft.jdu_japanese_certification).highest : getJLPTData(student.jdu_japanese_certification).highest
-												return jduData || t('none')
+												const v = jduData || ''
+												return v === '未提出' || !v ? t('not_submitted') : v
 											})()}
 										</span>
 									</div>
@@ -2163,7 +2165,8 @@ const Top = () => {
 										>
 											{(() => {
 												const speechData = editData.draft.japanese_speech_contest ? getCertificateData(editData.draft.japanese_speech_contest).highest : getCertificateData(student.japanese_speech_contest).highest
-												return speechData || t('none')
+												const v = speechData || ''
+												return v === '未提出' || !v ? t('not_submitted') : v
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
@@ -2187,7 +2190,8 @@ const Top = () => {
 										>
 											{(() => {
 												const itData = editData.draft.it_contest ? getCertificateData(editData.draft.it_contest).highest : getCertificateData(student.it_contest).highest
-												return itData || t('none')
+												const v = itData || ''
+												return v === '未提出' || !v ? t('not_submitted') : v
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>

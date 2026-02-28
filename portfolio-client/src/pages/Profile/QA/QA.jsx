@@ -63,32 +63,16 @@ import { useLanguage } from '../../../contexts/LanguageContext'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 
+// Category keys for data lookup (Japanese keys in qaList); labelKey for t()
+const QA_CATEGORY_KEYS = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
+const QA_LABEL_KEYS = ['student_grades', 'specialized_knowledge', 'personality', 'work_experience', 'career_goals']
+
 const qaQuestions = [
-	{
-		icon: SchoolOutlinedIcon,
-		label: '学生成績',
-		iconColor: '#3275f2',
-	},
-	{
-		icon: AutoStoriesOutlinedIcon,
-		label: '専門知識',
-		iconColor: '#a551f5',
-	},
-	{
-		icon: PermIdentityIcon,
-		label: '個性',
-		iconColor: '#0dae7a',
-	},
-	{
-		icon: WorkOutlineOutlinedIcon,
-		label: '実務経験',
-		iconColor: '#5b59ec',
-	},
-	{
-		icon: TrendingUp,
-		label: 'キャリア目標',
-		iconColor: '#e63c8c',
-	},
+	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', iconColor: '#3275f2' },
+	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', iconColor: '#a551f5' },
+	{ icon: PermIdentityIcon, labelKey: 'personality', iconColor: '#0dae7a' },
+	{ icon: WorkOutlineOutlinedIcon, labelKey: 'work_experience', iconColor: '#5b59ec' },
+	{ icon: TrendingUp, labelKey: 'career_goals', iconColor: '#e63c8c' },
 ]
 
 const hasAnswerData = qaPayload => {
@@ -162,7 +146,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
-	const labels = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
+	const labels = QA_CATEGORY_KEYS
 	let id
 	const { studentId } = useParams()
 	const location = useLocation()
@@ -1396,9 +1380,11 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 								style={{
 									fontSize: 14,
 									color: subTabIndex === ind ? item.iconColor : 'inherit',
+									textAlign: 'center',
+									width: '100%',
 								}}
 							>
-								{item.label}
+								{t(item.labelKey)}
 							</div>
 						</div>
 					)
@@ -1456,7 +1442,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							const changedFields = currentDraft?.changed_fields || []
 							const isAnswerChanged = role === 'Staff' && isFromTopPage && changedFields.includes(`qa:${labels[subTabIndex]}:${key}`)
 
-							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} />
+							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} t={t} />
 						})
 					})()}
 			</Box>
