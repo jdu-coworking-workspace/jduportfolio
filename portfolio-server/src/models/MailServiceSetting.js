@@ -46,6 +46,11 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.ENUM('Admin', 'Staff'),
 				allowNull: true,
 			},
+			recipient_snapshot: {
+				type: DataTypes.TEXT,
+				allowNull: true,
+				comment: 'JSON array of student IDs who were public when periodic email was last saved (更新催促定期メール)',
+			},
 		},
 		{
 			sequelize,

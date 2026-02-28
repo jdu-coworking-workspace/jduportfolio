@@ -22,7 +22,9 @@ class MailServiceService {
 	}
 
 	/**
-	 * Update a mail service setting
+	 * Update a mail service setting.
+	 * For periodic_email (更新催促定期メール): after saving, snapshots current public students
+	 * so that when the cron runs, only those recipients (at save time) receive the email.
 	 */
 	static async updateSetting(key, data, user) {
 		const setting = await MailServiceSetting.findOne({ where: { key } })
@@ -35,7 +37,22 @@ class MailServiceService {
 		}
 
 		await setting.update(updateData)
-		return setting
+
+		// Snapshot recipients for 更新催促定期メール: only these IDs get the email when cron runs
+		if (key === 'periodic_email') {
+			const publicStudents = await Student.findAll({
+				attributes: ['id'],
+				where: {
+					visibility: true,
+					active: true,
+					email: { [Op.ne]: null },
+				},
+			})
+			const recipientIds = publicStudents.map(s => s.id)
+			await setting.update({ recipient_snapshot: JSON.stringify(recipientIds) })
+		}
+
+		return setting.reload()
 	}
 
 	/**
@@ -221,7 +238,10 @@ class MailServiceService {
 	}
 
 	/**
-	 * Send periodic emails to all public students (Tab 1 - cron triggered)
+	 * Send 更新催促定期メール (update-reminder periodic email).
+	 * Only sends to the students who were public at the time the message was last saved
+	 * (recipient_snapshot). Does NOT send to everyone who is public at send time.
+	 * Cron-triggered (Tab 1).
 	 */
 	static async sendPeriodicEmails() {
 		const setting = await MailServiceSetting.findOne({
@@ -233,18 +253,32 @@ class MailServiceService {
 			return null
 		}
 
-		// Find all public students (visibility=true, active=true)
+		let studentIds = []
+		try {
+			if (setting.recipient_snapshot) {
+				studentIds = JSON.parse(setting.recipient_snapshot)
+			}
+		} catch (e) {
+			console.warn('📧 Invalid recipient_snapshot JSON. Skipping periodic email.')
+			return { total: 0, successful: 0, failed: 0 }
+		}
+
+		if (!Array.isArray(studentIds) || studentIds.length === 0) {
+			console.log('📧 No recipient snapshot (save the periodic email settings first). Skipping.')
+			return { total: 0, successful: 0, failed: 0 }
+		}
+
+		// Load only the snapshot recipients (still require valid email for sending)
 		const students = await Student.findAll({
 			attributes: ['id', 'email', 'student_id', 'first_name', 'last_name'],
 			where: {
-				visibility: true,
-				active: true,
+				id: { [Op.in]: studentIds },
 				email: { [Op.ne]: null },
 			},
 		})
 
 		if (students.length === 0) {
-			console.log('📧 No public students found. Skipping periodic email.')
+			console.log('📧 No snapshot recipients with email found. Skipping periodic email.')
 			return { total: 0, successful: 0, failed: 0 }
 		}
 
@@ -255,7 +289,7 @@ class MailServiceService {
 			html: MailServiceService.buildEmailHtml(setting.message_body || ''),
 		}))
 
-		console.log(`📧 Sending periodic email to ${emailTasks.length} public students...`)
+		console.log(`📧 Sending 更新催促定期メール to ${emailTasks.length} snapshot recipients...`)
 		const report = await sendBulkEmails(emailTasks)
 
 		console.log('--- Periodic Email Report ---')
