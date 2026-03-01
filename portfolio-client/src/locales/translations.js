@@ -1,6 +1,7 @@
 const translations = {
 	en: {
 		// Recruiter profile new keys
+		age: 'Age',
 		tagline: 'Tagline',
 		company_information: 'Company Information',
 		company_name: 'Company Name',
@@ -741,6 +742,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		not_set: 'Not set',
 	},
 	ja: {
+		age: '歳',
 		tagline: '一行PR',
 		company_information: '会社情報',
 		company_name: '会社名',
@@ -1491,6 +1493,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		not_set: '未設定',
 	},
 	uz: {
+		age: 'Yosh',
 		tagline: 'Bir jumlalik PR',
 		company_information: 'Kompaniya ma’lumotlari',
 		company_name: 'Kompaniya nomi',
@@ -2225,6 +2228,7 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		not_set: 'Belgilanmagan',
 	},
 	ru: {
+		age: 'Возраст',
 		rank: 'Ранг',
 		title: 'Заголовок',
 		description: 'Описание',

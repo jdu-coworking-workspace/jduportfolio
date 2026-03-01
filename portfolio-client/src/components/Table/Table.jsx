@@ -917,7 +917,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																fontSize: '16px',
 															}}
 														>
-															{row[header.id] ? '公開' : '非公開'}
+															{row[header.id] ? t('visible') : t('private')}
 														</div>
 													) : header.type === 'email' ? (
 														<a href={`mailto:${row[header.id]}`}>{row[header.id]}</a>
@@ -1176,7 +1176,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																	color: row[header.id] ? '#4caf50' : '#666',
 																}}
 															>
-																{row[header.id] ? '公開' : '非公開'}
+																{row[header.id] ? t('visible') : t('private')}
 															</span>
 														</div>
 													) : header.type === 'toggle_switch' ? (
