@@ -141,7 +141,10 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'visibility',
 			label: t('visible_status'),
 			type: 'checkbox',
-			options: [t('visible'), t('invisible')],
+			options: [
+				{ value: '公開', label: t('visible') },
+				{ value: '非公開', label: t('invisible') },
+			],
 			minWidth: '160px',
 		},
 	]
