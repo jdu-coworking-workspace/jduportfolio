@@ -11,6 +11,7 @@ import axios from '../../utils/axiosUtils'
 import UserAvatar from '../Table/Avatar/UserAvatar'
 // icons
 import AnnouncementIcon from '@mui/icons-material/Announcement'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
 import PermIdentityOutlinedIcon from '@mui/icons-material/PermIdentityOutlined'
 import TuneIcon from '@mui/icons-material/Tune'
@@ -175,9 +176,15 @@ const Layout = () => {
 					roles: ['Admin'],
 				},
 				{
+					to: '/mail-service',
+					icon: <EmailOutlinedIcon style={{ width: '24px', height: '24px' }} />,
+					label: t('ms_title'),
+					roles: ['Admin', 'Staff'],
+				},
+				{
 					to: '/maintenance',
 					icon: <AnnouncementIcon style={{ width: '24px', height: '24px' }} />,
-					label: 'Maintenance',
+					label: t('maintenance'),
 					roles: ['Admin'],
 				},
 			],

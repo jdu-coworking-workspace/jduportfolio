@@ -4,6 +4,7 @@ const cron = require('node-cron')
 const { Draft, Staff, sequelize } = require('../models')
 const { sendBulkEmails } = require('../utils/emailService')
 const { Op } = require('sequelize')
+const MailServiceService = require('./mailServiceService')
 
 class CronService {
 	/**
@@ -121,6 +122,44 @@ class CronService {
 		})
 
 		console.log('📌 Daily draft summary job scheduled for 06:00 AM (Tashkent Time).')
+
+		// Periodic email to public students - runs daily at 07:00 AM and checks if it's time to send
+		cron.schedule('0 7 * * *', CronService.runPeriodicEmailJob, {
+			scheduled: true,
+			timezone: 'Asia/Tashkent',
+		})
+		console.log('📌 Periodic email job scheduled for 07:00 AM (Tashkent Time).')
+	}
+
+	/**
+	 * Periodic email job - sends emails to public students at configured intervals
+	 */
+	static async runPeriodicEmailJob() {
+		console.log('🚀 Running periodic email job...')
+		try {
+			const { MailServiceSetting } = require('../models')
+			const setting = await MailServiceSetting.findOne({ where: { key: 'periodic_email' } })
+
+			if (!setting || !setting.is_active || !setting.period_days) {
+				console.log('📧 Periodic email is disabled or not configured. Skipping.')
+				return
+			}
+
+			// Check if enough days have passed since last update (used as last send marker)
+			const daysSinceLastUpdate = Math.floor((Date.now() - new Date(setting.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
+			// Only send if the period has elapsed (or first run)
+			if (daysSinceLastUpdate < setting.period_days && setting.updated_by_id !== null) {
+				console.log(`📧 Only ${daysSinceLastUpdate} days since last send. Period is ${setting.period_days} days. Skipping.`)
+				return
+			}
+
+			await MailServiceService.sendPeriodicEmails()
+
+			// Update the timestamp to track when we last sent
+			await setting.update({ updatedAt: new Date() })
+		} catch (error) {
+			console.error('❌ Error in periodic email job:', error)
+		}
 	}
 }
 

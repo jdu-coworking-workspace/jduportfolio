@@ -408,6 +408,13 @@ const filterReducer = (state, action) => {
 				...state,
 				tempFilterState: action.payload,
 			}
+		case 'SET_FILTER_VALUE_ALL':
+			return {
+				...state,
+				filterState: action.payload,
+				// Agar modal ochiq bo'lsa, tempFilterState ni ham yangilash kerak bo'lishi mumkin
+				tempFilterState: action.payload,
+			}
 
 		case ActionType.SET_TEMP_FILTER_VALUE: {
 			const nextState = {
@@ -759,22 +766,18 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 	// ========================================================================
 	// EFFECTS
 	// ========================================================================
-
 	useEffect(() => {
-		if (persistKey) {
-			const saved = localStorage.getItem(persistKey)
-			if (saved) {
-				try {
-					const parsedState = JSON.parse(saved)
-					if (Object.keys(parsedState).length > 0) {
-						onFilterChange(parsedState)
-					}
-				} catch (e) {
-					console.error('Error parsing persisted state', e)
-				}
-			}
+		// Faqat initialMount tugagandan keyin ishlasin desa ham bo'ladi
+		if (initialFilterState) {
+			dispatch({
+				type: 'SET_FILTER_VALUE_ALL', // Reducerda barcha stateni yangilaydigan action
+				payload: initialFilterState,
+			})
 		}
-	}, [])
+	}, [initialFilterState])
+	// Persisted filter state is already loaded via createInitialState and
+	// passed as the initial filterState prop by the parent component.
+	// Calling onFilterChange here would trigger a redundant fetch cycle.
 	// Mark initial mount as complete
 	useEffect(() => {
 		if (isInitialMount.current) {
@@ -1142,21 +1145,24 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 							) : (
 								<div className={style.checkboxGroupGrid}>
 									{filteredOptions.map(option => {
-										const displayValue = field.displayFormat ? field.displayFormat(option) : option
-										const isSelected = selectedSet.has(option)
+										const isObject = typeof option === 'object' && option !== null
+										const optionValue = isObject ? option.value : option
+										const optionLabel = isObject ? option.label : field.displayFormat ? field.displayFormat(option) : option
+
+										const isSelected = selectedSet.has(optionValue)
 
 										return (
-											<label key={option} className={style.checkboxLabel}>
+											<label key={optionValue} className={style.checkboxLabel}>
 												<input
 													type='checkbox'
 													checked={isSelected}
 													onChange={e => {
-														const newValue = e.target.checked ? [...selectedArray, option] : selectedArray.filter(v => v !== option)
+														const newValue = e.target.checked ? [...selectedArray, optionValue] : selectedArray.filter(v => v !== optionValue)
 														handleTempFilterChange(field.key, newValue)
 													}}
 													className={style.checkbox}
 												/>
-												<span>{displayValue}</span>
+												<span>{optionLabel}</span>
 											</label>
 										)
 									})}

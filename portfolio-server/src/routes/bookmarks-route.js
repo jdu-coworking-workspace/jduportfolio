@@ -72,5 +72,6 @@ router.post('/toggle', BookmarkController.toggleBookmark.bind(BookmarkController
  *         description: Internal server error
  */
 router.get('/students', BookmarkController.getStudentsWithBookmarkStatus.bind(BookmarkController))
+router.get('/check/:studentId', BookmarkController.checkBookmark.bind(BookmarkController))
 
 module.exports = router

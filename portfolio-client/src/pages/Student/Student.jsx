@@ -1,15 +1,16 @@
 import { Box } from '@mui/material'
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Filter from '../../components/Filter/Filter'
 import Table from '../../components/Table/Table'
 
-import { useLanguage } from '../../contexts/LanguageContext'
-import translations from '../../locales/translations'
-import axios from '../../utils/axiosUtils'
 import { useAtom } from 'jotai'
 import { listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom } from '../../atoms/store'
+import { useLanguage } from '../../contexts/LanguageContext'
+import { UserContext } from '../../contexts/UserContext'
+import translations from '../../locales/translations'
+import axios from '../../utils/axiosUtils'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
 const getInitialViewMode = () => {
@@ -50,6 +51,7 @@ const getInitialFilterState = () => {
 
 const Student = ({ OnlyBookmarked = false }) => {
 	const { language } = useLanguage()
+	const { role, userId } = useContext(UserContext)
 	const [studentsBackPage, setStudentsBackPage] = useAtom(studentsBackPageAtom)
 	const [, setStudentsSortBy] = useAtom(studentsSortByAtom)
 	const [, setStudentsSortOrder] = useAtom(studentsSortOrderAtom)
@@ -69,8 +71,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		studentId: null,
 		timestamp: new Date().getTime(),
 	})
-	const loginUser = sessionStorage.getItem('loginUser')
-	const recruiterId = loginUser ? JSON.parse(loginUser).id : null
+	const recruiterId = role === 'Recruiter' ? userId : null
 
 	// localStorage ga viewMode ni saqlash
 	useEffect(() => {
@@ -85,40 +86,36 @@ const Student = ({ OnlyBookmarked = false }) => {
 	const [languageSkillOptions, setLanguageSkillOptions] = useState([])
 
 	useEffect(() => {
-		let cancelled = false
-		const fetchItSkills = async () => {
+		const controller = new AbortController()
+		const timerId = setTimeout(async () => {
 			try {
-				const res = await axios.get('/api/itskills')
-				if (!cancelled) {
-					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
-					if (names.length > 0) setItSkillOptions(names)
-				}
+				const res = await axios.get('/api/itskills', { signal: controller.signal })
+				const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+				if (names.length > 0) setItSkillOptions(names)
 			} catch {
 				// fallback to defaults
 			}
-		}
-		fetchItSkills()
+		}, 0)
 		return () => {
-			cancelled = true
+			clearTimeout(timerId)
+			controller.abort()
 		}
 	}, [])
 
 	useEffect(() => {
-		let cancelled = false
-		const fetchLanguageSkills = async () => {
+		const controller = new AbortController()
+		const timerId = setTimeout(async () => {
 			try {
-				const res = await axios.get('/api/skills')
-				if (!cancelled) {
-					const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
-					if (names.length > 0) setLanguageSkillOptions(names)
-				}
+				const res = await axios.get('/api/skills', { signal: controller.signal })
+				const names = Array.isArray(res.data) ? res.data.map(s => s.name).filter(Boolean) : []
+				if (names.length > 0) setLanguageSkillOptions(names)
 			} catch {
 				// fallback silently
 			}
-		}
-		fetchLanguageSkills()
+		}, 0)
 		return () => {
-			cancelled = true
+			clearTimeout(timerId)
+			controller.abort()
 		}
 	}, [])
 
@@ -185,7 +182,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'partner_university',
 			label: t('partner_university'),
 			type: 'checkbox',
-			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science'), '未所属'],
+			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science'), '未所属', 'なし'],
 		},
 		{
 			key: 'other_information',
@@ -197,6 +194,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 
 	const handleFilterChange = useCallback(newFilterState => {
 		setFilterState(newFilterState)
+		localStorage.setItem('students-filter-v1', JSON.stringify(newFilterState))
 		// console.log('Filter changed:', newFilterState)
 	}, [])
 
@@ -255,7 +253,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			disablePadding: false,
 			label: t('age'),
 			minWidth: '80px !important',
-			suffix: ' 歳',
+			suffix: ` ${t('age')}`,
 			isSort: true,
 		},
 		{
@@ -297,6 +295,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		dataLink: '/api/students',
 		filter: filterState,
 		recruiterId: recruiterId,
+		role: role,
 		OnlyBookmarked: OnlyBookmarked,
 		onFilterChange: handleFilterChange, // Pass filter change handler to Table
 		// Pass filter options for header dropdowns

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { Container, Typography, Box, Button, Grid, Card, CardContent } from '@mui/material'
 
 // Custom icons import
@@ -13,49 +13,57 @@ import QAAccordion from '../../components/QAAccordion/QAAccordion'
 
 import axios from '../../utils/axiosUtils'
 import { useAlert } from '../../contexts/AlertContext'
+import { UserContext } from '../../contexts/UserContext'
 
 const FAQ = () => {
 	const [editData, setEditData] = useState([])
 	const [settings, setSettings] = useState({})
 	const [editMode, setEditMode] = useState(false)
-	const [role, setRole] = useState(null)
+	const { role } = useContext(UserContext)
 	const [allExpanded, setAllExpanded] = useState(true) // default open on load
 
 	const showAlert = useAlert()
 
-	const fetchFAQ = async () => {
-		const userRole = sessionStorage.getItem('role')
-		await setRole(userRole)
+	const fetchFAQ = async signal => {
 		try {
-			const response = await axios.get('/api/settings/faq')
-			await setEditData(JSON.parse(response.data.value))
+			const response = await axios.get('/api/settings/faq', { signal })
+			const value = response.data.value
+			if (value) {
+				setEditData(JSON.parse(value))
+			}
 		} catch (error) {
-			console.error('Error fetching FAQ data:', error)
+			if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
+				console.error('Error fetching FAQ data:', error)
+			}
 		}
 	}
 
-	const fetchSettings = async () => {
+	const fetchSettings = async signal => {
 		const keys = ['contactEmail', 'contactPhone', 'workingHours', 'location']
 
 		try {
 			const response = await axios.get('/api/settings', {
-				params: {
-					keys: keys.join(','),
-				},
+				params: { keys: keys.join(',') },
+				signal,
 			})
-
-			const data = response.data
-			setSettings(data)
-			return data
+			setSettings(response.data)
 		} catch (error) {
-			console.error('Error fetching settings:', error)
-			throw new Error('Failed to fetch settings')
+			if (error.name !== 'AbortError' && error.code !== 'ERR_CANCELED') {
+				console.error('Error fetching settings:', error)
+			}
 		}
 	}
 
 	useEffect(() => {
-		fetchSettings()
-		fetchFAQ()
+		const controller = new AbortController()
+		const timerId = setTimeout(() => {
+			fetchSettings(controller.signal)
+			fetchFAQ(controller.signal)
+		}, 0)
+		return () => {
+			clearTimeout(timerId)
+			controller.abort()
+		}
 	}, [])
 
 	const handleUpdate = (keyName, value, qa) => {

@@ -25,6 +25,7 @@ const recruiterFileRoutes = require('./routes/recruiterFileRoutes')
 const deliverableRoutes = require('./routes/deliverableRoutes')
 const maintenanceRoute = require('./routes/maintenance-route')
 const maintenanceAdminRoute = require('./routes/maintenance-admin-route')
+const mailServiceRoute = require('./routes/mailServiceRoute')
 // const healthRoute = require('./routes/health-route')
 
 /**
@@ -96,6 +97,7 @@ const configureRoutes = app => {
 	app.use('/api/skills', authMiddleware, skillRoutes)
 	app.use('/api/recruiter-files', authMiddleware, recruiterFileRoutes)
 	app.use('/api/deliverables', authMiddleware, deliverableRoutes)
+	app.use('/api/mail-service', mailServiceRoute)
 }
 
 module.exports = configureRoutes

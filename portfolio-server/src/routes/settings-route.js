@@ -102,10 +102,11 @@ const SettingsController = require('../controllers/settingController')
  *         description: Internal server error
  */
 
-router.get('/:key', SettingsController.getSetting) // Get specific setting by key
-router.put('/:key', SettingsController.updateSetting) // Update setting by key
-router.get('/', SettingsController.getAllSettings) // Get all settings
+router.get('/', SettingsController.getAllSettings)
 router.post('/keys', SettingsController.getSettingsByKeys)
 router.get('/homepage', SettingsController.getHomepageSetting)
+// Parameterized routes MUST come after all specific routes
+router.get('/:key', SettingsController.getSetting)
+router.put('/:key', SettingsController.updateSetting)
 
 module.exports = router

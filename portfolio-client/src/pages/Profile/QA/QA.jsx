@@ -15,82 +15,64 @@ TODO: Student Resubmission and Staff Workflow Fixes
 - [x] FIXED: Profile visibility toggle 404 errors - improved ID determination logic to prioritize student_id over primary key
 */
 
-import { useState, useEffect, useContext } from 'react'
 import Cookies from 'js-cookie'
+import { useContext, useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { useLocation, useParams } from 'react-router-dom'
-import styles from './QA.module.css'
-import QATextField from '../../../components/QATextField/QATextField'
-import QAAccordion from '../../../components/QAAccordion/QAAccordion'
-import TextField from '../../../components/TextField/TextField'
 import ProfileConfirmDialog from '../../../components/Dialogs/ProfileConfirmDialog'
+import QAAccordion from '../../../components/QAAccordion/QAAccordion'
+import QATextField from '../../../components/QATextField/QATextField'
+import TextField from '../../../components/TextField/TextField'
+import styles from './QA.module.css'
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
-import { useSortable } from '@dnd-kit/sortable'
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 import {
+	DragIndicator,
 	// School,
 	// AutoStories,
 	// Face,
 	// WorkHistory,
 	TrendingUp,
-	DragIndicator,
 } from '@mui/icons-material'
-import axios from '../../../utils/axiosUtils'
 import {
+	Alert,
 	Box,
 	// Tabs,
 	// Tab,
 	Button,
-	Snackbar,
-	Alert,
 	Dialog,
-	DialogTitle,
+	DialogActions,
 	DialogContent,
 	DialogContentText,
-	DialogActions,
+	DialogTitle,
+	Snackbar,
 	Typography,
-	// IconButton,
 } from '@mui/material'
+import axios from '../../../utils/axiosUtils'
 
-import translations from '../../../locales/translations'
-import { UserContext } from '../../../contexts/UserContext'
-import { useLanguage } from '../../../contexts/LanguageContext'
-import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined'
 import PermIdentityIcon from '@mui/icons-material/PermIdentity'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
+import { useLanguage } from '../../../contexts/LanguageContext'
+import { UserContext } from '../../../contexts/UserContext'
+import translations from '../../../locales/translations'
+
+// Category keys for data lookup (Japanese keys in qaList); labelKey for t()
+const QA_CATEGORY_KEYS = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
+const QA_LABEL_KEYS = ['student_grades', 'specialized_knowledge', 'personality', 'work_experience', 'career_goals']
 
 const qaQuestions = [
-	{
-		icon: SchoolOutlinedIcon,
-		label: '学生成績',
-		iconColor: '#3275f2',
-	},
-	{
-		icon: AutoStoriesOutlinedIcon,
-		label: '専門知識',
-		iconColor: '#a551f5',
-	},
-	{
-		icon: PermIdentityIcon,
-		label: '個性',
-		iconColor: '#0dae7a',
-	},
-	{
-		icon: WorkOutlineOutlinedIcon,
-		label: '実務経験',
-		iconColor: '#5b59ec',
-	},
-	{
-		icon: TrendingUp,
-		label: 'キャリア目標',
-		iconColor: '#e63c8c',
-	},
+	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', iconColor: '#3275f2' },
+	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', iconColor: '#a551f5' },
+	{ icon: PermIdentityIcon, labelKey: 'personality', iconColor: '#0dae7a' },
+	{ icon: WorkOutlineOutlinedIcon, labelKey: 'work_experience', iconColor: '#5b59ec' },
+	{ icon: TrendingUp, labelKey: 'career_goals', iconColor: '#e63c8c' },
 ]
 
 const hasAnswerData = qaPayload => {
@@ -160,11 +142,11 @@ const SortableQATextField = ({ id, data, editData, category, question, keyName, 
 	)
 }
 
-const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = false, updateQA = false, currentDraft, isHonban = false, handleDraftUpsert = () => {}, setTopEditMode = () => {}, updateCurrentDraft = () => {} }) => {
+const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = false, updateQA = false, currentDraft, isHonban = false, handleDraftUpsert = () => {}, setTopEditMode = () => {}, updateCurrentDraft = () => {}, onlyCommentInput = false }) => {
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
-	const labels = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
+	const labels = QA_CATEGORY_KEYS
 	let id
 	const { studentId } = useParams()
 	const location = useLocation()
@@ -1050,6 +1032,139 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 	// Debug logging
 
+	// Early return if only comment input is needed
+	if (onlyCommentInput) {
+		const commentInputJSX = (role == 'Staff' || role == 'Admin') && !reviewMode && id && (
+			<Box
+				sx={{
+					borderRadius: '10px',
+					padding: 2,
+				}}
+			>
+				{passedDraft && passedDraft.status != 'approved' ? (
+					<>
+						{/* Staff approval controls */}
+						{role === 'Staff' && (
+							<>
+								<TextField title={t('staffComment') || 'コメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+
+								<Box
+									sx={{
+										display: 'flex',
+										justifyContent: 'center',
+										gap: 10,
+									}}
+								>
+									<Button onClick={() => setStaffConfirm({ open: true, action: 'approved' })} variant='contained' color='primary' size='small'>
+										{t('approve') || '承認する'}
+									</Button>
+									<Button
+										onClick={() =>
+											setStaffConfirm({
+												open: true,
+												action: 'resubmission_required',
+											})
+										}
+										variant='contained'
+										color='primary'
+										size='small'
+									>
+										{t('disapprove') || '承認しない'}
+									</Button>
+								</Box>
+							</>
+						)}
+
+						{/* Admin visibility controls */}
+						{role === 'Admin' && (
+							<Box
+								sx={{
+									display: 'flex',
+									justifyContent: 'center',
+									gap: 10,
+								}}
+							>
+								<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
+									非公開
+								</Button>
+								<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
+									公開
+								</Button>
+							</Box>
+						)}
+					</>
+				) : (
+					<>
+						{/* Staff can reject after approval */}
+						{role === 'Staff' && (
+							<>
+								<TextField title={t('resubmissionComment') || '差し戻しコメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+								<Box
+									sx={{
+										display: 'flex',
+										justifyContent: 'center',
+										gap: 10,
+										mb: 2,
+									}}
+								>
+									<Button
+										onClick={() =>
+											setStaffConfirm({
+												open: true,
+												action: 'resubmission_required',
+											})
+										}
+										variant='contained'
+										color='warning'
+										size='small'
+									>
+										{t('sendBack') || '差し戻し'}
+									</Button>
+								</Box>
+							</>
+						)}
+
+						{/* Admin visibility controls */}
+						{role === 'Admin' && (
+							<Box
+								sx={{
+									display: 'flex',
+									justifyContent: 'center',
+									gap: 10,
+								}}
+							>
+								<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
+									非公開
+								</Button>
+								<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
+									公開
+								</Button>
+							</Box>
+						)}
+					</>
+				)}
+			</Box>
+		)
+
+		return (
+			<Box mb={2}>
+				{commentInputJSX} {/* ---- STAFF APPROVE/REJECT CONFIRM ---- */}
+				<Dialog open={staffConfirm.open} onClose={() => setStaffConfirm({ open: false, action: null })}>
+					<DialogTitle>{staffConfirm.action === 'approved' ? t('confirmApprove') || '承認しますか？' : t('confirmSendBack') || '差し戻しますか？'}</DialogTitle>
+					<DialogContent>
+						<DialogContentText>{staffConfirm.action === 'approved' ? t('confirmApproveDesc') || 'この操作は学生に「承認済」通知を送ります。続行しますか？' : t('confirmSendBackDesc') || 'この操作は学生に差し戻し通知をコメント付きで送ります。続行しますか？'}</DialogContentText>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={() => setStaffConfirm({ open: false, action: null })}>{t('cancel')}</Button>
+						<Button variant='contained' color={staffConfirm.action === 'approved' ? 'primary' : 'warning'} onClick={() => approveProfile(staffConfirm.action)}>
+							{t('ok')}
+						</Button>
+					</DialogActions>
+				</Dialog>
+			</Box>
+		)
+	}
+
 	// Don't render buttons if component is used from Top page
 	const portalContent = !isFromTopPage ? (
 		<Box className={styles.buttonsContainer}>
@@ -1108,6 +1223,118 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 		</Box>
 	) : null
 
+	const commentInput = (role == 'Staff' || role == 'Admin') && !reviewMode && id && (
+		<Box
+			sx={{
+				borderRadius: '10px',
+				padding: 2,
+			}}
+		>
+			{passedDraft && passedDraft.status != 'approved' ? (
+				<>
+					{/* Staff approval controls */}
+					{role === 'Staff' && (
+						<>
+							<TextField title={t('staffComment') || 'コメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+
+							<Box
+								sx={{
+									display: 'flex',
+									justifyContent: 'center',
+									gap: 10,
+								}}
+							>
+								<Button onClick={() => setStaffConfirm({ open: true, action: 'approved' })} variant='contained' color='primary' size='small'>
+									{t('approve') || '承認する'}
+								</Button>
+								<Button
+									onClick={() =>
+										setStaffConfirm({
+											open: true,
+											action: 'resubmission_required',
+										})
+									}
+									variant='contained'
+									color='primary'
+									size='small'
+								>
+									{t('disapprove') || '承認しない'}
+								</Button>
+							</Box>
+						</>
+					)}
+
+					{/* Admin visibility controls */}
+					{role === 'Admin' && (
+						<Box
+							sx={{
+								display: 'flex',
+								justifyContent: 'center',
+								gap: 10,
+							}}
+						>
+							<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
+								非公開
+							</Button>
+							<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
+								公開
+							</Button>
+						</Box>
+					)}
+				</>
+			) : (
+				<>
+					{/* Staff can reject after approval */}
+					{role === 'Staff' && (
+						<>
+							<TextField title={t('resubmissionComment') || '差し戻しコメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
+							<Box
+								sx={{
+									display: 'flex',
+									justifyContent: 'center',
+									gap: 10,
+									mb: 2,
+								}}
+							>
+								<Button
+									onClick={() =>
+										setStaffConfirm({
+											open: true,
+											action: 'resubmission_required',
+										})
+									}
+									variant='contained'
+									color='warning'
+									size='small'
+								>
+									{t('sendBack') || '差し戻し'}
+								</Button>
+							</Box>
+						</>
+					)}
+
+					{/* Admin visibility controls */}
+					{role === 'Admin' && (
+						<Box
+							sx={{
+								display: 'flex',
+								justifyContent: 'center',
+								gap: 10,
+							}}
+						>
+							<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
+								非公開
+							</Button>
+							<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
+								公開
+							</Button>
+						</Box>
+					)}
+				</>
+			)}
+		</Box>
+	)
+
 	return (
 		<Box mb={2}>
 			{/* Only render save button container for Admin on QA management page */}
@@ -1121,35 +1348,47 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			{id && !isFromTopPage && portalContent && document.getElementById('saveButton') && ReactDOM.createPortal(portalContent, document.getElementById('saveButton'))}
 
 			<div className={styles.categoriesRow}>
-				{qaQuestions.map((item, ind) => (
-					<div
-						key={ind}
-						className={styles.qaBox}
-						style={{
-							backgroundColor: subTabIndex === ind ? '#d8e1f0' : 'transparent',
-						}}
-						onClick={() => {
-							setSubTabIndex(ind)
-						}}
-					>
+				{qaQuestions.map((item, ind) => {
+					// Check if this category has any changed answers (from backend changed_fields)
+					const categoryLabel = labels[ind]
+					const changedFields = currentDraft?.changed_fields || []
+					const hasCategoryChange = role === 'Staff' && isFromTopPage && changedFields.some(f => f.startsWith(`qa:${categoryLabel}:`))
+
+					return (
 						<div
-							className={styles.iconBox}
+							key={ind}
+							className={styles.qaBox}
 							style={{
-								backgroundColor: item.iconColor,
+								backgroundColor: hasCategoryChange ? '#fff8e1' : subTabIndex === ind ? '#d8e1f0' : 'transparent',
+								border: hasCategoryChange ? '2px solid #ffc107' : 'none',
+								borderRadius: hasCategoryChange ? 8 : 0,
+								position: 'relative',
+							}}
+							onClick={() => {
+								setSubTabIndex(ind)
 							}}
 						>
-							<item.icon style={{ color: '#FFFFFF', fontSize: 25 }} />
+							<div
+								className={styles.iconBox}
+								style={{
+									backgroundColor: item.iconColor,
+								}}
+							>
+								<item.icon style={{ color: '#FFFFFF', fontSize: 25 }} />
+							</div>
+							<div
+								style={{
+									fontSize: 14,
+									color: subTabIndex === ind ? item.iconColor : 'inherit',
+									textAlign: 'center',
+									width: '100%',
+								}}
+							>
+								{t(item.labelKey)}
+							</div>
 						</div>
-						<div
-							style={{
-								fontSize: 14,
-								color: subTabIndex === ind ? item.iconColor : 'inherit',
-							}}
-						>
-							{item.label}
-						</div>
-					</div>
-				))}
+					)
+				})}
 			</div>
 
 			{/* <Tabs
@@ -1199,7 +1438,11 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							// Ensure question has a value (fallback to key if undefined)
 							const questionText = question || key
 
-							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} />
+							// Check if this specific answer is changed (from backend changed_fields)
+							const changedFields = currentDraft?.changed_fields || []
+							const isAnswerChanged = role === 'Staff' && isFromTopPage && changedFields.includes(`qa:${labels[subTabIndex]}:${key}`)
+
+							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} t={t} />
 						})
 					})()}
 			</Box>
@@ -1225,7 +1468,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 					</Button>
 				</DialogActions>
 			</Dialog>
-
+			{commentInput}
 			{/* ---- DELETE CONFIRMATION DIALOG ---- */}
 			<Dialog open={deleteConfirmation.open} onClose={handleDeleteCancel} maxWidth='sm' fullWidth>
 				<DialogTitle>{t('confirmDelete') || 'Confirm Delete'}</DialogTitle>
@@ -1241,118 +1484,6 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 					</Button>
 				</DialogActions>
 			</Dialog>
-			{(role == 'Staff' || role == 'Admin') && !reviewMode && id && (
-				<Box
-					sx={{
-						borderRadius: '10px',
-						padding: 2,
-					}}
-				>
-					{passedDraft && passedDraft.status != 'approved' ? (
-						<>
-							{/* Staff approval controls */}
-							{role === 'Staff' && (
-								<>
-									<TextField title={t('staffComment') || 'コメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
-
-									<Box
-										sx={{
-											display: 'flex',
-											justifyContent: 'center',
-											gap: 10,
-										}}
-									>
-										<Button onClick={() => setStaffConfirm({ open: true, action: 'approved' })} variant='contained' color='primary' size='small'>
-											{t('approve') || '承認する'}
-										</Button>
-										<Button
-											onClick={() =>
-												setStaffConfirm({
-													open: true,
-													action: 'resubmission_required',
-												})
-											}
-											variant='contained'
-											color='primary'
-											size='small'
-										>
-											{t('disapprove') || '承認しない'}
-										</Button>
-									</Box>
-								</>
-							)}
-
-							{/* Admin visibility controls */}
-							{role === 'Admin' && (
-								<Box
-									sx={{
-										display: 'flex',
-										justifyContent: 'center',
-										gap: 10,
-									}}
-								>
-									<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-										非公開
-									</Button>
-									<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-										公開
-									</Button>
-								</Box>
-							)}
-						</>
-					) : (
-						<>
-							{/* Staff can reject after approval */}
-							{role === 'Staff' && (
-								<>
-									<TextField title={t('resubmissionComment') || '差し戻しコメント'} data={comment?.comments || ''} editData={comment} editMode={true} updateEditData={updateComment} keyName='comments' maxLength={500} showCounter={true} />
-									<Box
-										sx={{
-											display: 'flex',
-											justifyContent: 'center',
-											gap: 10,
-											mb: 2,
-										}}
-									>
-										<Button
-											onClick={() =>
-												setStaffConfirm({
-													open: true,
-													action: 'resubmission_required',
-												})
-											}
-											variant='contained'
-											color='warning'
-											size='small'
-										>
-											{t('sendBack') || '差し戻し'}
-										</Button>
-									</Box>
-								</>
-							)}
-
-							{/* Admin visibility controls */}
-							{role === 'Admin' && (
-								<Box
-									sx={{
-										display: 'flex',
-										justifyContent: 'center',
-										gap: 10,
-									}}
-								>
-									<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-										非公開
-									</Button>
-									<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-										公開
-									</Button>
-								</Box>
-							)}
-						</>
-					)}
-				</Box>
-			)}
-
 			{/* Warning Modal */}
 			<Dialog open={warningModal.open} onClose={() => setWarningModal({ open: false, message: '' })} aria-labelledby='warning-dialog-title' aria-describedby='warning-dialog-description'>
 				<DialogTitle id='warning-dialog-title'>{t('warning')}</DialogTitle>

@@ -13,6 +13,19 @@ class BookmarkController {
 		}
 	}
 
+	// Method to check bookmark status for a single student
+	async checkBookmark(req, res) {
+		const { studentId } = req.params
+		const recruiterId = req.user.id
+
+		try {
+			const isBookmarked = await BookmarkService.checkBookmarkStatus(recruiterId, parseInt(studentId))
+			res.status(200).json({ isBookmarked })
+		} catch (error) {
+			res.status(500).json({ error: error.message })
+		}
+	}
+
 	// Method to get students with bookmark status
 	async getStudentsWithBookmarkStatus(req, res) {
 		const recruiterId = req.user.id // Assuming the recruiter ID is stored in req.user

@@ -4,12 +4,23 @@ import Cookies from 'js-cookie'
 
 export const UserContext = createContext()
 
+const readSessionUser = () => {
+	try {
+		const raw = sessionStorage.getItem('loginUser')
+		return raw ? JSON.parse(raw) : null
+	} catch {
+		return null
+	}
+}
+
 export const UserProvider = ({ children }) => {
-	const [role, setRole] = useState(null)
-	const [userId, setUserId] = useState(null)
-	const [activeUser, setActiveUser] = useState(null)
+	const [role, setRole] = useState(() => sessionStorage.getItem('role') || Cookies.get('userType') || null)
+	const [userId, setUserId] = useState(() => readSessionUser()?.id ?? null)
+	const [activeUser, setActiveUser] = useState(readSessionUser)
 	const [language, setLanguage] = useState(localStorage.getItem('language') || 'ja')
-	const [isInitializing, setIsInitializing] = useState(true)
+	const [isInitializing, setIsInitializing] = useState(() => {
+		return !sessionStorage.getItem('role') && !!Cookies.get('token')
+	})
 
 	const fetchAndSetUser = async () => {
 		const userRole = sessionStorage.getItem('role')
@@ -25,7 +36,6 @@ export const UserProvider = ({ children }) => {
 					const userData = await response.json()
 					const cookieUserType = Cookies.get('userType')
 
-					// Populate sessionStorage from cookies and API response
 					sessionStorage.setItem('role', cookieUserType)
 					sessionStorage.setItem('loginUser', JSON.stringify(userData))
 					sessionStorage.setItem('token', Cookies.get('token'))
@@ -41,7 +51,6 @@ export const UserProvider = ({ children }) => {
 			}
 		}
 
-		// Use existing sessionStorage data
 		const parsedUser = loginUser ? JSON.parse(loginUser) : null
 		const parsedUserId = parsedUser ? parsedUser.id : null
 		setActiveUser(parsedUser)
@@ -52,7 +61,9 @@ export const UserProvider = ({ children }) => {
 	}
 
 	useEffect(() => {
-		fetchAndSetUser()
+		if (isInitializing) {
+			fetchAndSetUser()
+		}
 	}, [])
 
 	const updateUser = () => {

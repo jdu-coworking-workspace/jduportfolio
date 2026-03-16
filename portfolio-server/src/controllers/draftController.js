@@ -289,29 +289,6 @@ class DraftController {
 				}
 			}
 
-			// Adminlarga bildirishnoma yuborish
-			if (status.toLowerCase() === 'approved') {
-				const admins = await Admin.findAll()
-				const adminMessage = `学生 (ID: ${student.student_id}) の情報は、スタッフ (ID: ${reviewed_by}) によって承認されました。`
-				const adminTargetUrl2 = buildNotificationUrl({
-					type: 'approved',
-					userRole: 'admin',
-					studentId: student.student_id,
-					relatedId: draft.id,
-				})
-				for (const admin of admins) {
-					await NotificationService.create({
-						message: adminMessage,
-						status: 'unread',
-						user_id: admin.id,
-						user_role: 'admin',
-						type: 'approved',
-						related_id: draft.id,
-						target_url: adminTargetUrl2,
-					})
-				}
-			}
-
 			return res.json({
 				message: 'Qoralama statusi muvaffaqiyatli yangilandi.',
 				draft,

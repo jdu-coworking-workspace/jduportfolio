@@ -580,8 +580,57 @@ class DraftService {
 
 				return !_.isEqual(newVal, liveVal)
 			})
+
+			// Separate QA comparison: QA lives in QA table, not Students table
+			// Compare against QA table if it has data, otherwise use pending draft's previous QA as baseline
+			// Stores granular 'qa:category:questionKey' entries + top-level 'qa' for section badge
+			if ('qa' in newProfileData) {
+				try {
+					let baselineQA = null
+					const qaRows = await QAService.findQAByStudentId(student.id)
+					if (qaRows && qaRows.length > 0) {
+						// QA table has data - use as baseline
+						baselineQA = {}
+						for (const row of qaRows) {
+							baselineQA[row.category] = row.qa_list || {}
+						}
+					} else if (pendingDraft && pendingDraft.profile_data && pendingDraft.profile_data.qa) {
+						// QA table empty - use pending draft's PREVIOUS QA as baseline
+						baselineQA = pendingDraft.profile_data.qa
+					}
+
+					if (baselineQA) {
+						const newQA = newProfileData.qa || {}
+						let hasAnyQAChange = false
+						// Compare each category and question
+						const allCategories = new Set([...Object.keys(newQA), ...Object.keys(baselineQA)])
+						for (const category of allCategories) {
+							if (category === 'idList') continue
+							const newCat = newQA[category] || {}
+							const liveCat = baselineQA[category] || {}
+							const allKeys = new Set([...Object.keys(newCat), ...Object.keys(liveCat)])
+							for (const key of allKeys) {
+								const newAns = (newCat[key]?.answer || '').trim()
+								const liveAns = (liveCat[key]?.answer || '').trim()
+								if (newAns !== liveAns) {
+									changedFieldsVsLive.push(`qa:${category}:${key}`)
+									hasAnyQAChange = true
+								}
+							}
+						}
+						// Also push top-level 'qa' for section-level Changed badge
+						if (hasAnyQAChange) {
+							changedFieldsVsLive.push('qa')
+						}
+					}
+					// If both QA table empty AND no previous pending QA, nothing to compare against
+				} catch (e) {
+					// If QA fetch fails, don't mark as changed
+				}
+			}
 		} else {
 			changedFieldsVsLive = studentTableFields.filter(key => key in newProfileData)
+			if ('qa' in newProfileData) changedFieldsVsLive.push('qa')
 		}
 
 		if (pendingDraft) {
@@ -847,10 +896,59 @@ class DraftService {
 				})
 				console.log('--- End ---\n')
 			}
+
+			// Separate QA comparison: QA lives in QA table, not Students table
+			// Compare against QA table if it has data, otherwise use pending draft's previous QA as baseline
+			// Stores granular 'qa:category:questionKey' entries + top-level 'qa' for section badge
+			if ('qa' in draft.profile_data) {
+				try {
+					let baselineQA = null
+					const qaRows = await QAService.findQAByStudentId(student.id)
+					if (qaRows && qaRows.length > 0) {
+						// QA table has data - use as baseline
+						baselineQA = {}
+						for (const row of qaRows) {
+							baselineQA[row.category] = row.qa_list || {}
+						}
+					} else if (pendingDraft && pendingDraft.profile_data && pendingDraft.profile_data.qa) {
+						// QA table empty - use pending draft's PREVIOUS QA as baseline
+						baselineQA = pendingDraft.profile_data.qa
+					}
+
+					if (baselineQA) {
+						const newQA = draft.profile_data.qa || {}
+						let hasAnyQAChange = false
+						// Compare each category and question
+						const allCategories = new Set([...Object.keys(newQA), ...Object.keys(baselineQA)])
+						for (const category of allCategories) {
+							if (category === 'idList') continue
+							const newCat = newQA[category] || {}
+							const liveCat = baselineQA[category] || {}
+							const allKeys = new Set([...Object.keys(newCat), ...Object.keys(liveCat)])
+							for (const key of allKeys) {
+								const newAns = (newCat[key]?.answer || '').trim()
+								const liveAns = (liveCat[key]?.answer || '').trim()
+								if (newAns !== liveAns) {
+									changedFieldsVsLive.push(`qa:${category}:${key}`)
+									hasAnyQAChange = true
+								}
+							}
+						}
+						// Also push top-level 'qa' for section-level Changed badge
+						if (hasAnyQAChange) {
+							changedFieldsVsLive.push('qa')
+						}
+					}
+					// If both QA table empty AND no previous pending QA, nothing to compare against
+				} catch (e) {
+					// If QA fetch fails, don't mark as changed
+				}
+			}
 		} else {
 			// No student record found - only mark fields that exist in Students table as changed
 			const studentTableFields = ['self_introduction', 'hobbies', 'hobbies_description', 'other_information', 'special_skills_description', 'it_skills', 'skills', 'address', 'address_furigana', 'postal_code', 'gallery', 'deliverables', 'education', 'work_experience', 'licenses', 'arubaito', 'jlpt', 'jdu_japanese_certification', 'japanese_speech_contest', 'it_contest', 'language_skills', 'other_skills', 'major', 'job_type', 'additional_info']
 			changedFieldsVsLive = studentTableFields.filter(key => key in draft.profile_data)
+			if ('qa' in draft.profile_data) changedFieldsVsLive.push('qa')
 			console.log('=== SUBMIT: No live profile found ===')
 		}
 

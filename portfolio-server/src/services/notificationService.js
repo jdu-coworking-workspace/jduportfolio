@@ -72,7 +72,7 @@ class NotificationService {
 					status: { [Op.ne]: 'read' },
 				}
 			} else if (userType.toLowerCase() === 'admin') {
-				whereClause = { user_role: 'admin', status: { [Op.ne]: 'read' } }
+				whereClause = { user_id: String(userId), user_role: 'admin', status: { [Op.ne]: 'read' } }
 			} else {
 				whereClause = {
 					user_id: String(userId),
