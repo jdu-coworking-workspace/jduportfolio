@@ -36,6 +36,7 @@ class MailServiceService {
 
 		await setting.update(updateData)
 		return setting
+
 	}
 
 	/**

@@ -141,7 +141,10 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'visibility',
 			label: t('visible_status'),
 			type: 'checkbox',
-			options: [t('visible'), t('invisible')],
+			options: [
+				{ value: '公開', label: t('visible') },
+				{ value: '非公開', label: t('invisible') },
+			],
 			minWidth: '160px',
 		},
 	]
@@ -312,7 +315,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			disablePadding: false,
 			label: t('age'),
 			minWidth: '80px !important',
-			suffix: ' 歳',
+			suffix: ` ${t('age')}`,
 			isSort: true,
 		},
 		{

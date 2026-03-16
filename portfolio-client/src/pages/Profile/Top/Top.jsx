@@ -94,10 +94,10 @@ const Top = () => {
 
 	// Simple replacement for missing states
 	const showUnsavedWarning = false
-	const setShowUnsavedWarning = () => {} // No-op function
+	const setShowUnsavedWarning = () => { } // No-op function
 	const pendingNavigation = null
-	const setPendingNavigation = () => {} // No-op function
-	const setPersistedData = () => {} // No-op function
+	const setPendingNavigation = () => { } // No-op function
+	const setPersistedData = () => { } // No-op function
 
 	// Simple replacements for missing handlers
 	const handleConfirmCancel = () => {
@@ -111,9 +111,9 @@ const Top = () => {
 	// More missing states/functions
 	const [portalContainer, setPortalContainer] = useState(null)
 	const showRecoveryDialog = false
-	const setShowRecoveryDialog = () => {}
-	const handleRecoverData = () => {}
-	const handleDiscardRecovery = () => {}
+	const setShowRecoveryDialog = () => { }
+	const handleRecoverData = () => { }
+	const handleDiscardRecovery = () => { }
 
 	// Missing function
 	const immediateSaveIfChanged = data => {
@@ -2377,19 +2377,19 @@ function HistoryComments({ targetStudentId }) {
 
 	useEffect(() => {
 		let mounted = true
-		;(async () => {
-			try {
-				const url = targetStudentId ? `/api/notification/history/student/${encodeURIComponent(targetStudentId)}` : '/api/notification/history'
-				const res = await axios.get(url)
-				const list = res?.data?.notifications || []
-				const filtered = list.filter(n => typeof n.message === 'string' && n.message.includes('|||COMMENT_SEPARATOR|||')).slice(0, 2)
-				if (mounted) setItems(filtered)
-			} catch (e) {
-				// ignore
-			} finally {
-				if (mounted) setLoaded(true)
-			}
-		})()
+			; (async () => {
+				try {
+					const url = targetStudentId ? `/api/notification/history/student/${encodeURIComponent(targetStudentId)}` : '/api/notification/history'
+					const res = await axios.get(url)
+					const list = res?.data?.notifications || []
+					const filtered = list.filter(n => typeof n.message === 'string' && n.message.includes('|||COMMENT_SEPARATOR|||')).slice(0, 2)
+					if (mounted) setItems(filtered)
+				} catch (e) {
+					// ignore
+				} finally {
+					if (mounted) setLoaded(true)
+				}
+			})()
 		return () => {
 			mounted = false
 		}

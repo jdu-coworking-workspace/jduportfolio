@@ -64,31 +64,11 @@ import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 
 const qaQuestions = [
-	{
-		icon: SchoolOutlinedIcon,
-		label: '学生成績',
-		iconColor: '#3275f2',
-	},
-	{
-		icon: AutoStoriesOutlinedIcon,
-		label: '専門知識',
-		iconColor: '#a551f5',
-	},
-	{
-		icon: PermIdentityIcon,
-		label: '個性',
-		iconColor: '#0dae7a',
-	},
-	{
-		icon: WorkOutlineOutlinedIcon,
-		label: '実務経験',
-		iconColor: '#5b59ec',
-	},
-	{
-		icon: TrendingUp,
-		label: 'キャリア目標',
-		iconColor: '#e63c8c',
-	},
+	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', iconColor: '#3275f2' },
+	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', iconColor: '#a551f5' },
+	{ icon: PermIdentityIcon, labelKey: 'personality', iconColor: '#0dae7a' },
+	{ icon: WorkOutlineOutlinedIcon, labelKey: 'work_experience', iconColor: '#5b59ec' },
+	{ icon: TrendingUp, labelKey: 'career_goals', iconColor: '#e63c8c' },
 ]
 
 const hasAnswerData = qaPayload => {
@@ -158,11 +138,11 @@ const SortableQATextField = ({ id, data, editData, category, question, keyName, 
 	)
 }
 
-const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = false, updateQA = false, currentDraft, isHonban = false, handleDraftUpsert = () => {}, setTopEditMode = () => {}, updateCurrentDraft = () => {}, onlyCommentInput = false }) => {
+const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = false, updateQA = false, currentDraft, isHonban = false, handleDraftUpsert = () => { }, setTopEditMode = () => { }, updateCurrentDraft = () => { }, onlyCommentInput = false }) => {
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
-	const labels = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
+	const labels = QA_CATEGORY_KEYS
 	let id
 	const { studentId } = useParams()
 	const location = useLocation()
@@ -258,17 +238,17 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	useEffect(() => {
 		const shouldFetch = isReviewer && (!currentDraft || Object.keys(currentDraft || {}).length === 0) && id
 		if (!shouldFetch) return
-		;(async () => {
-			try {
-				const res = await axios.get(`/api/draft/student/${id}`)
-				if (res?.data) {
-					setPassedDraft(res.data)
-					setReviewMode(false)
+			; (async () => {
+				try {
+					const res = await axios.get(`/api/draft/student/${id}`)
+					if (res?.data) {
+						setPassedDraft(res.data)
+						setReviewMode(false)
+					}
+				} catch (e) {
+					// ignore silently
 				}
-			} catch (e) {
-				// ignore silently
-			}
-		})()
+			})()
 	}, [isReviewer, id])
 
 	const fetchStudent = async () => {
@@ -289,7 +269,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				// Otherwise fetch answers from API
 				try {
 					answers = (await axios.get(`/api/qa/student/${id}`)).data
-				} catch (err) {}
+				} catch (err) { }
 			}
 
 			if ((!answers || !hasAnswerData(answers)) && id) {
@@ -435,7 +415,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			if (id) {
 				localStorage.setItem(`qa_comment_draft_${id}`, JSON.stringify(next))
 			}
-		} catch (e) {}
+		} catch (e) { }
 	}
 
 	// Restore saved comment draft when opening this student's QA
@@ -450,7 +430,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 					}
 				}
 			}
-		} catch (e) {}
+		} catch (e) { }
 	}, [id])
 
 	const toggleEditMode = () => {
@@ -511,7 +491,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			setComment({ comments: '' })
 			try {
 				if (id) localStorage.removeItem(`qa_comment_draft_${id}`)
-			} catch (e) {}
+			} catch (e) { }
 			if (value === 'approved') {
 				showAlert(t('approvedSuccessfully') || '承認しました', 'success')
 			} else if (value === 'resubmission_required') {

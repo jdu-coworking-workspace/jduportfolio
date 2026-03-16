@@ -513,12 +513,13 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 										if (row.jlpt) {
 											try {
 												const jlptData = JSON.parse(row.jlpt)
-												return jlptData?.highest || '未提出'
+												const v = jlptData?.highest || '未提出'
+												return v === '未提出' || !v ? t('not_submitted') : v
 											} catch {
-												return row.jlpt
+												return row.jlpt === '未提出' || !row.jlpt ? t('not_submitted') : row.jlpt
 											}
 										}
-										return '未提出'
+										return t('not_submitted')
 									})()}
 								</Typography>
 							</Box>
@@ -916,7 +917,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																fontSize: '16px',
 															}}
 														>
-															{row[header.id] ? '公開' : '非公開'}
+															{row[header.id] ? t('visible') : t('private')}
 														</div>
 													) : header.type === 'email' ? (
 														<a href={`mailto:${row[header.id]}`}>{row[header.id]}</a>
@@ -1045,7 +1046,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																				fontSize: '12px',
 																			}}
 																		>
-																			変更なし
+																			{t('no_changes')}
 																		</span>
 																	)
 																}
@@ -1072,7 +1073,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																			},
 																		}}
 																	>
-																		{changedFields.length}件の変更
+																		{t('changes_count_short').replace('%d', changedFields.length)}
 																	</Button>
 																)
 															})()}
@@ -1175,7 +1176,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																	color: row[header.id] ? '#4caf50' : '#666',
 																}}
 															>
-																{row[header.id] ? '公開' : '非公開'}
+																{row[header.id] ? t('visible') : t('private')}
 															</span>
 														</div>
 													) : header.type === 'toggle_switch' ? (
@@ -1387,7 +1388,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 													) : header.isJSON ? (
 														(() => {
 															const rawValue = row[header.id]
-															if (!rawValue || rawValue === 'null') return '未提出'
+															if (!rawValue || rawValue === 'null') return t('not_submitted')
 
 															// If value already looks like JSON, try to parse; otherwise treat as plain text (e.g. 'N1')
 															let parsed = rawValue
@@ -1395,17 +1396,19 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																try {
 																	parsed = JSON.parse(rawValue)
 																} catch (e) {
-																	// Fallback to raw string if JSON.parse fails
-																	return rawValue === 'null' ? '未提出' : rawValue || '未提出'
+																	const v = rawValue === 'null' ? '未提出' : rawValue || '未提出'
+																	return v === '未提出' || !v ? t('not_submitted') : v
 																}
 															}
 
 															// When parsed is an object with "highest", use it; otherwise return the value or fallback text
 															if (parsed && typeof parsed === 'object' && 'highest' in parsed) {
-																return parsed.highest === 'null' ? '未提出' : parsed.highest || '未提出'
+																const v = parsed.highest === 'null' ? '未提出' : parsed.highest || '未提出'
+																return v === '未提出' || !v ? t('not_submitted') : v
 															}
 
-															return parsed === 'null' ? '未提出' : parsed || '未提出'
+															const v = parsed === 'null' ? '未提出' : parsed || '未提出'
+															return v === '未提出' || !v ? t('not_submitted') : v
 														})()
 													) : header.id === 'graduation_year' ? (
 														// Format graduation_year from date format to Japanese format
@@ -1566,7 +1569,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 			</Modal>
 
 			{/* Changed Fields Modal */}
-			<ChangedFieldsModal open={Boolean(selectedChangedFields)} onClose={() => setSelectedChangedFields(null)} data={selectedChangedFields} />
+			<ChangedFieldsModal open={Boolean(selectedChangedFields)} onClose={() => setSelectedChangedFields(null)} data={selectedChangedFields} t={t} />
 
 			{/* Header Filter Menu - Single menu for all filterable headers */}
 			{headerFilterAnchor.field &&
@@ -1605,7 +1608,8 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 								{t('all') || '全て'}
 							</MenuItem>
 							{filterOptions.map(option => {
-								const displayValue = formatFunction ? formatFunction(option) : option
+								let displayValue = formatFunction ? formatFunction(option) : option
+								if (option === '未提出') displayValue = t('not_submitted')
 								const isSelected = selectedValue === option
 								return (
 									<MenuItem key={option} selected={isSelected} onClick={() => handleHeaderFilterChange(headerId, option)}>
