@@ -176,7 +176,6 @@ class StudentController {
 					return res.status(400).json({ error: 'Invalid filter format' })
 				}
 			}
-			// console.log('Parsed filter:', filter);
 
 			const recruiterId = req.query.recruiterId
 			const onlyBookmarked = req.query.onlyBookmarked
@@ -491,87 +490,60 @@ class StudentController {
 			}
 		}
 	}
-	// 1. Yangi maxfiy link yaratish
-    static async generateShareableLink(req, res, next) {
-    try {
-        // MUHIM: studentId ni marshrutdagi nomga qarab oling (masalan :id bo'lsa, .id bo'ladi)
-        const studentId = req.params.id; 
-        console.log("-----------------------------------------");
-        console.log("🚀 Link generatsiya boshlandi. Student ID:", studentId);
 
-        if (!ShareableLink) {
-            console.error("❌ Xatolik: ShareableLink modeli topilmadi!");
-            return res.status(500).json({ error: "ShareableLink model is not loaded" });
-        }
+	static async generateShareableLink(req, res, next) {
+		try {
+			const studentId = req.params.id
+			if (!ShareableLink) {
+				return res.status(500).json({ error: 'ShareableLink model is not loaded' })
+			}
+			await ShareableLink.destroy({
+				where: { studentId: studentId },
+			})
+			const expiresAt = new Date()
+			expiresAt.setHours(expiresAt.getHours() + 24)
+			const newLink = await ShareableLink.create({
+				studentId: studentId,
+				expiresAt: expiresAt,
+			})
+			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+			const shareableUrl = `${frontendUrl}/student/share/${newLink.id}`
+			res.status(201).json({
+				success: true,
+				url: shareableUrl,
+				expiresAt: expiresAt,
+			})
+		} catch (error) {
+			next(error)
+		}
+	}
 
-        // 1. ESKI LINKLARNI TOZALASH (Duplicate'ni oldini oladi)
-        // Yangi yaratishdan oldin ushbu talabaga tegishli barcha eski linklarni o'chiramiz
-        console.log("🗑️ Eski linklar tozalanmoqda...");
-        await ShareableLink.destroy({
-            where: { studentId: studentId }
-        });
+	static async getProfileByPublicLink(req, res, next) {
+		try {
+			const { uuid } = req.params
+			const linkData = await ShareableLink.findOne({ where: { id: uuid } })
 
-        // 24 soatlik muddat belgilash
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24);
+			if (!linkData) {
+				return res.status(404).json({ message: "Link yaroqsiz yoki o'chirilgan" })
+			}
 
-        // 2. YANGI LINKNI YARATISH
-        console.log("💾 Yangi link saqlanmoqda...");
-        const newLink = await ShareableLink.create({
-            studentId: studentId,
-            expiresAt: expiresAt
-        });
-        
-        console.log("✅ Link bazada yaratildi. UUID:", newLink.id);
+			if (new Date() > linkData.expiresAt) {
+				await linkData.destroy()
+				return res.status(410).json({ message: 'Link muddati tugagan' })
+			}
+			const student = await StudentService.getStudentByStudentId(
+				linkData.studentId,
+				false,
+				null,
+				'Guest',
+				true // bypassVisibility = true
+			)
 
-        // 3. URL YASASH
-        // Frontend URL ni .env dan oling (masalan: http://localhost:5173)
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const shareableUrl = `${frontendUrl}/student/share/${newLink.id}`;
-        
-        console.log("🔗 Yaratilgan URL:", shareableUrl);
-        console.log("-----------------------------------------");
-
-        res.status(201).json({
-            success: true,
-            url: shareableUrl,
-            expiresAt: expiresAt
-        });
-    } catch (error) {
-        console.error("❌ EXCEPTION:", error.message);
-        next(error);
-    }
-}
-
-    // 2. Link orqali ochiq profilni ko'rish (Auth talab qilinmaydi)
-    static async getProfileByPublicLink(req, res, next) {
-    try {
-        const { uuid } = req.params;
-        const linkData = await ShareableLink.findOne({ where: { id: uuid } });
-
-        if (!linkData) {
-            return res.status(404).json({ message: "Link yaroqsiz yoki o'chirilgan" });
-        }
-
-        if (new Date() > linkData.expiresAt) {
-            await linkData.destroy();
-            return res.status(410).json({ message: "Link muddati tugagan" });
-        }
-
-        // MUHIM: Bu yerda requesterRole sifatida 'Guest' yoki 'Public' yuboring 
-        // shunda Service loginni talab qilmaydi
-        const student = await StudentService.getStudentByStudentId(
-            linkData.studentId, 
-            false, 
-            null,    // requesterId yo'q
-            'Guest'  // Rolni Guest deb ko'rsatamiz
-        );
-        
-        res.status(200).json(student);
-    } catch (error) {
-        next(error);
-    }
-}
+			res.status(200).json(student)
+		} catch (error) {
+			next(error)
+		}
+	}
 }
 
 module.exports = StudentController
