@@ -5,6 +5,7 @@ import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
 import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PersonIcon from '@mui/icons-material/Person'
+import { Link as LinkIcon, ContentCopy as CopyIcon } from '@mui/icons-material'
 import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
 import { useCallback, useContext, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -17,6 +18,9 @@ import SettingStyle from './Setting.module.css'
 // Custom icons import
 import SaveIcon from '../../assets/icons/save-3-fill.svg'
 const Setting = () => {
+	const [generatedLink, setGeneratedLink] = useState('')
+	const [isGenerating, setIsGenerating] = useState(false)
+
 	const { activeUser, updateUser } = useContext(UserContext)
 	const { language, changeLanguage } = useLanguage()
 	const showAlert = useAlert()
@@ -88,7 +92,6 @@ const Setting = () => {
 		setIsLoading(true)
 
 		try {
-			// Get correct ID based on role
 			// Get correct ID based on role
 			const loginUser = JSON.parse(sessionStorage.getItem('loginUser'))
 			let id
@@ -165,6 +168,32 @@ const Setting = () => {
 	useEffect(() => {
 		fetchUser()
 	}, [fetchUser]) // Include fetchUser in dependencies
+
+	const handleGenerateLink = async () => {
+		setIsGenerating(true)
+		try {
+			const id = activeUser?.studentId
+
+			if (!id) {
+				showAlert('Student ID topilmadi', 'error')
+				return
+			}
+			const response = await axios.post(`/api/students/${id}/generate-link`)
+
+			setGeneratedLink(response.data.url)
+			showAlert(t('link_generated_success') || 'Link muvaffaqiyatli yaratildi!', 'success')
+		} catch (error) {
+			console.error('Link xatosi:', error.response?.data || error.message)
+			showAlert(t('link_generation_failed') || 'Link yaratishda xatolik!', 'error')
+		} finally {
+			setIsGenerating(false)
+		}
+	}
+
+	const copyToClipboard = () => {
+		navigator.clipboard.writeText(generatedLink)
+		showAlert(t('link_copied') || 'Link nusxalandi!', 'info')
+	}
 
 	const handleAvatarChange = event => {
 		const file = event.target.files[0]
@@ -443,6 +472,29 @@ const Setting = () => {
 							<Typography variant='body2' className={SettingStyle.companyName}>
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
+							{role === 'Student' && (
+								<Box sx={{ mt: 2 }}>
+									{!generatedLink ? (
+										<Button variant='contained' size='small' startIcon={<LinkIcon />} onClick={handleGenerateLink} disabled={isGenerating} sx={{ borderRadius: '20px', textTransform: 'none' }}>
+											{isGenerating ? t('generating') : t('generate_share_link') || 'Profil uchun link yaratish'}
+										</Button>
+									) : (
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: '#f5f5f5', p: 1, borderRadius: '8px' }}>
+											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all' }}>
+												{generatedLink}
+											</Typography>
+											<IconButton size='small' onClick={copyToClipboard} color='primary'>
+												<CopyIcon fontSize='small' />
+											</IconButton>
+										</Box>
+									)}
+									{generatedLink && (
+										<Typography variant='caption' color='error' sx={{ display: 'block', mt: 0.5 }}>
+											* {t('link_expiry_notice') || 'Link 24 soat davomida amal qiladi'}
+										</Typography>
+									)}
+								</Box>
+							)}
 						</Box>
 						{/* Admin Sync Button */}
 						{role === 'Admin' && (

@@ -12,7 +12,8 @@ import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
 import { checkprofileBackPageAtom, checkprofileSortByAtom, checkprofileSortOrderAtom, listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom, tableScrollPositionAtom } from '../../../atoms/store'
-const StudentProfile = ({ userId = 0 }) => {
+
+const StudentProfile = ({ userId = 0, isPublic = false }) => {
 	const [tableScrollPosition, setTableScrollPosition] = useAtom(tableScrollPositionAtom)
 	const [studentsBackPage] = useAtom(studentsBackPageAtom)
 	const [studentsSortBy] = useAtom(studentsSortByAtom)
@@ -21,20 +22,18 @@ const StudentProfile = ({ userId = 0 }) => {
 	const [checkprofileSortBy] = useAtom(checkprofileSortByAtom)
 	const [checkprofileSortOrder] = useAtom(checkprofileSortOrderAtom)
 	const [listReturnPath] = useAtom(listReturnPathAtom)
+
 	const [visibleRowsStudentIds, setVisibleRowsStudentIds] = useState([])
 	const [step, setStep] = useState(1)
-	const { studentId } = useParams()
+
+	const { studentId, uuid } = useParams()
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
+
 	const t = key => translations[language][key] || key
 	const role = contextRole || sessionStorage.getItem('role')
 
-	// Helper function to get student_id from login user data
 	const getStudentIdFromLoginUser = () => {
-		// Try context first (already synced)
-		if (activeUser?.studentId) {
-			return activeUser.studentId
-		}
-		// Fallback to sessionStorage
+		if (activeUser?.studentId) return activeUser.studentId
 		try {
 			const loginUserData = JSON.parse(sessionStorage.getItem('loginUser'))
 			return loginUserData?.studentId
@@ -43,16 +42,14 @@ const StudentProfile = ({ userId = 0 }) => {
 		}
 	}
 
-	// Determine which student_id to use
 	let id
-	if (role === 'Student') {
-		// For students, ALWAYS use their own student_id from session, ignore userId prop
+	if (isPublic && uuid) {
+		id = uuid
+	} else if (role === 'Student') {
 		id = getStudentIdFromLoginUser()
 	} else if (studentId) {
-		// For staff/admin, prefer studentId from URL params (this should be student_id)
 		id = studentId
 	} else if (userId !== 0) {
-		// For staff/admin, fallback to userId prop (but this might be primary key, needs verification)
 		id = userId
 	} else {
 		id = null
@@ -67,10 +64,7 @@ const StudentProfile = ({ userId = 0 }) => {
 	const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
 	useEffect(() => {
-		// Wait for context initialization before attempting to fetch
-		if (isInitializing) {
-			return
-		}
+		if (!isPublic && isInitializing) return
 
 		const fetchStudent = async () => {
 			if (!id) {
@@ -82,25 +76,21 @@ const StudentProfile = ({ userId = 0 }) => {
 			try {
 				setLoading(true)
 				setError(null)
-
-				// Debug: check what id value we're using
-
-				// Use student_id for API call, not primary key id
-				const response = await axios.get(`/api/students/${id}`)
+				const apiUrl = isPublic ? `/api/students/public/share/${id}` : `/api/students/${id}`
+				const response = await axios.get(apiUrl)
 				setStudent(response.data)
 				setLoading(false)
-			} catch (error) {
-				setError(error.response?.data?.message || 'errorFetchingStudent')
+			} catch (err) {
+				setError(err.response?.data?.message || 'errorFetchingStudent')
 				setLoading(false)
 			}
 		}
 
 		fetchStudent()
-	}, [id, studentId, userId, role, isInitializing])
+	}, [id, studentId, userId, role, isPublic, isInitializing, uuid])
 
-	// Check bookmark status for Recruiter
 	useEffect(() => {
-		if (role !== 'Recruiter' || !student?.id) return
+		if (isPublic || role !== 'Recruiter' || !student?.id) return
 		const checkBookmark = async () => {
 			try {
 				const response = await axios.get(`/api/bookmarks/check/${student.id}`)
@@ -110,7 +100,7 @@ const StudentProfile = ({ userId = 0 }) => {
 			}
 		}
 		checkBookmark()
-	}, [student?.id, role])
+	}, [student?.id, role, isPublic])
 
 	const handleToggleBookmark = async () => {
 		if (bookmarkLoading || !student?.id) return
@@ -133,45 +123,32 @@ const StudentProfile = ({ userId = 0 }) => {
 		if (isRootPath) {
 			const returnPath = listReturnPath || (location.pathname.startsWith('/checkprofile') ? '/checkprofile' : '/student')
 			if (returnPath === '/checkprofile') {
-				const page = checkprofileBackPage ?? 0
-				const sortBy = checkprofileSortBy ?? ''
-				const sortOrder = checkprofileSortOrder ?? ''
 				const query = new URLSearchParams()
-				if (page > 0) query.set('page', String(page))
-				if (sortBy) query.set('sortBy', sortBy)
-				if (sortOrder) query.set('sortOrder', sortOrder)
+				if (checkprofileBackPage > 0) query.set('page', String(checkprofileBackPage))
+				if (checkprofileSortBy) query.set('sortBy', checkprofileSortBy)
+				if (checkprofileSortOrder) query.set('sortOrder', checkprofileSortOrder)
 				navigate(`/checkprofile${query.toString() ? `?${query.toString()}` : ''}`)
 			} else {
-				const page = studentsBackPage ?? 0
-				const sortBy = studentsSortBy ?? ''
-				const sortOrder = studentsSortOrder ?? ''
 				const query = new URLSearchParams()
-				if (page > 0) query.set('page', String(page))
-				if (sortBy) query.set('sortBy', sortBy)
-				if (sortOrder) query.set('sortOrder', sortOrder)
+				if (studentsBackPage > 0) query.set('page', String(studentsBackPage))
+				if (studentsSortBy) query.set('sortBy', studentsSortBy)
+				if (studentsSortOrder) query.set('sortOrder', studentsSortOrder)
 				navigate(`/student${query.toString() ? `?${query.toString()}` : ''}`)
 			}
 		} else {
 			navigate(-1)
 		}
 	}
-	useEffect(() => {
-		const studentIdsString = localStorage.getItem('visibleRowsStudentIds')
-		if (!studentIdsString) return
 
-		setVisibleRowsStudentIds(JSON.parse(studentIdsString))
-	}, [])
 	const handleNextClick = () => {
 		const isRootPath = location.pathname.endsWith('/top')
 		if (!isRootPath) return
 
-		setStep(step + 1)
 		const currentIndex = visibleRowsStudentIds.findIndex(i => i.isCurrent)
 		const next = visibleRowsStudentIds[currentIndex + step]
 		if (!next) return
 		const nextStudentId = next.student_id
 
-		// Update isCurrent in localStorage so when user presses Back we scroll to this student
 		try {
 			const raw = localStorage.getItem('visibleRowsStudentIds')
 			if (raw) {
@@ -215,167 +192,71 @@ const StudentProfile = ({ userId = 0 }) => {
 		const birthDate = new Date(birthDateString)
 		let age = today.getFullYear() - birthDate.getFullYear()
 		const monthDifference = today.getMonth() - birthDate.getMonth()
-
 		if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
 			age--
 		}
-
 		return age
 	}
 
-	if (loading) {
-		return (
-			<Box
-				sx={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					height: '200px',
-					fontSize: '18px',
-				}}
-			>
-				{t('loading_student_profile')}
-			</Box>
-		)
-	}
+	if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>{t('loading_student_profile')}</Box>
 
 	if (error) {
 		return (
-			<Box
-				sx={{
-					display: 'flex',
-					flexDirection: 'column',
-					justifyContent: 'center',
-					alignItems: 'center',
-					height: '200px',
-					fontSize: '18px',
-					color: 'red',
-				}}
-			>
+			<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 5, color: 'red' }}>
 				<div>
 					{t('error_label')}: {translations[language][error] ? t(error) : error}
 				</div>
-				<div style={{ fontSize: '14px', marginTop: '10px', color: '#666' }}>
-					Debug info: id={id}, role={role}, studentId={studentId}, userId=
-					{userId}
+				<div style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+					Debug: id={id}, isPublic={String(isPublic)}, uuid={uuid}
 				</div>
-			</Box>
-		)
-	}
-
-	if (!student) {
-		return (
-			<Box
-				sx={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					height: '200px',
-					fontSize: '18px',
-				}}
-			>
-				No student data found
 			</Box>
 		)
 	}
 
 	return (
-		<Box
-			sx={{
-				borderRadius: '10px',
-			}}
-		>
-			<Box className={styles.topControlButtons}>
-				{role !== 'Student' ? (
-					<>
-						<Button onClick={handleBackClick} className={styles.topBtn}>
-							<ArrowBackIosNewOutlinedIcon />
-							{t('back')}
-						</Button>
+		<Box sx={{ borderRadius: '10px' }}>
+			{/* Back/Next buttons faqat ichki foydalanuvchilar uchun */}
+			{!isPublic && role !== 'Student' && (
+				<Box className={styles.topControlButtons}>
+					<Button onClick={handleBackClick} className={styles.topBtn}>
+						<ArrowBackIosNewOutlinedIcon /> {t('back')}
+					</Button>
+					<Button disabled={visibleRowsStudentIds.length <= 0 || visibleRowsStudentIds.findIndex(ids => ids.isCurrent) + step >= visibleRowsStudentIds.length} onClick={handleNextClick} className={styles.topBtn}>
+						{t('next')} <ArrowBackIosNewOutlinedIcon sx={{ transform: 'rotate(180deg)' }} />
+					</Button>
+				</Box>
+			)}
 
-						<Button disabled={visibleRowsStudentIds.length <= 0 || visibleRowsStudentIds.findIndex(ids => ids.isCurrent) + step >= visibleRowsStudentIds.length} onClick={handleNextClick} className={styles.topBtn}>
-							{t('next')}
-							<ArrowBackIosNewOutlinedIcon sx={{ transform: 'rotate(180deg)' }} />
-						</Button>
-					</>
-				) : null}
-			</Box>
 			<Box className={styles.container}>
 				<Box className={styles.avatarContainer}>
-					<Avatar
-						src={student.photo}
-						alt={student.first_name}
-						sx={{
-							width: { xs: 80, sm: 96, md: 120 },
-							height: { xs: 80, sm: 96, md: 120 },
-						}}
-					/>
+					<Avatar src={student.photo} alt={student.first_name} sx={{ width: 120, height: 120 }} />
 				</Box>
 				<Box className={styles.infoContainer}>
 					<Box className={styles.nameEmailContainer}>
 						<Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-							{/* name and lastname */}
 							<div style={{ fontSize: 20, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
 								{student.first_name} {student.last_name}
-								{role === 'Recruiter' && (
-									<Tooltip title={t('bookmarked')}>
-										<IconButton
-											onClick={handleToggleBookmark}
-											disabled={bookmarkLoading}
-											sx={{
-												padding: '4px',
-												color: isBookmarked ? '#faaf00' : '#ccc',
-												transition: 'color 0.2s ease',
-												'&:hover': { color: '#faaf00' },
-											}}
-										>
-											{isBookmarked ? <StarIcon /> : <StarBorderIcon />}
-										</IconButton>
-									</Tooltip>
+								{!isPublic && role === 'Recruiter' && (
+									<IconButton onClick={handleToggleBookmark} disabled={bookmarkLoading} sx={{ color: isBookmarked ? '#faaf00' : '#ccc' }}>
+										{isBookmarked ? <StarIcon /> : <StarBorderIcon />}
+									</IconButton>
 								)}
 							</div>
-							{/* furigana */}
-							{student.first_name_furigana || student.last_name_furigana ? (
-								<div style={{ fontSize: 14, color: '#666' }}>
-									{student.last_name_furigana || ''} {student.first_name_furigana || ''}
-								</div>
-							) : null}
-							{/* student id and birthday */}
+
 							<div className={styles.inlineInfoRow}>
 								<div className={styles.infoPair}>
 									<div style={{ color: '#787878' }}>{t('student_id')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.student_id || 'N/A'}</div>
+									<div>{student.student_id || 'N/A'}</div>
 								</div>
 								<div className={styles.infoPair}>
 									<div style={{ color: '#787878' }}>{t('age')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.date_of_birth ? calculateAge(student.date_of_birth) : '0'}</div>
-								</div>
-								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>{t('expected_graduation_month')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.expected_graduation_year || t('not_set')}</div>
-								</div>
-							</div>
-							{/* partner university info - desktop */}
-							<div className={styles.desktopUniversityGroup}>
-								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-									<div style={{ display: 'flex' }}>
-										<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
-										<div>{student.partner_university && student.faculty && student.department ? [student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') : student.partner_university || t('not_set')}</div>
-									</div>
+									<div>{student.date_of_birth ? calculateAge(student.date_of_birth) : '0'}</div>
 								</div>
 							</div>
 
-							{/* partner university info - mobile */}
-							<div className={`${styles.mobileUniversityGroup} ${styles.mobileOnly}`}>
-								<div className={styles.uniLabel}>
-									{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{student.partner_university || t('not_set')}</div>
-								</div>
-								{(student.faculty || student.department) && (
-									<>
-										<div className={styles.uniLabelSpacer}></div>
-										<div className={styles.uniValueLineDep}>{[student.faculty, student.department].filter(Boolean).join(' ')}</div>
-									</>
-								)}
+							<div className={styles.desktopUniversityGroup}>
+								<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
+								<div>{[student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') || t('not_set')}</div>
 							</div>
 						</Box>
 						{['Admin', 'Staff', 'Student', 'Recruiter'].includes(role) ? (
@@ -416,6 +297,14 @@ const StudentProfile = ({ userId = 0 }) => {
 								</Box>
 							</Box>
 						) : null}
+						=======
+						{/* Email va Status - Public holatda ham ko'rinadi */}
+						<Box>
+							<a href={`mailto:${student.email}`} className={styles.email}>
+								<EmailIcon className={styles.emailIcon} /> {student.email}
+							</a>
+							<Box className={styles.statusChipContainer}>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</Box>
+						</Box>
 					</Box>
 				</Box>
 			</Box>
@@ -424,9 +313,9 @@ const StudentProfile = ({ userId = 0 }) => {
 	)
 }
 
-// PropTypes validation
 StudentProfile.propTypes = {
 	userId: PropTypes.number,
+	isPublic: PropTypes.bool,
 }
 
 export default StudentProfile

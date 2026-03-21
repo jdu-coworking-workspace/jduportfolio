@@ -116,6 +116,7 @@ const AppRoutes = () => {
 					</Route>
 					<Route path='/unauthorized' element={<Unauthorized />} />
 				</Route>
+				<Route path='/student/share/:uuid' element={<StudentProfile isPublic={true} />} />
 				<Route path='/credit-details/:studentId' element={<CreditDetails />} />
 				<Route path='*' element={<NotFound lang={language} />} />
 				<Route path='/login' element={<Login />} />

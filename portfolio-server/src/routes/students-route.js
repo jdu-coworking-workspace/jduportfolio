@@ -248,4 +248,6 @@ router.delete('/:id', StudentController.deleteStudent)
 // GET Pending status drafts
 // router.get('/pending-drafts', StudentController.getStudentsWithPendingDrafts);
 
+router.post('/:id/generate-link', StudentController.generateShareableLink)
+
 module.exports = router
