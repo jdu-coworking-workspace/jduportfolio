@@ -472,7 +472,7 @@ const Setting = () => {
 							<Typography variant='body2' className={SettingStyle.companyName}>
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
-							{role === 'Student' && (
+							{/* {role === 'Student' && (
 								<Box sx={{ mt: 2 }}>
 									{!generatedLink ? (
 										<Button variant='contained' size='small' startIcon={<LinkIcon />} onClick={handleGenerateLink} disabled={isGenerating} sx={{ borderRadius: '20px', textTransform: 'none' }}>
@@ -494,7 +494,7 @@ const Setting = () => {
 										</Typography>
 									)}
 								</Box>
-							)}
+							)} */}
 						</Box>
 						{/* Admin Sync Button */}
 						{role === 'Admin' && (
@@ -1071,7 +1071,7 @@ const Setting = () => {
 												<MenuItem value='uz'>
 													<Box display='flex' alignItems='center' gap={1}>
 														<span>🇺🇿</span>
-														<span>O'zbek</span>
+														<span>Uzbek</span>
 													</Box>
 												</MenuItem>
 												<MenuItem value='ru'>

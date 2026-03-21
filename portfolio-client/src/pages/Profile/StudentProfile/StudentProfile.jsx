@@ -174,13 +174,15 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 		if (!student?.student_id) return
 
 		try {
-			const res = await axios.post(`/api/students/generate-link/${student.student_id}`)
+			const res = await axios.post(`/api/students/${student.student_id}/generate-link`)
 
-			const link = `${window.location.origin}/public-profile/${res.data.token}`
+			const link = res.data.url
+
+			// const link = `${window.location.origin}/public-profile/${res.data.token}`
 
 			await navigator.clipboard.writeText(link)
 
-			alert('Link nusxalandi!')
+			alert(t('linkCopied'))
 		} catch (err) {
 			console.error(err)
 			alert('Xatolik yuz berdi')
@@ -290,14 +292,14 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 													boxShadow: 'none',
 												}}
 											>
-												Link olish
+												{t('getLink')}
 											</Button>
 										)}
 									</Box>
 								</Box>
 							</Box>
 						) : null}
-						=======
+
 						{/* Email va Status - Public holatda ham ko'rinadi */}
 						<Box>
 							<a href={`mailto:${student.email}`} className={styles.email}>

@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+axios.defaults.baseURL = 'http://localhost:8000'
+
 // Enable sending cookies with all requests
 axios.defaults.withCredentials = true
 
