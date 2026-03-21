@@ -182,13 +182,32 @@ const StudentProfile = ({ userId = 0 }) => {
 				}))
 				localStorage.setItem('visibleRowsStudentIds', JSON.stringify(updated))
 			}
-		} catch (_) {}
+		} catch (_) {
+			// ignore error
+		}
 
 		setVisibleRowsStudentIds(prev => prev.map(item => ({ ...item, isCurrent: item.student_id === nextStudentId })))
 		setTableScrollPosition(oldData => (oldData != null ? oldData + 48 : 48))
 
 		const basePath = listReturnPath || (location.pathname.startsWith('/checkprofile') ? '/checkprofile' : '/student')
 		navigate(`${basePath}/profile/${nextStudentId}/top`)
+	}
+	//bu link olish uchun qoshdim
+	const handleGenerateLink = async () => {
+		if (!student?.student_id) return
+
+		try {
+			const res = await axios.post(`/api/students/generate-link/${student.student_id}`)
+
+			const link = `${window.location.origin}/public-profile/${res.data.token}`
+
+			await navigator.clipboard.writeText(link)
+
+			alert('Link nusxalandi!')
+		} catch (err) {
+			console.error(err)
+			alert('Xatolik yuz berdi')
+		}
 	}
 
 	const calculateAge = birthDateString => {
@@ -367,7 +386,33 @@ const StudentProfile = ({ userId = 0 }) => {
 								</a>
 								<Box className={styles.statusChipContainer}>
 									<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</div>
-									<Box id='saveButton'></Box>
+
+									<Box
+										id='saveButton'
+										sx={{
+											display: 'flex',
+											gap: '12px',
+											alignItems: 'center',
+											marginTop: '10px',
+										}}
+									>
+										{role === 'Student' && (
+											<Button
+												variant='contained'
+												size='medium'
+												onClick={handleGenerateLink}
+												sx={{
+													textTransform: 'none',
+													borderRadius: '8px',
+													height: '40px',
+													paddingX: '16px',
+													boxShadow: 'none',
+												}}
+											>
+												Link olish
+											</Button>
+										)}
+									</Box>
 								</Box>
 							</Box>
 						) : null}
