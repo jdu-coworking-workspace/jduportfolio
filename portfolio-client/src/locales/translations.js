@@ -744,7 +744,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		japanese_level: '応募要件：日本語レベル',
 		application_requirements_other: '応募要件：その他',
 		required_skills: '必須：経験やスキル',
-		welcome_skills: '歓迎：経験やスキル',
+		welcome_skills: 'ようこそ：経験やスキル',
 		recommended_skills: '推奨：経験やスキル',
 		recommended_licenses: '推奨：資格や免許',
 		recommended_other: '推奨：その他',

@@ -2422,9 +2422,9 @@ function HistoryComments({ targetStudentId }) {
 						sx={{
 							p: 1.5,
 							mb: 1,
-							backgroundColor: '#fff',
+							backgroundColor: idx === 0 ? '#fff3cd' : '#fff',
 							borderRadius: '6px',
-							border: '1px solid #eee',
+							border: idx === 0 ? '2px solid #ffc107' : '1px solid #eee',
 						}}
 					>
 						<Typography sx={{ whiteSpace: 'pre-wrap' }}>{comment}</Typography>
