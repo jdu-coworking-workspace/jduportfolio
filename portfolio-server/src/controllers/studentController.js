@@ -494,20 +494,31 @@ class StudentController {
 	static async generateShareableLink(req, res, next) {
 		try {
 			const studentId = req.params.id
+
 			if (!ShareableLink) {
 				return res.status(500).json({ error: 'ShareableLink model is not loaded' })
 			}
+
+			const student = await StudentService.getStudentByStudentId(studentId)
+			if (!student) {
+				return res.status(404).json({ error: 'Student not found' })
+			}
+
 			await ShareableLink.destroy({
 				where: { studentId: studentId },
 			})
+
 			const expiresAt = new Date()
 			expiresAt.setHours(expiresAt.getHours() + 24)
+
 			const newLink = await ShareableLink.create({
 				studentId: studentId,
 				expiresAt: expiresAt,
 			})
+
 			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
 			const shareableUrl = `${frontendUrl}/student/share/${newLink.id}`
+
 			res.status(201).json({
 				success: true,
 				url: shareableUrl,
