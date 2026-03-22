@@ -148,7 +148,8 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
 	const labels = QA_CATEGORY_KEYS
 	let id
-	const { studentId } = useParams()
+	const { studentId, uuid } = useParams()
+	const isPublic = !!uuid // If uuid exists, it's a public profile
 	const location = useLocation()
 	const { userId } = location.state || {}
 
@@ -1168,62 +1169,64 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	// Don't render buttons if component is used from Top page
 	const portalContent = !isFromTopPage ? (
 		<Box className={styles.buttonsContainer}>
-			{(role == 'Student' || role == 'Admin' || role == 'Staff') && (
-				<>
-					{editMode ? (
+			{isPublic
+				? null
+				: (role == 'Student' || role == 'Admin' || role == 'Staff') && (
 						<>
-							{role == 'Admin' && (
+							{editMode ? (
 								<>
-									<Button onClick={() => handleAdd(true)} variant='contained' color='warning' size='small'>
-										{t('add_required') || '必須追加'}
+									{role == 'Admin' && (
+										<>
+											<Button onClick={() => handleAdd(true)} variant='contained' color='warning' size='small'>
+												{t('add_required') || '必須追加'}
+											</Button>
+											<Button onClick={() => handleAdd(false)} variant='outlined' color='primary' size='small' sx={{ ml: 1 }}>
+												{t('add_optional') || '任意追加'}
+											</Button>
+											<Button onClick={toggleReorderMode} variant={isReorderMode ? 'contained' : 'outlined'} color='info' size='small' sx={{ ml: 1 }}>
+												{isReorderMode ? '順序確定' : '順序変更'}
+											</Button>
+										</>
+									)}
+									{!isHonban && (role == 'Student' || role == 'Staff') && (
+										<Button onClick={() => handleDraftUpsert(true)} variant='contained' color='primary' size='small'>
+											{t('updateDraft')}
+										</Button>
+									)}
+									{role == 'Student' && id && (
+										<Button onClick={() => handleDraftUpsert(false)} variant='contained' color='primary' size='small'>
+											{t('saveDraft')}
+										</Button>
+									)}
+									{role == 'Admin' && (
+										<Button onClick={handleSave} variant='contained' color='primary' size='small' disabled={isSaving}>
+											{isSaving ? 'Saving...' : t('save')}
+										</Button>
+									)}
+									<Button onClick={handleCancel} variant='outlined' color='error' size='small'>
+										{t('cancel')}
 									</Button>
-									<Button onClick={() => handleAdd(false)} variant='outlined' color='primary' size='small' sx={{ ml: 1 }}>
-										{t('add_optional') || '任意追加'}
-									</Button>
-									<Button onClick={toggleReorderMode} variant={isReorderMode ? 'contained' : 'outlined'} color='info' size='small' sx={{ ml: 1 }}>
-										{isReorderMode ? '順序確定' : '順序変更'}
+								</>
+							) : (
+								<>
+									{role == 'Student' && currentDraft && (currentDraft.status === 'draft' || currentDraft.status === 'resubmission_required') && (
+										<Button onClick={handleStudentSubmitClick} variant='contained' color='secondary' size='small'>
+											{t('submitAgree')}
+										</Button>
+									)}
+									<Button onClick={toggleEditMode} variant='contained' color='primary' size='small'>
+										{role == 'Student' ? t('editProfile') : ''}
+										{role == 'Admin' ? t('q_edit') : ''}
+										{role == 'Staff' ? t('editProfile') : ''}
 									</Button>
 								</>
 							)}
-							{!isHonban && (role == 'Student' || role == 'Staff') && (
-								<Button onClick={() => handleDraftUpsert(true)} variant='contained' color='primary' size='small'>
-									{t('updateDraft')}
-								</Button>
-							)}
-							{role == 'Student' && id && (
-								<Button onClick={() => handleDraftUpsert(false)} variant='contained' color='primary' size='small'>
-									{t('saveDraft')}
-								</Button>
-							)}
-							{role == 'Admin' && (
-								<Button onClick={handleSave} variant='contained' color='primary' size='small' disabled={isSaving}>
-									{isSaving ? 'Saving...' : t('save')}
-								</Button>
-							)}
-							<Button onClick={handleCancel} variant='outlined' color='error' size='small'>
-								{t('cancel')}
-							</Button>
-						</>
-					) : (
-						<>
-							{role == 'Student' && currentDraft && (currentDraft.status === 'draft' || currentDraft.status === 'resubmission_required') && (
-								<Button onClick={handleStudentSubmitClick} variant='contained' color='secondary' size='small'>
-									{t('submitAgree')}
-								</Button>
-							)}
-							<Button onClick={toggleEditMode} variant='contained' color='primary' size='small'>
-								{role == 'Student' ? t('editProfile') : ''}
-								{role == 'Admin' ? t('q_edit') : ''}
-								{role == 'Staff' ? t('editProfile') : ''}
-							</Button>
 						</>
 					)}
-				</>
-			)}
 		</Box>
 	) : null
 
-	const commentInput = (role == 'Staff' || role == 'Admin') && !reviewMode && id && (
+	const commentInput = (role == 'Staff' || role == 'Admin') && !reviewMode && id && !isPublic && (
 		<Box
 			sx={{
 				borderRadius: '10px',

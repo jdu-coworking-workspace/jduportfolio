@@ -2,6 +2,7 @@ import { useContext } from 'react'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
 
 import Layout from './components/Layout/Layout'
+import GuestLayout from './components/GuestLayout/GuestLayout'
 import ProtectedLayout from './components/ProtectedLayout'
 import { UserContext } from './contexts/UserContext'
 
@@ -29,28 +30,35 @@ import { News } from './pages/news/News.jsx'
 import NewsDetail from './pages/news/NewsDetail.jsx'
 import Maintenance from './pages/Maintenance/Maintenance.jsx'
 import MailService from './pages/MailService/MailService.jsx'
+
 const AppRoutes = () => {
 	const { role, userId, updateUser, language } = useContext(UserContext)
 
 	return (
 		<Router>
 			<Routes>
+				{/* ── Authenticated routes (with sidebar/header) ── */}
 				<Route path='/' element={<Layout />}>
 					<Route element={<ProtectedLayout />}>
 						<Route index element={role === 'Student' ? <Navigate to={`/profile`} /> : <Home />} />
+
+						{/* Student list */}
 						<Route path='/student' element={<ProtectedLayout allowedRoles={['Admin', 'Staff', 'Recruiter']} />}>
 							<Route index element={<Student key='students' />} />
 							<Route path='profile/:studentId/*' element={<StudentProfile />}>
-								<Route index element={<Navigate to='top' />} /> <Route path='top' element={<Top />} />
+								<Route index element={<Navigate to='top' />} />
+								<Route path='top' element={<Top />} />
 								<Route path='qa' element={<QA />} />
 								<Route path='stats' element={<Stats />} />
 							</Route>
 						</Route>
 
+						{/* Check profile */}
 						<Route path='/checkprofile' element={<ProtectedLayout allowedRoles={['Admin', 'Staff']} />}>
 							<Route index element={<ChekProfile key='checkprofile' />} />
 							<Route path='profile/:studentId/*' element={<StudentProfile />}>
-								<Route index element={<Navigate to='top' />} /> <Route path='top' element={<Top />} />
+								<Route index element={<Navigate to='top' />} />
+								<Route path='top' element={<Top />} />
 								<Route path='qa' element={<QA />} />
 								<Route path='stats' element={<Stats />} />
 							</Route>
@@ -76,8 +84,8 @@ const AppRoutes = () => {
 							<Route index element={<CompanyProfile userId={0} />} />
 						</Route>
 
+						{/* Student's own profile */}
 						<Route path='/profile' element={<ProtectedLayout allowedRoles={['Student']} />}>
-							{' '}
 							<Route path='*' element={<StudentProfile userId={userId} />}>
 								<Route index element={<Navigate to='top' state={{ userId: userId }} />} />
 								<Route path='top' element={<Top />} />
@@ -102,10 +110,12 @@ const AppRoutes = () => {
 							<Route index element={<Maintenance />} />
 						</Route>
 
+						{/* Bookmarked students (Recruiter) */}
 						<Route path='/bookmarked' element={<ProtectedLayout allowedRoles={['Recruiter']} />}>
 							<Route index element={<Student key='bookmarked' OnlyBookmarked={true} />} />
 							<Route path='profile/:studentId/*' element={<StudentProfile />}>
-								<Route index element={<Navigate to='top' />} /> <Route path='top' element={<Top />} />
+								<Route index element={<Navigate to='top' />} />
+								<Route path='top' element={<Top />} />
 								<Route path='qa' element={<QA />} />
 								<Route path='stats' element={<Stats />} />
 							</Route>
@@ -114,9 +124,21 @@ const AppRoutes = () => {
 						<Route path='/settings' element={<Setting />} />
 						<Route path='/help' element={<FAQ />} />
 					</Route>
+
 					<Route path='/unauthorized' element={<Unauthorized />} />
 				</Route>
-				<Route path='/student/share/:uuid' element={<StudentProfile isPublic={true} />} />
+
+				{/* ── Public / Guest share routes (no sidebar, no auth) ── */}
+				<Route path='/student/share/:uuid' element={<GuestLayout />}>
+					<Route element={<StudentProfile isPublic={true} />}>
+						<Route index element={<Navigate to='top' />} />
+						<Route path='top' element={<Top />} />
+						<Route path='qa' element={<QA />} />
+						<Route path='stats' element={<Stats />} />
+					</Route>
+				</Route>
+
+				{/* ── Standalone routes ── */}
 				<Route path='/credit-details/:studentId' element={<CreditDetails />} />
 				<Route path='*' element={<NotFound lang={language} />} />
 				<Route path='/login' element={<Login />} />

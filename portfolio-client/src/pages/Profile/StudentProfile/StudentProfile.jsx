@@ -170,24 +170,6 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 		navigate(`${basePath}/profile/${nextStudentId}/top`)
 	}
 	//bu link olish uchun qoshdim
-	const handleGenerateLink = async () => {
-		if (!student?.student_id) return
-
-		try {
-			const res = await axios.post(`/api/students/${student.student_id}/generate-link`)
-
-			const link = res.data.url
-
-			// const link = `${window.location.origin}/public-profile/${res.data.token}`
-
-			await navigator.clipboard.writeText(link)
-
-			alert(t('linkCopied'))
-		} catch (err) {
-			console.error(err)
-			alert('Xatolik yuz berdi')
-		}
-	}
 
 	const calculateAge = birthDateString => {
 		const today = new Date()
@@ -230,9 +212,11 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 			)}
 
 			<Box className={styles.container}>
-				<Box className={styles.avatarContainer}>
-					<Avatar src={student.photo} alt={student.first_name} sx={{ width: 120, height: 120 }} />
-				</Box>
+				{!isPublic && (
+					<Box className={styles.avatarContainer}>
+						<Avatar src={student.photo} alt={student.first_name} sx={{ width: 120, height: 120 }} />
+					</Box>
+				)}
 				<Box className={styles.infoContainer}>
 					<Box className={styles.nameEmailContainer}>
 						<Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -261,7 +245,7 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 								<div>{[student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') || t('not_set')}</div>
 							</div>
 						</Box>
-						{['Admin', 'Staff', 'Student', 'Recruiter'].includes(role) ? (
+						{['Admin', 'Staff', 'Recruiter'].includes(role) || (role === 'Student' && !isPublic) ? (
 							<Box>
 								<a href={`mailto:${student.email}`} className={styles.email}>
 									<EmailIcon className={styles.emailIcon} />
@@ -278,35 +262,10 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 											alignItems: 'center',
 											marginTop: '10px',
 										}}
-									>
-										{role === 'Student' && (
-											<Button
-												variant='contained'
-												size='medium'
-												onClick={handleGenerateLink}
-												sx={{
-													textTransform: 'none',
-													borderRadius: '8px',
-													height: '40px',
-													paddingX: '16px',
-													boxShadow: 'none',
-												}}
-											>
-												{t('getLink')}
-											</Button>
-										)}
-									</Box>
+									></Box>
 								</Box>
 							</Box>
 						) : null}
-
-						{/* Email va Status - Public holatda ham ko'rinadi */}
-						<Box>
-							<a href={`mailto:${student.email}`} className={styles.email}>
-								<EmailIcon className={styles.emailIcon} /> {student.email}
-							</a>
-							<Box className={styles.statusChipContainer}>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</Box>
-						</Box>
 					</Box>
 				</Box>
 			</Box>

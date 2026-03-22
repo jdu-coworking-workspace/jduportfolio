@@ -472,29 +472,58 @@ const Setting = () => {
 							<Typography variant='body2' className={SettingStyle.companyName}>
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
-							{/* {role === 'Student' && (
-								<Box sx={{ mt: 2 }}>
+							{role === 'Student' && (
+								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 									{!generatedLink ? (
-										<Button variant='contained' size='small' startIcon={<LinkIcon />} onClick={handleGenerateLink} disabled={isGenerating} sx={{ borderRadius: '20px', textTransform: 'none' }}>
-											{isGenerating ? t('generating') : t('generate_share_link') || 'Profil uchun link yaratish'}
+										<Button
+											variant='outlined'
+											size='small'
+											startIcon={<LinkIcon />}
+											onClick={handleGenerateLink}
+											disabled={isGenerating}
+											sx={{
+												borderRadius: '8px',
+												textTransform: 'none',
+												fontSize: '13px',
+												color: '#5627DB',
+												borderColor: '#5627DB',
+												'&:hover': {
+													borderColor: '#4520A6',
+													backgroundColor: 'rgba(86, 39, 219, 0.05)',
+												},
+											}}
+										>
+											{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
 										</Button>
 									) : (
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: '#f5f5f5', p: 1, borderRadius: '8px' }}>
-											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all' }}>
+										<Box
+											sx={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 1,
+												backgroundColor: '#f5f5f5',
+												px: 1.5,
+												py: 0.75,
+												borderRadius: '8px',
+												border: '1px solid #e0e0e0',
+												maxWidth: 320,
+											}}
+										>
+											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all', flex: 1 }}>
 												{generatedLink}
 											</Typography>
-											<IconButton size='small' onClick={copyToClipboard} color='primary'>
+											<IconButton size='small' onClick={copyToClipboard} color='primary' sx={{ flexShrink: 0 }}>
 												<CopyIcon fontSize='small' />
 											</IconButton>
 										</Box>
 									)}
 									{generatedLink && (
-										<Typography variant='caption' color='error' sx={{ display: 'block', mt: 0.5 }}>
+										<Typography variant='caption' color='error' sx={{ display: 'block' }}>
 											* {t('link_expiry_notice') || 'Link 24 soat davomida amal qiladi'}
 										</Typography>
 									)}
 								</Box>
-							)} */}
+							)}
 						</Box>
 						{/* Admin Sync Button */}
 						{role === 'Admin' && (
