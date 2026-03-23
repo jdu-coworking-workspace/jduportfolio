@@ -9,6 +9,7 @@ import { useContext, useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
+import { formatGraduationMonth } from '../../../utils/formatGraduationMonth'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
 import { checkprofileBackPageAtom, checkprofileSortByAtom, checkprofileSortOrderAtom, listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom, tableScrollPositionAtom } from '../../../atoms/store'
@@ -204,6 +205,8 @@ const StudentProfile = ({ userId = 0 }) => {
 		return age
 	}
 
+	const formattedGraduationMonth = student?.expected_graduation_year ? formatGraduationMonth(student.expected_graduation_year, language) : t('not_set')
+
 	if (loading) {
 		return (
 			<Box
@@ -333,7 +336,7 @@ const StudentProfile = ({ userId = 0 }) => {
 								</div>
 								<div className={styles.infoPair}>
 									<div style={{ color: '#787878' }}>{t('expected_graduation_month')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.expected_graduation_year || t('not_set')}</div>
+									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{formattedGraduationMonth}</div>
 								</div>
 							</div>
 							{/* partner university info - desktop */}

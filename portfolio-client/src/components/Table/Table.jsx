@@ -17,6 +17,8 @@ import GraduationCapIcon from '../../assets/icons/graduation-cap-line.svg'
 import SchoolIcon from '../../assets/icons/school-line.svg'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
+import { formatGraduationMonth } from '../../utils/formatGraduationMonth'
+import { formatPartnerUniversity } from '../../utils/formatPartnerUniversity'
 import ChangedFieldsModal from '../ChangedFieldsModal/ChangedFieldsModal'
 import UserAvatar from './Avatar/UserAvatar'
 import { getComparator, stableSort } from './TableUtils'
@@ -547,7 +549,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 										flex: 1,
 									}}
 								>
-									{row.partner_university === '40単位モデル' ? 'なし' : row.partner_university || 'N/A'}
+									{row.partner_university ? formatPartnerUniversity(row.partner_university, t) : 'N/A'}
 								</Typography>
 							</Box>
 
@@ -571,15 +573,8 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 									}}
 								>
 									{(() => {
-										// Format graduation_year from date format to Japanese format
-										// Input: "2026-03-30" -> Output: "2026年03月"
 										if (row.graduation_year) {
-											const match = String(row.graduation_year).match(/^(\d{4})-(\d{2})/)
-											if (match) {
-												const [, year, month] = match
-												return `${year}年${month}月`
-											}
-											return row.graduation_year
+											return formatGraduationMonth(row.graduation_year, language)
 										}
 										return 'N/A'
 									})()}
@@ -1411,22 +1406,15 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 															return v === '未提出' || !v ? t('not_submitted') : v
 														})()
 													) : header.id === 'graduation_year' ? (
-														// Format graduation_year from date format to Japanese format
-														// Input: "2026-03-30" -> Output: "2026年03月"
 														(() => {
 															if (row[header.id]) {
-																const match = String(row[header.id]).match(/^(\d{4})-(\d{2})/)
-																if (match) {
-																	const [, year, month] = match
-																	return `${year}年${month}月`
-																}
-																return row[header.id]
+																return formatGraduationMonth(row[header.id], language)
 															}
 															return 'N/A'
 														})()
 													) : row[header.id] ? (
 														<>
-															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : header.id === 'partner_university' && row[header.id] === '40単位モデル' ? 'なし' : row[header.id] ? row[header.id] : 'N/A'}
+															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : header.id === 'partner_university' ? formatPartnerUniversity(row[header.id], t) : row[header.id] ? row[header.id] : 'N/A'}
 															{header.suffix ? header.suffix : ''}
 														</>
 													) : (
