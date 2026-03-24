@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.TEXT,
 				allowNull: true,
 			},
+			last_sent_at: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
 			updated_by_id: {
 				type: DataTypes.INTEGER,
 				allowNull: true,
@@ -45,11 +49,6 @@ module.exports = (sequelize, DataTypes) => {
 			updated_by_type: {
 				type: DataTypes.ENUM('Admin', 'Staff'),
 				allowNull: true,
-			},
-			recipient_snapshot: {
-				type: DataTypes.TEXT,
-				allowNull: true,
-				comment: 'JSON array of student IDs who were public when periodic email was last saved (更新催促定期メール)',
 			},
 		},
 		{

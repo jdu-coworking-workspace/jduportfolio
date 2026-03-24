@@ -63,10 +63,6 @@ import { useLanguage } from '../../../contexts/LanguageContext'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 
-// Category keys for data lookup (Japanese keys in qaList); labelKey for t()
-const QA_CATEGORY_KEYS = ['学生成績', '専門知識', '個性', '実務経験', 'キャリア目標']
-const QA_LABEL_KEYS = ['student_grades', 'specialized_knowledge', 'personality', 'work_experience', 'career_goals']
-
 const qaQuestions = [
 	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', iconColor: '#3275f2' },
 	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', iconColor: '#a551f5' },
@@ -146,7 +142,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
-	const labels = QA_CATEGORY_KEYS
+	const labels = qaQuestions.map(q => q.labelKey)
 	let id
 	const { studentId } = useParams()
 	const location = useLocation()
@@ -1379,9 +1375,8 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							<div
 								style={{
 									fontSize: 14,
-									color: subTabIndex === ind ? item.iconColor : 'inherit',
 									textAlign: 'center',
-									width: '100%',
+									color: subTabIndex === ind ? item.iconColor : 'inherit',
 								}}
 							>
 								{t(item.labelKey)}
@@ -1442,7 +1437,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							const changedFields = currentDraft?.changed_fields || []
 							const isAnswerChanged = role === 'Staff' && isFromTopPage && changedFields.includes(`qa:${labels[subTabIndex]}:${key}`)
 
-							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} t={t} />
+							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} />
 						})
 					})()}
 			</Box>

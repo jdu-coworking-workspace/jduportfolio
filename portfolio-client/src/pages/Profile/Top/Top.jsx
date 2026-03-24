@@ -2117,8 +2117,7 @@ const Top = () => {
 										>
 											{(() => {
 												const jlptData = editData.draft.jlpt ? getJLPTData(editData.draft.jlpt).highest : getJLPTData(student.jlpt).highest
-												const v = jlptData || ''
-												return v === '未提出' || !v ? t('not_submitted') : v
+												return jlptData || t('none')
 											})()}
 										</span>
 									</div>
@@ -2141,8 +2140,7 @@ const Top = () => {
 										>
 											{(() => {
 												const jduData = editData.draft.jdu_japanese_certification ? getJLPTData(editData.draft.jdu_japanese_certification).highest : getJLPTData(student.jdu_japanese_certification).highest
-												const v = jduData || ''
-												return v === '未提出' || !v ? t('not_submitted') : v
+												return jduData || t('none')
 											})()}
 										</span>
 									</div>
@@ -2165,8 +2163,7 @@ const Top = () => {
 										>
 											{(() => {
 												const speechData = editData.draft.japanese_speech_contest ? getCertificateData(editData.draft.japanese_speech_contest).highest : getCertificateData(student.japanese_speech_contest).highest
-												const v = speechData || ''
-												return v === '未提出' || !v ? t('not_submitted') : v
+												return speechData || t('none')
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
@@ -2190,8 +2187,7 @@ const Top = () => {
 										>
 											{(() => {
 												const itData = editData.draft.it_contest ? getCertificateData(editData.draft.it_contest).highest : getCertificateData(student.it_contest).highest
-												const v = itData || ''
-												return v === '未提出' || !v ? t('not_submitted') : v
+												return itData || t('none')
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
@@ -2426,9 +2422,9 @@ function HistoryComments({ targetStudentId }) {
 						sx={{
 							p: 1.5,
 							mb: 1,
-							backgroundColor: '#fff',
+							backgroundColor: idx === 0 ? '#fff3cd' : '#fff',
 							borderRadius: '6px',
-							border: '1px solid #eee',
+							border: idx === 0 ? '2px solid #ffc107' : '1px solid #eee',
 						}}
 					>
 						<Typography sx={{ whiteSpace: 'pre-wrap' }}>{comment}</Typography>

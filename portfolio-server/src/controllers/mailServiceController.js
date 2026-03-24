@@ -78,7 +78,7 @@ class MailServiceController {
 	}
 
 	/**
-	 * Condition 1: Find period-inactive students (visibility=true, no recent drafts)
+	 * Condition 1: Find sent-back students who have not resubmitted in period
 	 */
 	static async findInactiveStudents(req, res) {
 		try {
@@ -137,7 +137,7 @@ class MailServiceController {
 	}
 
 	/**
-	 * Send emails to period-inactive students (Condition 1)
+	 * Send emails to sent-back students who have not resubmitted in period
 	 */
 	static async sendInactiveStudentEmails(req, res) {
 		try {

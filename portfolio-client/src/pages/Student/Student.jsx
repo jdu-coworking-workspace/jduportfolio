@@ -10,6 +10,8 @@ import { listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsS
 import { useLanguage } from '../../contexts/LanguageContext'
 import { UserContext } from '../../contexts/UserContext'
 import translations from '../../locales/translations'
+import { formatGraduationMonth } from '../../utils/formatGraduationMonth'
+import { formatPartnerUniversity } from '../../utils/formatPartnerUniversity'
 import axios from '../../utils/axiosUtils'
 
 // localStorage dan viewMode ni o'qish yoki default qiymat
@@ -131,18 +133,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		graduationYearOptions.push(`${year}-09-30`) // Fall graduation (September)
 	}
 
-	// Utility function to format graduation year from date format to Japanese format
-	// Input: "2026-03-30" -> Output: "2026年03月"
-	const formatGraduationYear = dateStr => {
-		if (!dateStr || typeof dateStr !== 'string') return dateStr
-		// Extract year and month from date string (YYYY-MM-DD)
-		const match = dateStr.match(/^(\d{4})-(\d{2})/)
-		if (match) {
-			const [, year, month] = match
-			return `${year}年${month}月`
-		}
-		return dateStr
-	}
+	const formatGraduationYear = dateStr => formatGraduationMonth(dateStr, language)
 
 	const filterFields = [
 		{
@@ -173,7 +164,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		},
 		{
 			key: 'graduation_year',
-			label: '卒業予定年（月）',
+			label: t('expectedGraduationYearMonth'),
 			type: 'checkbox',
 			options: graduationYearOptions,
 			displayFormat: formatGraduationYear, // Format for display: "2026-03-30" -> "2026年03月"
@@ -182,7 +173,8 @@ const Student = ({ OnlyBookmarked = false }) => {
 			key: 'partner_university',
 			label: t('partner_university'),
 			type: 'checkbox',
-			options: [t('tokyo_communication_university'), t('kyoto_tachibana_university'), t('sanno_university'), t('sanno_junior_college'), t('niigata_sangyo_university'), t('otemae_university'), t('okayama_university_of_science'), '未所属', 'なし'],
+			options: ['東京通信大学', '京都橘大学', '産業能率大学', '自由が丘産能短期大学', '新潟産業大学', '大手前大学', '岡山理科大学', '未所属', 'なし'],
+			displayFormat: option => formatPartnerUniversity(option, t),
 		},
 		{
 			key: 'other_information',
@@ -302,6 +294,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 		filterOptions: {
 			jlpt: ['N1', 'N2', 'N3', 'N4', 'N5', '未提出'],
 			partner_university: ['東京通信大学', '産業能率大学', '新潟産業大学', '京都橘大学', '大手前大学', '自由が丘産能短期大学', '岡山理科大学', '未所属', 'なし'],
+			partner_university_format: option => formatPartnerUniversity(option, t),
 			graduation_year: graduationYearOptions,
 			graduation_year_format: formatGraduationYear,
 		},

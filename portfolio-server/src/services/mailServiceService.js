@@ -22,9 +22,7 @@ class MailServiceService {
 	}
 
 	/**
-	 * Update a mail service setting.
-	 * For periodic_email (更新催促定期メール): after saving, snapshots current public students
-	 * so that when the cron runs, only those recipients (at save time) receive the email.
+	 * Update a mail service setting
 	 */
 	static async updateSetting(key, data, user) {
 		const setting = await MailServiceSetting.findOne({ where: { key } })
@@ -37,22 +35,7 @@ class MailServiceService {
 		}
 
 		await setting.update(updateData)
-
-		// Snapshot recipients for 更新催促定期メール: only these IDs get the email when cron runs
-		if (key === 'periodic_email') {
-			const publicStudents = await Student.findAll({
-				attributes: ['id'],
-				where: {
-					visibility: true,
-					active: true,
-					email: { [Op.ne]: null },
-				},
-			})
-			const recipientIds = publicStudents.map(s => s.id)
-			await setting.update({ recipient_snapshot: JSON.stringify(recipientIds) })
-		}
-
-		return setting.reload()
+		return setting
 	}
 
 	/**
@@ -102,13 +85,13 @@ class MailServiceService {
 	}
 
 	/**
-	 * Condition 1: Find students whose profile is NOT public (visibility=false)
-	 * and have no draft activity within the given period.
+	 * Condition 1: Students who were sent back for resubmission
+	 * and have not resubmitted within the given period.
 	 *
 	 * Conditions:
 	 * 1. active = true
-	 * 2. visibility = false (profile is not public)
-	 * 3. Has drafts, but none updated within the period
+	 * 2. latest "resubmission_required" is older than periodDays
+	 * 3. no later "submitted/approved" draft after that send-back event
 	 */
 	static async findInactiveStudents(periodDays) {
 		const thresholdDate = new Date()
@@ -117,22 +100,24 @@ class MailServiceService {
 		const students = await sequelize.query(
 			`
 			SELECT s.id, s.email, s.student_id, s.first_name, s.last_name,
-			       (
-			         SELECT MAX(d."updated_at")
-			         FROM "Drafts" d
-			         WHERE d.student_id = s.student_id
-			       ) AS last_activity
+			       r.withdrawn_at AS last_activity
 			FROM "Students" s
+			JOIN LATERAL (
+			  SELECT d."updated_at" AS withdrawn_at
+			  FROM "Drafts" d
+			  WHERE d.student_id = s.student_id
+			    AND d.status = 'resubmission_required'
+			  ORDER BY d."updated_at" DESC
+			  LIMIT 1
+			) r ON true
 			WHERE s.active = true
-			  AND s.visibility = false
-			  AND EXISTS (
-			    SELECT 1 FROM "Drafts" d
-			    WHERE d.student_id = s.student_id
-			  )
+			  AND s.email IS NOT NULL
+			  AND r.withdrawn_at <= :thresholdDate
 			  AND NOT EXISTS (
-			    SELECT 1 FROM "Drafts" d
-			    WHERE d.student_id = s.student_id
-			      AND d."updated_at" >= :thresholdDate
+			    SELECT 1 FROM "Drafts" d2
+			    WHERE d2.student_id = s.student_id
+			      AND d2."updated_at" > r.withdrawn_at
+			      AND d2.status IN ('submitted', 'approved')
 			  )
 			ORDER BY last_activity ASC
 			`,
@@ -238,10 +223,7 @@ class MailServiceService {
 	}
 
 	/**
-	 * Send 更新催促定期メール (update-reminder periodic email).
-	 * Only sends to the students who were public at the time the message was last saved
-	 * (recipient_snapshot). Does NOT send to everyone who is public at send time.
-	 * Cron-triggered (Tab 1).
+	 * Send periodic emails to all public students (Tab 1 - cron triggered)
 	 */
 	static async sendPeriodicEmails() {
 		const setting = await MailServiceSetting.findOne({
@@ -253,32 +235,18 @@ class MailServiceService {
 			return null
 		}
 
-		let studentIds = []
-		try {
-			if (setting.recipient_snapshot) {
-				studentIds = JSON.parse(setting.recipient_snapshot)
-			}
-		} catch (e) {
-			console.warn('📧 Invalid recipient_snapshot JSON. Skipping periodic email.')
-			return { total: 0, successful: 0, failed: 0 }
-		}
-
-		if (!Array.isArray(studentIds) || studentIds.length === 0) {
-			console.log('📧 No recipient snapshot (save the periodic email settings first). Skipping.')
-			return { total: 0, successful: 0, failed: 0 }
-		}
-
-		// Load only the snapshot recipients (still require valid email for sending)
+		// Find all public students (visibility=true, active=true)
 		const students = await Student.findAll({
 			attributes: ['id', 'email', 'student_id', 'first_name', 'last_name'],
 			where: {
-				id: { [Op.in]: studentIds },
+				visibility: true,
+				active: true,
 				email: { [Op.ne]: null },
 			},
 		})
 
 		if (students.length === 0) {
-			console.log('📧 No snapshot recipients with email found. Skipping periodic email.')
+			console.log('📧 No public students found. Skipping periodic email.')
 			return { total: 0, successful: 0, failed: 0 }
 		}
 
@@ -289,7 +257,7 @@ class MailServiceService {
 			html: MailServiceService.buildEmailHtml(setting.message_body || ''),
 		}))
 
-		console.log(`📧 Sending 更新催促定期メール to ${emailTasks.length} snapshot recipients...`)
+		console.log(`📧 Sending periodic email to ${emailTasks.length} public students...`)
 		const report = await sendBulkEmails(emailTasks)
 
 		console.log('--- Periodic Email Report ---')
