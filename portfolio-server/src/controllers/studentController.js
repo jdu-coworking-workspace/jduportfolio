@@ -5,7 +5,7 @@ const QAService = require('../services/qaService')
 const generatePassword = require('generate-password')
 const { sendStudentWelcomeEmail, formatStudentProfilePublicEmail } = require('../utils/emailToStudent')
 const { sendEmail } = require('../utils/emailService')
-const { Student } = require('../models')
+const { Student, ShareableLink } = require('../models')
 
 class StudentController {
 	// Get student IDs for autocomplete
@@ -176,7 +176,6 @@ class StudentController {
 					return res.status(400).json({ error: 'Invalid filter format' })
 				}
 			}
-			// console.log('Parsed filter:', filter);
 
 			const recruiterId = req.query.recruiterId
 			const onlyBookmarked = req.query.onlyBookmarked
@@ -489,6 +488,71 @@ class StudentController {
 			} else {
 				next(error)
 			}
+		}
+	}
+
+	static async generateShareableLink(req, res, next) {
+		try {
+			const studentId = req.params.id
+
+			if (!ShareableLink) {
+				return res.status(500).json({ error: 'ShareableLink model is not loaded' })
+			}
+
+			const student = await StudentService.getStudentByStudentId(studentId)
+			if (!student) {
+				return res.status(404).json({ error: 'Student not found' })
+			}
+
+			await ShareableLink.destroy({
+				where: { studentId: studentId },
+			})
+
+			const expiresAt = new Date()
+			expiresAt.setHours(expiresAt.getHours() + 24)
+
+			const newLink = await ShareableLink.create({
+				studentId: studentId,
+				expiresAt: expiresAt,
+			})
+
+			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+			const shareableUrl = `${frontendUrl}/student/share/${newLink.id}`
+
+			res.status(201).json({
+				success: true,
+				url: shareableUrl,
+				expiresAt: expiresAt,
+			})
+		} catch (error) {
+			next(error)
+		}
+	}
+
+	static async getProfileByPublicLink(req, res, next) {
+		try {
+			const { uuid } = req.params
+			const linkData = await ShareableLink.findOne({ where: { id: uuid } })
+
+			if (!linkData) {
+				return res.status(404).json({ message: "Link yaroqsiz yoki o'chirilgan" })
+			}
+
+			if (new Date() > linkData.expiresAt) {
+				await linkData.destroy()
+				return res.status(410).json({ message: 'Link muddati tugagan' })
+			}
+			const student = await StudentService.getStudentByStudentId(
+				linkData.studentId,
+				false,
+				null,
+				'Guest',
+				true // bypassVisibility = true
+			)
+
+			res.status(200).json(student)
+		} catch (error) {
+			next(error)
 		}
 	}
 }

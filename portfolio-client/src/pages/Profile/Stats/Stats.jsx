@@ -23,14 +23,15 @@ const Stats = () => {
 		}
 	}
 	let id
-	const { studentId } = useParams()
+	const { studentId, uuid } = useParams()
+	const isPublic = !!uuid // If uuid exists, it's a public profile
 	const location = useLocation()
 	const { userId } = location.state || {}
 
 	if (userId != 0 && userId) {
 		id = userId
 	} else {
-		id = studentId
+		id = studentId || uuid
 	}
 
 	const [student, setStudent] = useState(null)

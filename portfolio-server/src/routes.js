@@ -76,6 +76,8 @@ const configureRoutes = app => {
 	// Public routes
 	app.get('/api/students/:studentId/credit-details', require('./controllers/studentController').getStudentWithCreditDetails)
 
+	app.get('/api/students/public/share/:uuid', require('./controllers/studentController').getProfileByPublicLink)
+
 	// Protected routes
 	app.use('/api/admin', adminRoute)
 	app.use('/api/recruiters', authMiddleware, recruiterRoute)
