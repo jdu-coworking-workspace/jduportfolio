@@ -14,12 +14,16 @@ import QAAccordion from '../../components/QAAccordion/QAAccordion'
 import axios from '../../utils/axiosUtils'
 import { useAlert } from '../../contexts/AlertContext'
 import { UserContext } from '../../contexts/UserContext'
+import { useLanguage } from '../../contexts/LanguageContext'
+import translations from '../../locales/translations'
 
 const FAQ = () => {
 	const [editData, setEditData] = useState([])
 	const [settings, setSettings] = useState({})
 	const [editMode, setEditMode] = useState(false)
 	const { role } = useContext(UserContext)
+	const { language } = useLanguage()
+	const t = key => translations[language]?.[key] ?? key
 	const [allExpanded, setAllExpanded] = useState(true) // default open on load
 
 	const showAlert = useAlert()
@@ -95,7 +99,7 @@ const FAQ = () => {
 
 			if (response.status === 200) {
 				setEditMode(false)
-				showAlert('Changes saved successfully!', 'success')
+				showAlert(t('changes_saved'), 'success')
 			}
 		} catch (error) {
 			console.error('Error updating FAQ data:', error)
@@ -124,7 +128,7 @@ const FAQ = () => {
 			{/* Header Section */}
 			<Box className={FAQstyle.header}>
 				<Typography variant='h4' className={FAQstyle.title}>
-					FAQ
+					{t('faq_heading')}
 				</Typography>
 				<Box className={FAQstyle.buttonGroup}>
 					{role == 'Admin' && (
@@ -132,18 +136,18 @@ const FAQ = () => {
 							{editMode ? (
 								<>
 									<Button onClick={handleSave} variant='contained' size='small'>
-										保存
+										{t('save')}
 									</Button>
 									<Button onClick={handleCancel} variant='outlined' color='error' size='small'>
-										キャンセル
+										{t('cancel')}
 									</Button>
 									<Button onClick={handleAdd} variant='outlined' color='primary' size='small'>
-										追加
+										{t('add')}
 									</Button>
 								</>
 							) : (
 								<Button onClick={toggleEditMode} variant='contained' color='primary' size='small'>
-									QAを編集
+									{t('qa_edit')}
 								</Button>
 							)}
 						</>
@@ -168,7 +172,7 @@ const FAQ = () => {
 				{!editMode && (
 					<Box className={FAQstyle.faqList}>
 						{Object.entries(editData).map(([key, { question, answer }], index) => (
-							<QAAccordion key={key} question={question} answer={answer ? answer : '回答なし'} expanded={allExpanded} showExpandIcon={index === 0} onToggle={index === 0 ? () => setAllExpanded(prev => !prev) : undefined} />
+							<QAAccordion key={key} question={question} answer={answer ? answer : t('faq_no_answer')} expanded={allExpanded} showExpandIcon={index === 0} onToggle={index === 0 ? () => setAllExpanded(prev => !prev) : undefined} />
 						))}
 					</Box>
 				)}

@@ -154,6 +154,11 @@ const Top = () => {
 	}
 
 	// Helper function to safely parse JLPT and JDU certification (JSON or plain) with null handling
+	const normalizeNotSubmitted = value => {
+		if (value === '未提出') return t('not_submitted')
+		return value
+	}
+
 	const getJLPTData = jlptString => {
 		try {
 			// Treat empty, 'null', or 'undefined' as not submitted
@@ -2117,7 +2122,7 @@ const Top = () => {
 										>
 											{(() => {
 												const jlptData = editData.draft.jlpt ? getJLPTData(editData.draft.jlpt).highest : getJLPTData(student.jlpt).highest
-												return jlptData || t('none')
+												return normalizeNotSubmitted(jlptData) || t('none')
 											})()}
 										</span>
 									</div>
@@ -2140,7 +2145,7 @@ const Top = () => {
 										>
 											{(() => {
 												const jduData = editData.draft.jdu_japanese_certification ? getJLPTData(editData.draft.jdu_japanese_certification).highest : getJLPTData(student.jdu_japanese_certification).highest
-												return jduData || t('none')
+												return normalizeNotSubmitted(jduData) || t('none')
 											})()}
 										</span>
 									</div>
@@ -2163,7 +2168,7 @@ const Top = () => {
 										>
 											{(() => {
 												const speechData = editData.draft.japanese_speech_contest ? getCertificateData(editData.draft.japanese_speech_contest).highest : getCertificateData(student.japanese_speech_contest).highest
-												return speechData || t('none')
+												return normalizeNotSubmitted(speechData) || t('none')
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>
@@ -2187,7 +2192,7 @@ const Top = () => {
 										>
 											{(() => {
 												const itData = editData.draft.it_contest ? getCertificateData(editData.draft.it_contest).highest : getCertificateData(student.it_contest).highest
-												return itData || t('none')
+												return normalizeNotSubmitted(itData) || t('none')
 											})()}
 										</span>
 										<span style={{ marginLeft: 8 }}>{t('rank')}</span>

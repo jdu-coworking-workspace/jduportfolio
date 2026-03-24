@@ -6,9 +6,43 @@ const { Op } = require('sequelize')
 
 class MailServiceService {
 	/**
+	 * Default rows (same as seeders/20250218120000-seed-mail-service-settings.js).
+	 * Production often runs migrations without seeds, leaving an empty table; the UI then hides the periodic tab content.
+	 */
+	static async ensureDefaultSettings() {
+		const rows = [
+			{
+				key: 'periodic_email',
+				is_active: false,
+				period_days: 30,
+				day_of_week: null,
+				message_subject: 'ポートフォリオの更新について',
+				message_body: '<p>学生の皆さん、こんにちは。</p><p>最近のニュースや活動があれば、ぜひポートフォリオを更新してください。</p><p>よろしくお願いします。</p>',
+			},
+			{
+				key: 'inactive_student_email',
+				is_active: false,
+				period_days: 14,
+				day_of_week: 1,
+				message_subject: 'ポートフォリオの更新をお願いします',
+				message_body: '<p>学生の皆さん、こんにちは。</p><p>ポートフォリオが長い間更新されていません。最新の情報を追加して、採用担当者にアピールしましょう。</p><p>よろしくお願いします。</p>',
+			},
+		]
+
+		for (const row of rows) {
+			const { key, ...defaults } = row
+			await MailServiceSetting.findOrCreate({
+				where: { key },
+				defaults,
+			})
+		}
+	}
+
+	/**
 	 * Get a mail service setting by key
 	 */
 	static async getSetting(key) {
+		await MailServiceService.ensureDefaultSettings()
 		const setting = await MailServiceSetting.findOne({ where: { key } })
 		if (!setting) throw new Error(`Mail service setting '${key}' not found`)
 		return setting
@@ -18,6 +52,7 @@ class MailServiceService {
 	 * Get all mail service settings
 	 */
 	static async getAllSettings() {
+		await MailServiceService.ensureDefaultSettings()
 		return await MailServiceSetting.findAll()
 	}
 
