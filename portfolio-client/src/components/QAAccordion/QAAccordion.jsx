@@ -61,10 +61,10 @@ const QAAccordion = ({
 					},
 					...(isChanged
 						? {
-							backgroundColor: '#fff3cd',
-							border: '2px solid #ffc107',
-							borderRadius: '8px !important',
-						}
+								backgroundColor: '#fff3cd',
+								border: '2px solid #ffc107',
+								borderRadius: '8px !important',
+							}
 						: {}),
 				}}
 			>
