@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.TEXT,
 				allowNull: true,
 			},
+			last_sent_at: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
 			updated_by_id: {
 				type: DataTypes.INTEGER,
 				allowNull: true,

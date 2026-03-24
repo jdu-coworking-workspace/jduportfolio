@@ -36,7 +36,6 @@ class MailServiceService {
 
 		await setting.update(updateData)
 		return setting
-
 	}
 
 	/**
@@ -86,13 +85,13 @@ class MailServiceService {
 	}
 
 	/**
-	 * Condition 1: Find students whose profile is NOT public (visibility=false)
-	 * and have no draft activity within the given period.
+	 * Condition 1: Students who were sent back for resubmission
+	 * and have not resubmitted within the given period.
 	 *
 	 * Conditions:
 	 * 1. active = true
-	 * 2. visibility = false (profile is not public)
-	 * 3. Has drafts, but none updated within the period
+	 * 2. latest "resubmission_required" is older than periodDays
+	 * 3. no later "submitted/approved" draft after that send-back event
 	 */
 	static async findInactiveStudents(periodDays) {
 		const thresholdDate = new Date()
@@ -101,22 +100,24 @@ class MailServiceService {
 		const students = await sequelize.query(
 			`
 			SELECT s.id, s.email, s.student_id, s.first_name, s.last_name,
-			       (
-			         SELECT MAX(d."updated_at")
-			         FROM "Drafts" d
-			         WHERE d.student_id = s.student_id
-			       ) AS last_activity
+			       r.withdrawn_at AS last_activity
 			FROM "Students" s
+			JOIN LATERAL (
+			  SELECT d."updated_at" AS withdrawn_at
+			  FROM "Drafts" d
+			  WHERE d.student_id = s.student_id
+			    AND d.status = 'resubmission_required'
+			  ORDER BY d."updated_at" DESC
+			  LIMIT 1
+			) r ON true
 			WHERE s.active = true
-			  AND s.visibility = false
-			  AND EXISTS (
-			    SELECT 1 FROM "Drafts" d
-			    WHERE d.student_id = s.student_id
-			  )
+			  AND s.email IS NOT NULL
+			  AND r.withdrawn_at <= :thresholdDate
 			  AND NOT EXISTS (
-			    SELECT 1 FROM "Drafts" d
-			    WHERE d.student_id = s.student_id
-			      AND d."updated_at" >= :thresholdDate
+			    SELECT 1 FROM "Drafts" d2
+			    WHERE d2.student_id = s.student_id
+			      AND d2."updated_at" > r.withdrawn_at
+			      AND d2.status IN ('submitted', 'approved')
 			  )
 			ORDER BY last_activity ASC
 			`,

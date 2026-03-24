@@ -145,18 +145,21 @@ class CronService {
 				return
 			}
 
-			// Check if enough days have passed since last update (used as last send marker)
-			const daysSinceLastUpdate = Math.floor((Date.now() - new Date(setting.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
-			// Only send if the period has elapsed (or first run)
-			if (daysSinceLastUpdate < setting.period_days && setting.updated_by_id !== null) {
-				console.log(`📧 Only ${daysSinceLastUpdate} days since last send. Period is ${setting.period_days} days. Skipping.`)
-				return
+			// Send every configured interval based on actual last send time.
+			if (setting.last_sent_at) {
+				const daysSinceLastSend = Math.floor((Date.now() - new Date(setting.last_sent_at).getTime()) / (1000 * 60 * 60 * 24))
+				if (daysSinceLastSend < setting.period_days) {
+					console.log(`📧 Only ${daysSinceLastSend} days since last send. Period is ${setting.period_days} days. Skipping.`)
+					return
+				}
 			}
 
-			await MailServiceService.sendPeriodicEmails()
+			const report = await MailServiceService.sendPeriodicEmails()
 
-			// Update the timestamp to track when we last sent
-			await setting.update({ updatedAt: new Date() })
+			// Update the timestamp only when this job runs successfully.
+			if (report !== null) {
+				await setting.update({ last_sent_at: new Date() })
+			}
 		} catch (error) {
 			console.error('❌ Error in periodic email job:', error)
 		}
