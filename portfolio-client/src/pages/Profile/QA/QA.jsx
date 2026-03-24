@@ -1092,10 +1092,10 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 								}}
 							>
 								<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-									非公開
+									{t('invisible')}
 								</Button>
 								<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-									公開
+									{t('visible')}
 								</Button>
 							</Box>
 						)}
@@ -1141,10 +1141,10 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 								}}
 							>
 								<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-									非公開
+									{t('invisible')}
 								</Button>
 								<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-									公開
+									{t('visible')}
 								</Button>
 							</Box>
 						)}
@@ -1281,10 +1281,10 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							}}
 						>
 							<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-								非公開
+								{t('invisible')}
 							</Button>
 							<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-								公開
+								{t('visible')}
 							</Button>
 						</Box>
 					)}
@@ -1330,10 +1330,10 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 							}}
 						>
 							<Button onClick={() => setProfileVisible(false)} variant='contained' color='primary' size='small'>
-								非公開
+								{t('invisible')}
 							</Button>
 							<Button onClick={() => setProfileVisible(true)} variant='contained' color='primary' size='small'>
-								公開
+								{t('visible')}
 							</Button>
 						</Box>
 					)}

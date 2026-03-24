@@ -3,8 +3,12 @@ import { TextField as MuiTextField, IconButton, Box, Switch, Chip } from '@mui/m
 import DeleteIcon from '@mui/icons-material/Delete'
 import PropTypes from 'prop-types'
 import styles from './QATextField.module.css'
+import { useLanguage } from '../../contexts/LanguageContext'
+import translations from '../../locales/translations'
 
-const QATextField = ({ category, question, keyName, editData, updateEditData, DeleteQA, aEdit = false, qEdit = false }) => {
+const QATextField = ({ category, question: _question, keyName, editData, updateEditData, DeleteQA, aEdit = false, qEdit = false }) => {
+	const { language } = useLanguage()
+	const t = key => translations[language]?.[key] ?? key
 	const [localEditData, setLocalEditData] = useState('')
 	const [localEditQuestion, setLocalQuestion] = useState('')
 	const [localRequired, setLocalRequired] = useState(false)
@@ -51,11 +55,11 @@ const QATextField = ({ category, question, keyName, editData, updateEditData, De
 				{aEdit ? (
 					<Box display={'flex'} alignItems={'center'} gap={1}>
 						<MuiTextField value={localEditQuestion} onChange={e => handleChange(e, 'question')} variant='outlined' fullWidth multiline />
-						<Chip size='small' color={localRequired ? 'warning' : 'default'} label={localRequired ? '必須' : '任意'} />
+						<Chip size='small' color={localRequired ? 'warning' : 'default'} label={localRequired ? t('filter_required') : t('filter_optional')} />
 						<Switch checked={localRequired} onChange={e => handleChange({ target: { value: e.target.checked } }, 'required')} inputProps={{ 'aria-label': 'required-toggle' }} />
 						{aEdit && (
 							<IconButton
-								aria-label='削除'
+								aria-label={t('delete_aria')}
 								onClick={() => DeleteQA(keyName)}
 								sx={{
 									color: 'red',
@@ -68,7 +72,7 @@ const QATextField = ({ category, question, keyName, editData, updateEditData, De
 				) : (
 					<div>
 						{localEditQuestion}
-						{localRequired && <Chip size='small' color='warning' label='必須' sx={{ ml: 1, mb: '2px' }} />}
+						{localRequired && <Chip size='small' color='warning' label={t('filter_required')} sx={{ ml: 1, mb: '2px' }} />}
 					</div>
 				)}
 			</div>

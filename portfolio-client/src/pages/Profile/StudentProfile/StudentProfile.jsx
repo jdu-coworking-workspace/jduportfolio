@@ -10,6 +10,7 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 import { formatGraduationMonth } from '../../../utils/formatGraduationMonth'
+import { formatPartnerUniversity } from '../../../utils/formatPartnerUniversity'
 import axios from '../../../utils/axiosUtils'
 import styles from './StudentProfile.module.css'
 import { checkprofileBackPageAtom, checkprofileSortByAtom, checkprofileSortOrderAtom, listReturnPathAtom, studentsBackPageAtom, studentsSortByAtom, studentsSortOrderAtom, tableScrollPositionAtom } from '../../../atoms/store'
@@ -206,6 +207,7 @@ const StudentProfile = ({ userId = 0 }) => {
 	}
 
 	const formattedGraduationMonth = student?.expected_graduation_year ? formatGraduationMonth(student.expected_graduation_year, language) : t('not_set')
+	const formattedPartnerUniversity = student?.partner_university ? formatPartnerUniversity(student.partner_university, t) : t('not_set')
 
 	if (loading) {
 		return (
@@ -344,7 +346,7 @@ const StudentProfile = ({ userId = 0 }) => {
 								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 									<div style={{ display: 'flex' }}>
 										<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
-										<div>{student.partner_university && student.faculty && student.department ? [student.partner_university, student.faculty, student.department].filter(Boolean).join(' ') : student.partner_university || t('not_set')}</div>
+										<div>{student.partner_university && student.faculty && student.department ? [formattedPartnerUniversity, student.faculty, student.department].filter(Boolean).join(' ') : formattedPartnerUniversity}</div>
 									</div>
 								</div>
 							</div>
@@ -352,7 +354,7 @@ const StudentProfile = ({ userId = 0 }) => {
 							{/* partner university info - mobile */}
 							<div className={`${styles.mobileUniversityGroup} ${styles.mobileOnly}`}>
 								<div className={styles.uniLabel}>
-									{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{student.partner_university || t('not_set')}</div>
+									{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{formattedPartnerUniversity}</div>
 								</div>
 								{(student.faculty || student.department) && (
 									<>
