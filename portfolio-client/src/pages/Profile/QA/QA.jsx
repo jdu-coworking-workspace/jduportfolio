@@ -64,11 +64,11 @@ import { UserContext } from '../../../contexts/UserContext'
 import translations from '../../../locales/translations'
 
 const qaQuestions = [
-	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', iconColor: '#3275f2' },
-	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', iconColor: '#a551f5' },
-	{ icon: PermIdentityIcon, labelKey: 'personality', iconColor: '#0dae7a' },
-	{ icon: WorkOutlineOutlinedIcon, labelKey: 'work_experience', iconColor: '#5b59ec' },
-	{ icon: TrendingUp, labelKey: 'career_goals', iconColor: '#e63c8c' },
+	{ icon: SchoolOutlinedIcon, labelKey: 'student_grades', categoryKey: '学生成績', iconColor: '#3275f2' },
+	{ icon: AutoStoriesOutlinedIcon, labelKey: 'specialized_knowledge', categoryKey: '専門知識', iconColor: '#a551f5' },
+	{ icon: PermIdentityIcon, labelKey: 'personality', categoryKey: '個性', iconColor: '#0dae7a' },
+	{ icon: WorkOutlineOutlinedIcon, labelKey: 'work_experience', categoryKey: '実務経験', iconColor: '#5b59ec' },
+	{ icon: TrendingUp, labelKey: 'career_goals', categoryKey: 'キャリア目標', iconColor: '#e63c8c' },
 ]
 
 const hasAnswerData = qaPayload => {
@@ -142,7 +142,17 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
 	const role = contextRole || Cookies.get('userType') || sessionStorage.getItem('role') || null
-	const labels = qaQuestions.map(q => q.labelKey)
+	const resolveCategoryKey = (index, source) => {
+		const q = qaQuestions[index]
+		if (!q) return null
+		if (source && typeof source === 'object') {
+			if (source[q.categoryKey]) return q.categoryKey
+			if (source[q.labelKey]) return q.labelKey
+		}
+		// fallback to legacy Japanese key to stay compatible with existing DB data
+		return q.categoryKey
+	}
+
 	let id
 	const { studentId } = useParams()
 	const location = useLocation()
@@ -209,6 +219,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	const [comment, setComment] = useState({ comments: '' })
 	const [reviewMode, setReviewMode] = useState(!currentDraft || Object.keys(currentDraft).length === 0)
 	const [passedDraft, setPassedDraft] = useState(currentDraft)
+	const categoryKeys = qaQuestions.map((_, idx) => resolveCategoryKey(idx, editData || studentQA))
 	const [warningModal, setWarningModal] = useState({
 		open: false,
 		message: '',
@@ -628,7 +639,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			// Start from q1 if there are no existing questions
 			await setEditData(prevEditData => {
 				const updatedEditData = { ...prevEditData }
-				const category = labels[subTabIndex]
+				const category = resolveCategoryKey(subTabIndex, editData || studentQA)
 				if (!updatedEditData[category]) {
 					updatedEditData[category] = {}
 				}
@@ -646,7 +657,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 			await setEditData(prevEditData => {
 				const updatedEditData = { ...prevEditData }
-				const category = labels[subTabIndex]
+				const category = resolveCategoryKey(subTabIndex, editData || studentQA)
 				if (updatedEditData[category]) {
 					updatedEditData[category] = {
 						...updatedEditData[category],
@@ -671,7 +682,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 		}
 
 		setEditData(prevEditData => {
-			const category = labels[subTabIndex]
+			const category = resolveCategoryKey(subTabIndex, editData || studentQA)
 			const categoryData = prevEditData[category] || {}
 			const entries = Object.entries(categoryData)
 
@@ -727,7 +738,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			// Optimistic update: immediately update local state
 			setEditData(prevEditData => {
 				const updatedEditData = { ...prevEditData }
-				const category = labels[subTabIndex]
+				const category = resolveCategoryKey(subTabIndex, editData || studentQA)
 
 				if (updatedEditData[category] && updatedEditData[category][indexToDelete]) {
 					delete updatedEditData[category][indexToDelete]
@@ -739,7 +750,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			// If called from Top page, update parent immediately
 			if (isFromTopPage && handleQAUpdate) {
 				const updatedData = { ...editData }
-				const category = labels[subTabIndex]
+				const category = resolveCategoryKey(subTabIndex, editData || studentQA)
 				if (updatedData[category] && updatedData[category][indexToDelete]) {
 					delete updatedData[category][indexToDelete]
 				}
@@ -825,14 +836,14 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	}
 
 	const getCategoryData = index => {
-		const category = labels[index]
+		const category = resolveCategoryKey(index, editData || studentQA)
 		return (editData && editData[category]) || {}
 	}
 
 	// --- Required (必須) validation helpers ---
 	const collectMissingRequiredAnswers = () => {
 		const missing = []
-		labels.forEach(category => {
+		categoryKeys.forEach(category => {
 			const items = (editData && editData[category]) || {}
 			for (const key in items) {
 				const { question, answer, required } = items[key] || {}
@@ -937,7 +948,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 				// Jump to the first category with missing answer to help the student
 				const first = missing[0]
-				const idx = labels.findIndex(l => l === first.category)
+				const idx = categoryKeys.findIndex(l => l === first.category)
 				if (idx >= 0) setSubTabIndex(idx)
 				// Ensure student can edit to fill answers
 				if (!editMode) setEditMode(true)
@@ -992,7 +1003,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			const missing = collectMissingRequiredAnswers()
 			if (missing.length > 0) {
 				const first = missing[0]
-				const idx = labels.findIndex(l => l === first.category)
+				const idx = categoryKeys.findIndex(l => l === first.category)
 				if (idx >= 0) setSubTabIndex(idx)
 				if (!editMode) setEditMode(true)
 				setWarningModal({
@@ -1346,9 +1357,9 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			<div className={styles.categoriesRow}>
 				{qaQuestions.map((item, ind) => {
 					// Check if this category has any changed answers (from backend changed_fields)
-					const categoryLabel = labels[ind]
+					const categoryLabel = resolveCategoryKey(ind, editData || studentQA)
 					const changedFields = currentDraft?.changed_fields || []
-					const hasCategoryChange = role === 'Staff' && isFromTopPage && changedFields.some(f => f.startsWith(`qa:${categoryLabel}:`))
+					const hasCategoryChange = role === 'Staff' && isFromTopPage && changedFields.some(f => f.startsWith(`qa:${categoryLabel}:`) || f.startsWith(`qa:${item.labelKey}:`))
 
 					return (
 						<div
@@ -1403,7 +1414,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 					<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
 						<SortableContext items={Object.keys(getCategoryData(subTabIndex))} strategy={verticalListSortingStrategy}>
 							{Object.entries(getCategoryData(subTabIndex)).map(([key, { question }]) => (
-								<SortableQATextField key={key} id={key} data={studentQA} editData={editData} category={labels[subTabIndex]} question={question} keyName={key} aEdit={role == 'Admin'} qEdit={role == 'Student' || role == 'Staff'} updateEditData={handleUpdate} DeleteQA={showDeleteConfirmation} isReorderMode={isReorderMode && role === 'Admin'} />
+								<SortableQATextField key={key} id={key} data={studentQA} editData={editData} category={resolveCategoryKey(subTabIndex, editData || studentQA)} question={question} keyName={key} aEdit={role == 'Admin'} qEdit={role == 'Student' || role == 'Staff'} updateEditData={handleUpdate} DeleteQA={showDeleteConfirmation} isReorderMode={isReorderMode && role === 'Admin'} />
 							))}
 						</SortableContext>
 					</DndContext>
@@ -1435,7 +1446,8 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 							// Check if this specific answer is changed (from backend changed_fields)
 							const changedFields = currentDraft?.changed_fields || []
-							const isAnswerChanged = role === 'Staff' && isFromTopPage && changedFields.includes(`qa:${labels[subTabIndex]}:${key}`)
+							const currentCategory = resolveCategoryKey(subTabIndex, editData || studentQA)
+							const isAnswerChanged = role === 'Staff' && isFromTopPage && (changedFields.includes(`qa:${currentCategory}:${key}`) || changedFields.includes(`qa:${qaQuestions[subTabIndex]?.labelKey}:${key}`))
 
 							return <QAAccordion key={key} question={questionText} answer={answer ? answer : ''} notExpand={disableExpand} expanded={isReviewer && !disableExpand ? allExpanded : undefined} showExpandIcon={isReviewer ? isIconRow : !disableExpand} allowToggleWhenNotExpand={isReviewer && isIconRow && disableExpand} onToggle={isReviewer && isIconRow ? () => setAllExpanded(prev => !prev) : undefined} isChanged={isAnswerChanged} />
 						})
