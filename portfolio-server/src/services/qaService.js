@@ -1,10 +1,38 @@
-const { QA } = require('../models')
+const { Op } = require('sequelize')
+const { QA, Student } = require('../models')
 
 class QAService {
+	static async resolveStudentPrimaryId(studentIdentifier) {
+		if (studentIdentifier === null || studentIdentifier === undefined || studentIdentifier === '') {
+			return null
+		}
+
+		const asString = String(studentIdentifier).trim()
+		const asNumber = Number(asString)
+		const hasNumericValue = Number.isFinite(asNumber)
+
+		const student = await Student.findOne({
+			attributes: ['id'],
+			where: {
+				[Op.or]: [{ student_id: asString }, ...(hasNumericValue ? [{ id: asNumber }] : [])],
+			},
+		})
+
+		return student?.id || null
+	}
+
 	// Service method to create a new QA entry
 	static async createQA(qaData) {
 		try {
-			const newQA = await QA.create(qaData)
+			const resolvedStudentId = await QAService.resolveStudentPrimaryId(qaData.studentId)
+			if (!resolvedStudentId) {
+				throw new Error('Student not found for QA create')
+			}
+
+			const newQA = await QA.create({
+				...qaData,
+				studentId: resolvedStudentId,
+			})
 			return newQA
 		} catch (error) {
 			throw error
@@ -74,8 +102,13 @@ class QAService {
 	// Service method to find QA entries by studentId
 	static async findQAByStudentId(studentId) {
 		try {
+			const resolvedStudentId = await QAService.resolveStudentPrimaryId(studentId)
+			if (!resolvedStudentId) {
+				return []
+			}
+
 			const qaList = await QA.findAll({
-				where: { studentId },
+				where: { studentId: resolvedStudentId },
 			})
 			return qaList
 		} catch (error) {
