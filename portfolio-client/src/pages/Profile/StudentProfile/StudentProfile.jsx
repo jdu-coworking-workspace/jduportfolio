@@ -309,7 +309,7 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 					</Box>
 				</Box>
 			</Box>
-			<Outlet />
+			<Outlet context={{ student, isPublic }} />
 		</Box>
 	)
 }

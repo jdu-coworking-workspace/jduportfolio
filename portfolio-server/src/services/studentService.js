@@ -518,7 +518,7 @@ class StudentService {
 				const draftData = draftToMerge.profile_data
 
 				// Merge draft fields into the main student object
-				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
+				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito', 'qa']
 
 				fieldsToMerge.forEach(field => {
 					if (draftData[field] !== undefined) {
@@ -607,7 +607,7 @@ class StudentService {
 				const draftData = draftToMerge.profile_data
 
 				// Merge draft fields into the main student object
-				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
+				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito', 'qa']
 
 				fieldsToMerge.forEach(field => {
 					if (draftData[field] !== undefined) {

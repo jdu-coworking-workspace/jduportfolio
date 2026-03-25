@@ -18,7 +18,8 @@ TODO: Student Resubmission and Staff Workflow Fixes
 import Cookies from 'js-cookie'
 import { useContext, useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
-import { useLocation, useParams } from 'react-router-dom'
+import PropTypes from 'prop-types'
+import { useLocation, useOutletContext, useParams } from 'react-router-dom'
 import ProfileConfirmDialog from '../../../components/Dialogs/ProfileConfirmDialog'
 import QAAccordion from '../../../components/QAAccordion/QAAccordion'
 import QATextField from '../../../components/QATextField/QATextField'
@@ -138,6 +139,20 @@ const SortableQATextField = ({ id, data, editData, category, question, keyName, 
 	)
 }
 
+SortableQATextField.propTypes = {
+	id: PropTypes.string.isRequired,
+	data: PropTypes.object,
+	editData: PropTypes.object,
+	category: PropTypes.string,
+	question: PropTypes.object,
+	keyName: PropTypes.string,
+	aEdit: PropTypes.bool,
+	qEdit: PropTypes.bool,
+	updateEditData: PropTypes.func,
+	DeleteQA: PropTypes.func,
+	isReorderMode: PropTypes.bool,
+}
+
 const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = false, updateQA = false, currentDraft, isHonban = false, handleDraftUpsert = () => {}, setTopEditMode = () => {}, updateCurrentDraft = () => {}, onlyCommentInput = false }) => {
 	// Prefer context role; fall back to cookie or sessionStorage for cold loads
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
@@ -156,6 +171,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	let id
 	const { studentId, uuid } = useParams()
 	const isPublic = !!uuid // If uuid exists, it's a public profile
+	const profileOutlet = useOutletContext() || {}
 	const location = useLocation()
 	const { userId } = location.state || {}
 
@@ -177,6 +193,8 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	if (role === 'Student') {
 		// For students, try multiple sources
 		id = getStudentIdFromLoginUser() || activeUser?.studentId || activeUser?.id
+	} else if (isPublic && profileOutlet.student?.student_id) {
+		id = profileOutlet.student.student_id
 	} else if (studentId) {
 		// For staff/admin, prefer studentId from URL params (this should be student_id)
 		id = studentId
@@ -191,6 +209,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 		} else {
 			// Don't log error for Admin on QA management page
 			if (!(role === 'Admin' && window.location.pathname === '/student-qa')) {
+				console.error('No student ID found')
 			}
 			id = null
 		}
@@ -265,7 +284,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 	const fetchStudent = async () => {
 		// Prevent fetching if already loaded (only for non-student roles)
-		if (isDataLoaded && role !== 'Student') return
+		if (isDataLoaded && role !== 'Student' && !isPublic) return
 
 		try {
 			// Always fetch questions to get the latest admin-added questions
@@ -274,14 +293,17 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 
 			let answers = null
 
-			// For Top page, use provided data as answers
-			if (isFromTopPage && data && Object.keys(data).length > 0) {
+			if (isPublic && profileOutlet.student) {
+				answers = profileOutlet.student.qa || null
+			} else if (isFromTopPage && data && Object.keys(data).length > 0) {
 				answers = data
 			} else if (id) {
 				// Otherwise fetch answers from API
 				try {
 					answers = (await axios.get(`/api/qa/student/${id}`)).data
-				} catch (err) {}
+				} catch (err) {
+					console.error('Error fetching answers from API', err)
+				}
 			}
 
 			if ((!answers || !hasAnswerData(answers)) && id) {
@@ -367,6 +389,12 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 	useEffect(() => {
 		// Wait for user context to initialize; avoids missing role/id on cold loads
 		if (isInitializing) return
+		if (isPublic && profileOutlet.student) {
+			if (!isDataLoaded) {
+				fetchStudent()
+			}
+			return
+		}
 		if (role && (id || role === 'Admin')) {
 			// Always fetch for students to get latest admin questions
 			if (role === 'Student') {
@@ -378,7 +406,7 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 				}
 			}
 		}
-	}, [isInitializing, role, id, isFromTopPage])
+	}, [isInitializing, role, id, isFromTopPage, isPublic, profileOutlet.student?.student_id])
 
 	// Reset data loaded flag when updateQA changes
 	useEffect(() => {
@@ -427,7 +455,9 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			if (id) {
 				localStorage.setItem(`qa_comment_draft_${id}`, JSON.stringify(next))
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error(e)
+		}
 	}
 
 	// Restore saved comment draft when opening this student's QA
@@ -442,7 +472,9 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 					}
 				}
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.error(e)
+		}
 	}, [id])
 
 	const toggleEditMode = () => {
@@ -503,7 +535,9 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			setComment({ comments: '' })
 			try {
 				if (id) localStorage.removeItem(`qa_comment_draft_${id}`)
-			} catch (e) {}
+			} catch (e) {
+				console.error(e)
+			}
 			if (value === 'approved') {
 				showAlert(t('approvedSuccessfully') || '承認しました', 'success')
 			} else if (value === 'resubmission_required') {
@@ -1508,6 +1542,25 @@ const QA = ({ data = {}, handleQAUpdate, isFromTopPage = false, topEditMode = fa
 			</Dialog>
 		</Box>
 	)
+}
+
+QA.propTypes = {
+	data: PropTypes.object,
+	handleQAUpdate: PropTypes.func,
+	isFromTopPage: PropTypes.bool,
+	topEditMode: PropTypes.bool,
+	updateQA: PropTypes.bool,
+	currentDraft: PropTypes.shape({
+		id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+		status: PropTypes.string,
+		profile_data: PropTypes.object,
+		changed_fields: PropTypes.array,
+	}),
+	isHonban: PropTypes.bool,
+	handleDraftUpsert: PropTypes.func,
+	setTopEditMode: PropTypes.func,
+	updateCurrentDraft: PropTypes.func,
+	onlyCommentInput: PropTypes.bool,
 }
 
 export default QA

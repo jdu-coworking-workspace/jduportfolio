@@ -504,16 +504,29 @@ class StudentController {
 				return res.status(404).json({ error: 'Student not found' })
 			}
 
-			await ShareableLink.destroy({
-				where: { studentId: studentId },
-			})
+			if (req.user?.userType !== 'Student' || req.user.id !== student.id) {
+				return res.status(403).json({ error: 'Forbidden' })
+			}
 
-			const expiresAt = new Date()
-			expiresAt.setHours(expiresAt.getHours() + 24)
+			const sequelize = ShareableLink.sequelize
+			let newLink
+			let expiresAt
+			await sequelize.transaction(async transaction => {
+				await ShareableLink.destroy({
+					where: { studentId },
+					transaction,
+				})
 
-			const newLink = await ShareableLink.create({
-				studentId: studentId,
-				expiresAt: expiresAt,
+				expiresAt = new Date()
+				expiresAt.setHours(expiresAt.getHours() + 24)
+
+				newLink = await ShareableLink.create(
+					{
+						studentId,
+						expiresAt,
+					},
+					{ transaction }
+				)
 			})
 
 			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'

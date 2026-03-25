@@ -18,7 +18,7 @@ import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { activeUniverAtom, deletedUrlsAtom, deliverableImagesAtom, editDataAtom, editModeAtom, hobbiesInputAtom, newImagesAtom, showHobbiesInputAtom, showSpecialSkillsInputAtom, specialSkillsInputAtom, subTabIndexAtom, updateQAAtom } from '../../../atoms/profileEditAtoms'
 import Deliverables from '../../../components/Deliverables/Deliverables'
 import ProfileConfirmDialog from '../../../components/Dialogs/ProfileConfirmDialog'
@@ -43,6 +43,7 @@ const Top = () => {
 	const role = sessionStorage.getItem('role')
 	const { studentId, uuid } = useParams()
 	const isPublic = !!uuid
+	const profileOutlet = useOutletContext() || {}
 	const location = useLocation()
 	const { userId } = location.state || {}
 	const statedata = location.state?.student
@@ -197,6 +198,8 @@ const Top = () => {
 
 	if (userId !== 0 && userId) {
 		id = userId
+	} else if (isPublic && profileOutlet.student?.student_id) {
+		id = profileOutlet.student.student_id
 	} else {
 		id = studentId || uuid
 	}
@@ -464,11 +467,18 @@ const Top = () => {
 	}, [editMode, role])
 
 	useEffect(() => {
-		fetchLanguageSkills()
+		if (!isPublic) {
+			fetchLanguageSkills()
+		}
 		const loadData = async () => {
 			setIsLoading(true)
 			try {
-				if (statedata) {
+				if (isPublic) {
+					const shared = profileOutlet.student
+					if (shared) {
+						await applyStudentPayloadToTopState(shared)
+					}
+				} else if (statedata) {
 					await handleStateData()
 				} else {
 					if (role === 'Student') {
@@ -509,7 +519,7 @@ const Top = () => {
 			}
 		}
 		loadData()
-	}, [id, role, statedata])
+	}, [id, role, statedata, isPublic, profileOutlet.student?.student_id])
 
 	const handleStateData = async () => {
 		if (statedata.draft) {
@@ -597,64 +607,67 @@ const Top = () => {
 		}
 	}
 
-	const fetchStudentData = async () => {
-		try {
-			const response = await axios.get(`/api/students/${id}`)
-			const studentData = response.data
-			const parsedStudentData = mapData(studentData)
-			setLiveData(parsedStudentData)
-			const draftData = studentData.draft
-			const pendingData = studentData.pendingDraft
-			if (pendingData) {
-				setCurrentPending(pendingData)
-				if (role === 'Staff' && pendingData.status === 'submitted') {
-					const staffId = JSON.parse(sessionStorage.getItem('loginUser'))?.id
-					if (staffId) {
-						try {
-							await axios.put(`/api/draft/status/${pendingData.id}`, { status: 'checking', reviewed_by: staffId })
-							pendingData.status = 'checking'
-							pendingData.reviewed_by = staffId
-							setCurrentPending({ ...pendingData })
-						} catch (error) {
-							console.error('Failed to auto-update draft status:', error)
-						}
+	const applyStudentPayloadToTopState = async studentData => {
+		const parsedStudentData = mapData(studentData)
+		setLiveData(parsedStudentData)
+		const draftData = studentData.draft
+		const pendingData = studentData.pendingDraft
+		if (pendingData) {
+			setCurrentPending(pendingData)
+			if (role === 'Staff' && pendingData.status === 'submitted') {
+				const staffId = JSON.parse(sessionStorage.getItem('loginUser'))?.id
+				if (staffId) {
+					try {
+						await axios.put(`/api/draft/status/${pendingData.id}`, { status: 'checking', reviewed_by: staffId })
+						pendingData.status = 'checking'
+						pendingData.reviewed_by = staffId
+						setCurrentPending({ ...pendingData })
+					} catch (error) {
+						console.error('Failed to auto-update draft status:', error)
 					}
 				}
 			}
-			if (role === 'Recruiter') {
-				if (pendingData && pendingData.profile_data) {
-					const mappedData = { ...parsedStudentData, draft: pendingData.profile_data || {} }
-					setCurrentDraft(pendingData)
-					setStudent(mappedData)
-					setEditData(mappedData)
-					updateOriginalData(mappedData)
-				} else {
-					setStudent(parsedStudentData)
-					setEditData(parsedStudentData)
-					updateOriginalData(parsedStudentData)
-				}
-				clearStorage()
-				setHasDraft(false)
-				SetUpdateQA(!updateQA)
-				return
-			}
-			const reviewDraft = pendingData || draftData
-			if (reviewDraft && reviewDraft.profile_data) {
-				setCurrentDraft(reviewDraft)
-				setHasDraft(true)
-				const mappedData = { ...parsedStudentData, draft: reviewDraft.profile_data || {} }
+		}
+		if (role === 'Recruiter') {
+			if (pendingData && pendingData.profile_data) {
+				const mappedData = { ...parsedStudentData, draft: pendingData.profile_data || {} }
+				setCurrentDraft(pendingData)
 				setStudent(mappedData)
 				setEditData(mappedData)
 				updateOriginalData(mappedData)
-				clearStorage()
 			} else {
 				setStudent(parsedStudentData)
 				setEditData(parsedStudentData)
 				updateOriginalData(parsedStudentData)
-				clearStorage()
-				setHasDraft(false)
 			}
+			clearStorage()
+			setHasDraft(false)
 			SetUpdateQA(!updateQA)
+			return
+		}
+		const reviewDraft = pendingData || draftData
+		if (reviewDraft && reviewDraft.profile_data) {
+			setCurrentDraft(reviewDraft)
+			setHasDraft(true)
+			const mappedData = { ...parsedStudentData, draft: reviewDraft.profile_data || {} }
+			setStudent(mappedData)
+			setEditData(mappedData)
+			updateOriginalData(mappedData)
+			clearStorage()
+		} else {
+			setStudent(parsedStudentData)
+			setEditData(parsedStudentData)
+			updateOriginalData(parsedStudentData)
+			clearStorage()
+			setHasDraft(false)
+		}
+		SetUpdateQA(!updateQA)
+	}
+
+	const fetchStudentData = async () => {
+		try {
+			const response = await axios.get(`/api/students/${id}`)
+			await applyStudentPayloadToTopState(response.data)
 		} catch (error) {
 			showAlert(t('errorFetchingStudent'), 'error')
 		}
