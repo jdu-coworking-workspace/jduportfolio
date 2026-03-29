@@ -57,6 +57,8 @@ const MailService = () => {
 	const [sendingNeverActive, setSendingNeverActive] = useState(false)
 	const [neverActiveSubject, setNeverActiveSubject] = useState('')
 	const [neverActiveBody, setNeverActiveBody] = useState('')
+	const [neverActiveMailSetting, setNeverActiveMailSetting] = useState(null)
+	const [savingNeverActiveTpl, setSavingNeverActiveTpl] = useState(false)
 	const [neverActiveSendResult, setNeverActiveSendResult] = useState(null)
 
 	useEffect(() => {
@@ -71,12 +73,19 @@ const MailService = () => {
 
 			const periodic = settings.find(s => s.key === 'periodic_email')
 			const inactive = settings.find(s => s.key === 'inactive_student_email')
+			const neverActive = settings.find(s => s.key === 'never_active_student_email')
 
 			if (periodic) setPeriodicSetting(periodic)
 			if (inactive) {
 				setInactiveSetting(inactive)
 				setInactiveSubject(inactive.message_subject || '')
 				setInactiveBody(inactive.message_body || '')
+			}
+			if (neverActive) {
+				setNeverActiveMailSetting(neverActive)
+				setNeverActiveSubject(neverActive.message_subject || '')
+				setNeverActiveBody(neverActive.message_body || '')
+			} else if (inactive) {
 				setNeverActiveSubject(inactive.message_subject || '')
 				setNeverActiveBody(inactive.message_body || '')
 			}
@@ -189,6 +198,27 @@ const MailService = () => {
 		setNeverActiveStudents(null)
 		setNeverActiveSendResult(null)
 	}
+	const handleSaveNeverActiveTemplate = async () => {
+		if (!neverActiveSubject || !neverActiveBody) {
+			showSnackbar(t('ms_fill_all_fields'), 'error')
+			return
+		}
+		try {
+			setSavingNeverActiveTpl(true)
+			const res = await axios.put('/api/mail-service/never_active_student_email', {
+				message_subject: neverActiveSubject,
+				message_body: neverActiveBody,
+			})
+			setNeverActiveMailSetting(res.data)
+			showSnackbar(t('ms_setting_updated'))
+		} catch (error) {
+			console.error('Error saving never-active template:', error)
+			showSnackbar(t('ms_error_updating'), 'error')
+		} finally {
+			setSavingNeverActiveTpl(false)
+		}
+	}
+
 	const handleSendNeverActiveEmails = async () => {
 		if (!neverActiveSubject || !neverActiveBody) {
 			showSnackbar(t('ms_fill_all_fields'), 'error')
@@ -425,6 +455,24 @@ const MailService = () => {
 							<h4 className={styles.subsectionTitle}>{t('ms_never_active_title')}</h4>
 							<p className={styles.subsectionDesc}>{t('ms_never_active_description')}</p>
 
+							{formatUpdatedBy(neverActiveMailSetting) && (
+								<div className={styles.updatedBy} style={{ marginBottom: 16 }}>
+									{t('ms_last_updated_by')}: {formatUpdatedBy(neverActiveMailSetting)}
+								</div>
+							)}
+
+							<div className={styles.formGroup}>
+								<TextField fullWidth size='small' label={t('ms_email_subject')} value={neverActiveSubject} onChange={e => setNeverActiveSubject(e.target.value)} />
+							</div>
+							<div className={styles.formGroup}>
+								<TextField fullWidth multiline rows={5} label={t('ms_email_body')} value={neverActiveBody} onChange={e => setNeverActiveBody(e.target.value)} helperText={t('ms_plain_text_hint')} />
+							</div>
+							<div className={styles.actions} style={{ marginBottom: 20 }}>
+								<Button variant='outlined' color='warning' onClick={handleSaveNeverActiveTemplate} disabled={savingNeverActiveTpl || !neverActiveSubject || !neverActiveBody}>
+									{savingNeverActiveTpl ? <CircularProgress size={20} /> : t('ms_save')}
+								</Button>
+							</div>
+
 							<div style={{ display: 'flex', gap: 12 }}>
 								<Button variant='outlined' color='warning' onClick={handleSearchNeverActive} disabled={searchingNeverActive} sx={{ minWidth: 120, height: 40 }}>
 									{searchingNeverActive ? <CircularProgress size={20} /> : t('ms_search')}
@@ -468,14 +516,6 @@ const MailService = () => {
 													))}
 												</tbody>
 											</table>
-
-											<div className={styles.formGroup} style={{ marginTop: 20 }}>
-												<TextField fullWidth size='small' label={t('ms_email_subject')} value={neverActiveSubject} onChange={e => setNeverActiveSubject(e.target.value)} />
-											</div>
-
-											<div className={styles.formGroup}>
-												<TextField fullWidth multiline rows={5} label={t('ms_email_body')} value={neverActiveBody} onChange={e => setNeverActiveBody(e.target.value)} helperText={t('ms_plain_text_hint')} />
-											</div>
 
 											<div className={styles.actions}>
 												<Button variant='contained' color='warning' onClick={handleSendNeverActiveEmails} disabled={sendingNeverActive || !neverActiveSubject || !neverActiveBody}>

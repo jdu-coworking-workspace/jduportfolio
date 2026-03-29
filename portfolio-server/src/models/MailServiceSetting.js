@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: false,
 				unique: true,
-				comment: 'Setting identifier: periodic_email | inactive_student_email',
+				comment: 'Setting identifier: periodic_email | inactive_student_email | never_active_student_email',
 			},
 			is_active: {
 				type: DataTypes.BOOLEAN,
