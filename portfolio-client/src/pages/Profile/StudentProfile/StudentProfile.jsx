@@ -26,7 +26,7 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 	const [listReturnPath] = useAtom(listReturnPathAtom)
 
 	const [visibleRowsStudentIds, setVisibleRowsStudentIds] = useState([])
-	const [step, setStep] = useState(1)
+	const step = 1
 
 	const { studentId, uuid } = useParams()
 	const { language, activeUser, role: contextRole, isInitializing } = useContext(UserContext)
@@ -103,6 +103,39 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 		}
 		checkBookmark()
 	}, [student?.id, role, isPublic])
+
+	useEffect(() => {
+		if (isPublic || role === 'Student') return
+
+		try {
+			const raw = localStorage.getItem('visibleRowsStudentIds')
+			if (!raw) {
+				setVisibleRowsStudentIds([])
+				return
+			}
+
+			const parsed = JSON.parse(raw)
+			if (!Array.isArray(parsed)) {
+				setVisibleRowsStudentIds([])
+				return
+			}
+
+			const currentStudentId = String(studentId || id || '')
+			const hasCurrent = parsed.some(item => item?.isCurrent)
+			const normalized = parsed.map(item => ({
+				...item,
+				isCurrent: currentStudentId ? String(item?.student_id) === currentStudentId : Boolean(item?.isCurrent),
+			}))
+
+			const finalList = hasCurrent || !currentStudentId ? parsed : normalized
+			setVisibleRowsStudentIds(finalList)
+			if (!hasCurrent && currentStudentId) {
+				localStorage.setItem('visibleRowsStudentIds', JSON.stringify(finalList))
+			}
+		} catch (_) {
+			setVisibleRowsStudentIds([])
+		}
+	}, [studentId, id, isPublic, role])
 
 	const handleToggleBookmark = async () => {
 		if (bookmarkLoading || !student?.id) return
