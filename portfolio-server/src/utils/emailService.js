@@ -66,6 +66,18 @@ const sendBulkEmails = async emailTasks => {
 		}
 	}
 
+	// TEST MODE: If EMAIL_TEST_TO is set, collapse all recipients into a single send.
+	// This prevents accidentally emailing many real users while validating job logic.
+	if (process.env.EMAIL_TEST_TO && typeof process.env.EMAIL_TEST_TO === 'string' && process.env.EMAIL_TEST_TO.trim()) {
+		const firstTask = emailTasks[0]
+		emailTasks = [
+			{
+				...firstTask,
+				to: process.env.EMAIL_TEST_TO.trim(),
+			},
+		]
+	}
+
 	const promises = emailTasks.map(task => sendEmail(task))
 	const results = await Promise.allSettled(promises)
 

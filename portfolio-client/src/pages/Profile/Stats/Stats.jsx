@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { useLocation, useParams, Link } from 'react-router-dom'
+import { useLocation, useOutletContext, useParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../../contexts/LanguageContext'
 import translations from '../../../locales/translations'
 import axios from '../../../utils/axiosUtils'
@@ -23,14 +23,18 @@ const Stats = () => {
 		}
 	}
 	let id
-	const { studentId } = useParams()
+	const { studentId, uuid } = useParams()
+	const isPublic = !!uuid // If uuid exists, it's a public profile
+	const profileOutlet = useOutletContext() || {}
 	const location = useLocation()
 	const { userId } = location.state || {}
 
 	if (userId != 0 && userId) {
 		id = userId
+	} else if (isPublic && profileOutlet.student?.student_id) {
+		id = profileOutlet.student.student_id
 	} else {
-		id = studentId
+		id = studentId || uuid
 	}
 
 	const [student, setStudent] = useState(null)
@@ -73,11 +77,21 @@ const Stats = () => {
 			} catch (error) {}
 		}
 
-		if (id) {
-			fetchStudentData()
-		} else {
+		const hydrateFromPublicShare = () => {
+			const studentData = profileOutlet.student
+			setCertificateData('main', 'JLPT', safeParseJSON(studentData.jlpt))
+			setCertificateData('main', 'JDU_JLPT', safeParseJSON(studentData.jdu_japanese_certification))
+			setCertificateData('other', '日本語弁論大会学内', safeParseJSON(studentData.japanese_speech_contest))
+			setCertificateData('other', 'ITコンテスト学内', safeParseJSON(studentData.it_contest))
+			setStudent(studentData)
 		}
-	}, [id])
+
+		if (isPublic && profileOutlet.student) {
+			hydrateFromPublicShare()
+		} else if (id) {
+			fetchStudentData()
+		}
+	}, [id, isPublic, profileOutlet.student?.student_id])
 
 	const setCertificateData = (key, type, data) => {
 		let temp = []

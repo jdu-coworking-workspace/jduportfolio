@@ -54,225 +54,6 @@ class StudentService {
 		}
 	}
 
-	// static async getAllStudents(filter, recruiterId, onlyBookmarked, userType) {
-	// 	try {
-	// 		// console.log('Received filter:', filter);
-
-	// 		const semesterMapping = {
-	// 			'1年生': ['1', '2'],
-	// 			'2年生': ['3', '4'],
-	// 			'3年生': ['5', '6'],
-	// 			'4年生': ['7', '8', '9'],
-	// 		}
-	// 		const getSemesterNumbers = term => semesterMapping[term] || []
-	// 		if (filter && filter.semester) {
-	// 			filter.semester = filter.semester.flatMap(term =>
-	// 				getSemesterNumbers(term)
-	// 			)
-	// 		}
-
-	// 		let query = {}
-	// 		let querySearch = {}
-	// 		let queryOther = {}
-	// 		queryOther[Op.and] = []
-
-	// 		const searchableColumns = [
-	// 			'email',
-	// 			'first_name',
-	// 			'last_name',
-	// 			'self_introduction',
-	// 			'hobbies',
-	// 			'skills',
-	// 			'it_skills',
-	// 			'jlpt',
-	// 			'student_id',
-	// 		]
-
-	// 		if (!filter || typeof filter !== 'object') {
-	// 			filter = {}
-	// 		}
-
-	// 		Object.keys(filter).forEach(key => {
-	// 			if (filter[key]) {
-	// 				// console.log(`Processing key: ${key}, value: ${filter[key]}`);
-	// 				if (key === 'search') {
-	// 					const searchValue = String(filter[key])
-	// 					// console.log('Search value:', searchValue);
-	// 					querySearch[Op.or] = searchableColumns.map(column => {
-	// 						// console.log(`Building condition for column: ${column}`);
-	// 						if (['skills', 'it_skills'].includes(column)) {
-	// 							return {
-	// 								[Op.or]: [
-	// 									{
-	// 										[column]: {
-	// 											'上級::text': { [Op.iLike]: `%${searchValue}%` },
-	// 										},
-	// 									},
-	// 									{
-	// 										[column]: {
-	// 											'中級::text': { [Op.iLike]: `%${searchValue}%` },
-	// 										},
-	// 									},
-	// 									{
-	// 										[column]: {
-	// 											'初級::text': { [Op.iLike]: `%${searchValue}%` },
-	// 										},
-	// 									},
-	// 								],
-	// 							}
-	// 						} else if (column === 'student_id') {
-	// 							return { [column]: { [Op.iLike]: `%${searchValue}%` } } // Student ID uchun qisman moslik
-	// 						} else {
-	// 							return { [column]: { [Op.iLike]: `%${searchValue}%` } }
-	// 						}
-	// 					})
-	// 				} else if (key === 'skills' || key === 'it_skills') {
-	// 					queryOther[Op.and].push({
-	// 						[Op.or]: [
-	// 							{ [key]: { '上級::text': { [Op.iLike]: `%${filter[key]}%` } } },
-	// 							{ [key]: { '中級::text': { [Op.iLike]: `%${filter[key]}%` } } },
-	// 							{ [key]: { '初級::text': { [Op.iLike]: `%${filter[key]}%` } } },
-	// 						],
-	// 					})
-	// 				} else if (key === 'partner_university_credits') {
-	// 					const credits = Number(filter[key])
-	// 					if (!isNaN(credits)) {
-	// 						queryOther[key] = { [Op.lt]: credits }
-	// 					}
-	// 				} else if (key === 'other_information') {
-	// 					if (filter[key] === '有り') {
-	// 						queryOther['other_information'] = { [Op.ne]: null }
-	// 					} else if (filter[key] === '無し') {
-	// 						queryOther['other_information'] = { [Op.is]: null }
-	// 					}
-	// 				} else if (
-	// 					key === 'jlpt' ||
-	// 					key === 'ielts' ||
-	// 					key === 'jdu_japanese_certification'
-	// 				) {
-	// 					if (Array.isArray(filter[key])) {
-	// 						queryOther[Op.and].push({
-	// 							[Op.or]: filter[key].map(level => ({
-	// 								[key]: { [Op.iLike]: `%${level}"%` },
-	// 							})),
-	// 						})
-	// 					}
-	// 				} else if (Array.isArray(filter[key])) {
-	// 					queryOther[key] = { [Op.in]: filter[key] }
-	// 				} else if (typeof filter[key] === 'string') {
-	// 					queryOther[key] = { [Op.iLike]: `%${filter[key]}%` }
-	// 				} else {
-	// 					queryOther[key] = filter[key]
-	// 				}
-	// 			}
-	// 		})
-
-	// 		if (!query[Op.and]) {
-	// 			query[Op.and] = []
-	// 		}
-
-	// 		query[Op.and].push(querySearch, queryOther, { active: true })
-
-	// 		// Only apply visibility filter for Recruiter users
-	// 		if (userType === 'Recruiter') {
-	// 			query[Op.and].push({ visibility: true })
-	// 		}
-
-	// 		// Only apply bookmark filter if both conditions are met
-	// 		if (onlyBookmarked === 'true' && recruiterId) {
-	// 			query[Op.and].push(
-	// 				sequelize.literal(`EXISTS (
-	// 			SELECT 1
-	// 			FROM "Bookmarks" AS "Bookmark"
-	// 			WHERE "Bookmark"."studentId" = "Student"."id"
-	// 			  AND "Bookmark"."recruiterId" = ${sequelize.escape(recruiterId)}
-	// 		  )`)
-	// 			)
-	// 		}
-
-	// 		// Build attributes for the query
-	// 		const attributes = {
-	// 			include: [],
-	// 		}
-
-	// 		// Only include bookmark status if recruiterId is provided
-	// 		if (recruiterId) {
-	// 			attributes.include.push([
-	// 				sequelize.literal(`EXISTS (
-	// 					SELECT 1
-	// 					FROM "Bookmarks" AS "Bookmark"
-	// 					WHERE "Bookmark"."studentId" = "Student"."id"
-	// 					  AND "Bookmark"."recruiterId" = ${sequelize.escape(recruiterId)}
-	// 				  )`),
-	// 				'isBookmarked',
-	// 			])
-	// 		}
-
-	// 		// console.log('Generated Query:', JSON.stringify(query, null, 2));
-	// 		const students = await Student.findAll({
-	// 			where: query,
-	// 			attributes: attributes,
-	// 			include: [
-	// 				{
-	// 					model: Draft,
-	// 					as: 'draft',
-	// 					attributes: [
-	// 						'id',
-	// 						'status',
-	// 						'submit_count',
-	// 						'created_at',
-	// 						'updated_at',
-	// 						'profile_data', // Include profile_data to get draft information
-	// 					],
-	// 					required: false, // LEFT JOIN so students without drafts are still included
-	// 				},
-	// 			],
-	// 		})
-
-	// 		// Merge draft data with student data if draft exists and is NOT in 'draft' status
-	// 		const studentsWithDraftData = students.map(student => {
-	// 			const studentJson = student.toJSON()
-
-	// 			// Only merge draft data if it exists and status is NOT 'draft'
-	// 			// Draft status data should only be visible to the student themselves
-	// 			if (
-	// 				studentJson.draft &&
-	// 				studentJson.draft.profile_data &&
-	// 				studentJson.draft.status !== 'draft'
-	// 			) {
-	// 				const draftData = studentJson.draft.profile_data
-
-	// 				// Merge draft fields into the main student object
-	// 				const fieldsToMerge = [
-	// 					'deliverables',
-	// 					'gallery',
-	// 					'self_introduction',
-	// 					'hobbies',
-	// 					'hobbies_description',
-	// 					'special_skills_description',
-	// 					'other_information',
-	// 					'it_skills',
-	// 					'skills',
-	// 				]
-
-	// 				fieldsToMerge.forEach(field => {
-	// 					if (draftData[field] !== undefined) {
-	// 						studentJson[field] = draftData[field]
-	// 					}
-	// 				})
-	// 			}
-
-	// 			return studentJson
-	// 		})
-
-	// 		return studentsWithDraftData
-	// 	} catch (error) {
-	// 		console.error('Error in getAllStudents:', error.message, error.stack)
-	// 		// Return empty array instead of throwing to prevent 500 errors
-	// 		return []
-	// 	}
-	// }
-
 	static async getAllStudents(filter, recruiterId, onlyBookmarked, userType, sortOptions = {}, pagination = {}) {
 		try {
 			const normalizedUserType = (userType || '').toLowerCase()
@@ -562,7 +343,7 @@ class StudentService {
 				query[Op.and].push(queryOther)
 			}
 
-			if (normalizedUserType === 'recruiter') {
+			if (normalizedUserType === 'recruiter' || normalizedUserType === 'guest') {
 				query[Op.and].push({ visibility: true })
 			}
 			if (onlyBookmarked === 'true' && recruiterId) {
@@ -724,8 +505,8 @@ class StudentService {
 				shouldMergeDraft = true
 				draftToMerge = studentJson.draft
 			}
-			// For Recruiter viewing: use pending draft if approved (published profile)
-			else if (requesterRole === 'Recruiter' && studentJson.pendingDraft && studentJson.pendingDraft.profile_data) {
+			// FIX: For Recruiter OR Guest viewing: use pending draft if approved (published profile)
+			else if ((requesterRole === 'Recruiter' || requesterRole === 'Guest') && studentJson.pendingDraft && studentJson.pendingDraft.profile_data) {
 				if (studentJson.pendingDraft.status === 'approved') {
 					shouldMergeDraft = true
 					draftToMerge = studentJson.pendingDraft
@@ -737,7 +518,7 @@ class StudentService {
 				const draftData = draftToMerge.profile_data
 
 				// Merge draft fields into the main student object
-				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
+				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito', 'qa']
 
 				fieldsToMerge.forEach(field => {
 					if (draftData[field] !== undefined) {
@@ -753,7 +534,9 @@ class StudentService {
 	}
 
 	// Service method to retrieve a student by student_id
-	static async getStudentByStudentId(studentId, password = false, requesterId = null, requesterRole = null) {
+	// bypassVisibility: true qilinganda visibility tekshiruvi o'tkazib yuboriladi
+	// (masalan, shareable link orqali kirishda ishlatiladi)
+	static async getStudentByStudentId(studentId, password = false, requesterId = null, requesterRole = null, bypassVisibility = false) {
 		try {
 			let excluded = ['createdAt', 'updatedAt']
 			if (!password) {
@@ -784,7 +567,10 @@ class StudentService {
 			}
 
 			const normalizedRole = (requesterRole || '').toLowerCase()
-			if (normalizedRole === 'recruiter' && student.visibility !== true) {
+
+			// FIX: Guest ham Recruiter kabi faqat visibility=true bo'lgan studentlarni ko'ra oladi
+			// bypassVisibility=true bo'lsa (masalan, shareable link), bu tekshiruv o'tkazib yuboriladi
+			if (!bypassVisibility && (normalizedRole === 'recruiter' || normalizedRole === 'guest') && student.visibility !== true) {
 				throw new Error('Student not found')
 			}
 
@@ -808,13 +594,20 @@ class StudentService {
 				shouldMergeDraft = true
 				draftToMerge = studentJson.draft
 			}
+			// FIX: For Recruiter OR Guest viewing: use pending draft if approved (published profile)
+			else if ((normalizedRole === 'recruiter' || normalizedRole === 'guest') && studentJson.pendingDraft && studentJson.pendingDraft.profile_data) {
+				if (studentJson.pendingDraft.status === 'approved') {
+					shouldMergeDraft = true
+					draftToMerge = studentJson.pendingDraft
+				}
+			}
 
 			// Merge draft data if conditions are met
 			if (shouldMergeDraft && draftToMerge) {
 				const draftData = draftToMerge.profile_data
 
 				// Merge draft fields into the main student object
-				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito']
+				const fieldsToMerge = ['deliverables', 'gallery', 'self_introduction', 'hobbies', 'other_information', 'it_skills', 'skills', 'education', 'work_experience', 'licenses', 'additional_info', 'address_furigana', 'postal_code', 'arubaito', 'qa']
 
 				fieldsToMerge.forEach(field => {
 					if (draftData[field] !== undefined) {
@@ -861,8 +654,6 @@ class StudentService {
 					console.log('Latest approved draft:', latestApprovedDraft)
 
 					if (latestApprovedDraft) {
-						// console.log('Applying latest approved draft to student profile...')
-
 						// Extract profile data from the draft
 						const profileData = latestApprovedDraft.profile_data || {}
 
@@ -1040,71 +831,6 @@ class StudentService {
 		}
 	}
 
-	//         for (const data of studentData) {
-	//             if (!data.studentId || !data.mail) continue; // Agar asosiy maydonlar bo'lmasa, keyingisiga o'tish
-
-	//             const existingStudent = await Student.findOne({ where: { student_id: data.studentId } });
-
-	//             const formattedData = {
-	//                 email: data.mail.trim(),
-	//                 student_id: data.studentId,
-	//                 first_name: data.studentFirstName,
-	//                 last_name: data.studentLastName,
-	//                 date_of_birth: data.birthday,
-	//                 gender: data.gender,
-	//                 address: data.address,
-	//                 parents_phone_number: data.parentsPhoneNumber,
-	//                 phone: data.phoneNumber,
-	//                 enrollment_date: data.jduDate,
-	//                 partner_university_enrollment_date: data.partnerUniversityEnrollmentDate,
-	//                 semester: data.semester,
-	//                 student_status: data.studentStatus,
-	//                 partner_university: data.partnerUniversity,
-	//                 kintone_id: data.kintone_id_value,
-	//                 world_language_university_credits: Number(data.worldLanguageUniversityCredits) || 0,
-	//                 business_skills_credits: Number(data.businessSkillsCredits) || 0,
-	//                 japanese_employment_credits: Number(data.japaneseEmploymentCredits) || 0,
-	//                 liberal_arts_education_credits: Number(data.liberalArtsEducationCredits) || 0,
-	//                 total_credits: Number(data.totalCredits) || 0,
-	//                 specialized_education_credits: Number(data.specializedEducationCredits) || 0,
-	//                 partner_university_credits: Number(data.partnerUniversityCredits) || 0,
-	//                 jlpt: data.jlpt,
-	//                 jdu_japanese_certification: data.jdu_japanese_certification,
-	//                 ielts: data.ielts,
-	//                 japanese_speech_contest: data.japanese_speech_contest,
-	//                 it_contest: data.it_contest,
-	//             };
-
-	//             if (!existingStudent || (data.semester > 0 && !existingStudent.active)) {
-	//                 const password = generatePassword.generate({ length: 12, numbers: true, symbols: false, uppercase: true, });
-	//                 formattedData.password = await bcrypt.hash(password, 10);
-	//                 formattedData.active = true;
-	//                 emailTasks.push(formatStudentWelcomeEmail(formattedData.email, password, formattedData.first_name, formattedData.last_name));
-	//             } else {
-	//                 formattedData.password = existingStudent.password;
-	//             }
-
-	//             upsertPromises.push(Student.upsert(formattedData));
-	//         }
-
-	//         await Promise.all(upsertPromises);
-	//         console.log(`${upsertPromises.length} ta talaba ma'lumotlari DBda yangilandi/yaratildi.`);
-
-	//         if (emailTasks.length > 0) {
-	//             console.log(`${emailTasks.length} ta yangi talabaga email jo'natish boshlandi...`);
-	//             const emailReport = await sendBulkEmails(emailTasks);
-	//             console.log('--- Ommaviy Email Jo\'natish Hisoboti ---', emailReport);
-	//         } else {
-	//             console.log('Jo\'natish uchun yangi aktiv talabalar topilmadi.');
-	//         }
-
-	//         return { message: "Sinxronizatsiya muvaffaqiyatli yakunlandi." };
-
-	//     } catch (error) {
-	//         console.error("syncStudentData xatolik:", error);
-	//         throw error;
-	//     }
-	// }
 	/**
 	 * Kintone'dan kelgan talabalar ro'yxatini sinxronizatsiya qiladi.
 	 * Yangi yaratilgan har bir talaba uchun email vazifasini tayyorlaydi.
@@ -1192,8 +918,6 @@ class StudentService {
 			// Barcha talabalarni bazaga yozib olamiz
 			await Promise.all(upsertPromises)
 			console.log(`${upsertPromises.length} ta talaba ma'lumotlari DBda yangilandi/yaratildi.`)
-
-			// >>> O'ZGARISH: Tayyor bo'lgan email vazifalari ro'yxatini qaytaramiz <<<
 			return emailTasks
 		} catch (error) {
 			console.error('syncStudentData jarayonida jiddiy xatolik:', error)
@@ -1248,9 +972,7 @@ class StudentService {
 					whereClause[Op.or] = [{ student_id: { [Op.iLike]: `%${searchValue}%` } }, { first_name: { [Op.iLike]: `%${searchValue}%` } }, { last_name: { [Op.iLike]: `%${searchValue}%` } }]
 				}
 			}
-
-			// Recruiters should only see public (visible) student IDs
-			if (normalizedRole === 'recruiter') {
+			if (normalizedRole === 'recruiter' || normalizedRole === 'guest') {
 				whereClause.visibility = true
 			}
 
@@ -1276,8 +998,8 @@ class StudentService {
 			const normalizedRole = (requesterRole || '').toLowerCase()
 			let whereClause = { active: true }
 
-			// Recruiters should only see public (visible) students
-			if (normalizedRole === 'recruiter') {
+			// FIX: Recruiters and guests should only see public (visible) students
+			if (normalizedRole === 'recruiter' || normalizedRole === 'guest') {
 				whereClause.visibility = true
 			}
 
@@ -1393,8 +1115,6 @@ class StudentService {
 					})
 				}
 			}
-
-			console.log(`✅ Sync completed for ${students.length} students`)
 			return results
 		} catch (error) {
 			throw error

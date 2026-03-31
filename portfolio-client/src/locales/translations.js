@@ -743,6 +743,8 @@ Please make sure that your profile does not fall under any of the prohibited act
 		expected_graduation_month: 'Expected Graduation',
 		enrolled_partner_university: 'Partner University',
 		not_set: 'Not set',
+		getLink: 'Get Link',
+		linkCopied: 'Link copied!',
 	},
 	ja: {
 		age: '歳',
@@ -1177,11 +1179,11 @@ Please make sure that your profile does not fall under any of the prohibited act
 		loginLabel: 'ログイン',
 		profile_publish_request: '公開申請',
 		profile_publish_explanation: `就職活動を円滑にする目的のために、あなたのプロフィールを申請に基づき、JDUポートフォリオサービス上に公開します。
- 
+
 公開申請後はJDU日本就業部に送信され、職員による内容確認が行われます。
 記載内容について不明点や質問がある場合は、メールにてご連絡します。
 記載内容について不明点や質問がない場合は、申請内容が承認され、あなたのプロフィールが公開されます。
- 
+
 あなたのプロフィールの内容等が以下の禁止行為のに該当しないこと確認し、申請ボタンから公開申請をしてください。`,
 		prohibited_actions: '禁止行為',
 		prohibited_actions_content: `JDUの学生は、本サービスの利用に際し、次の各号の行為を行ってはならないものとします。
@@ -1497,6 +1499,8 @@ Please make sure that your profile does not fall under any of the prohibited act
 		expected_graduation_month: 'JDU卒業予定年月',
 		enrolled_partner_university: '在籍提携大学',
 		not_set: '未設定',
+		getLink: 'リンクを取得',
+		linkCopied: 'リンクがコピーされました！',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2237,6 +2241,8 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		expected_graduation_month: 'Kutilayotgan bitirish sanasi',
 		enrolled_partner_university: 'Hamkor universitet',
 		not_set: 'Belgilanmagan',
+		getLink: 'Link olish',
+		linkCopied: 'Link nusxalandi!',
 	},
 	ru: {
 		age: 'Возраст',
@@ -2948,6 +2954,8 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		expected_graduation_month: 'Ожидаемая дата выпуска',
 		enrolled_partner_university: 'Партнёрский университет',
 		not_set: 'Не задано',
+		getLink: 'Получить ссылку',
+		linkCopied: 'Ссылка скопирована!',
 	},
 }
 
