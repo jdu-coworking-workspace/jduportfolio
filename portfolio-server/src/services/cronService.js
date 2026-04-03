@@ -123,19 +123,20 @@ class CronService {
 
 		console.log('📌 Daily draft summary job scheduled for 06:00 AM (Tashkent Time).')
 
-		// Periodic email to public students - runs daily at 07:00 AM and checks if it's time to send
-		cron.schedule('0 7 * * *', CronService.runPeriodicEmailJob, {
+		// Periodic email to public students - runs every hour and checks if it matches the configured schedule
+		cron.schedule('0 * * * *', CronService.runPeriodicEmailJob, {
 			scheduled: true,
 			timezone: 'Asia/Tashkent',
 		})
-		console.log('📌 Periodic email job scheduled for 07:00 AM (Tashkent Time).')
+		console.log('📌 Periodic email job scheduled to check every hour (Tashkent Time).')
 	}
 
 	/**
-	 * Periodic email job - sends emails to public students at configured intervals
+	 * Periodic email job - sends emails to public students at configured intervals.
+	 * Checks schedule_day_of_month and schedule_hour to determine if it's time to send.
 	 */
 	static async runPeriodicEmailJob() {
-		console.log('🚀 Running periodic email job...')
+		console.log('🚀 Running periodic email job check...')
 		try {
 			const { MailServiceSetting } = require('../models')
 			const setting = await MailServiceSetting.findOne({ where: { key: 'periodic_email' } })
@@ -143,6 +144,21 @@ class CronService {
 			if (!setting || !setting.is_active || !setting.period_days) {
 				console.log('📧 Periodic email is disabled or not configured. Skipping.')
 				return
+			}
+
+			// Check if current day-of-month matches the configured schedule
+			const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' }))
+			if (setting.schedule_day_of_month !== null && setting.schedule_day_of_month !== undefined) {
+				if (now.getDate() !== setting.schedule_day_of_month) {
+					return // Not the configured day — skip silently
+				}
+			}
+
+			// Check if current hour matches the configured schedule
+			if (setting.schedule_hour !== null && setting.schedule_hour !== undefined) {
+				if (now.getHours() !== setting.schedule_hour) {
+					return // Not the configured hour — skip silently
+				}
 			}
 
 			// Send every configured interval based on actual last send time.

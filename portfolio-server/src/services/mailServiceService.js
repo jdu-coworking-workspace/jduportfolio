@@ -213,16 +213,30 @@ class MailServiceService {
 
 	/**
 	 * Condition 1: Students who were sent back for resubmission
-	 * and have not resubmitted within the given period.
+	 * and have not resubmitted within a specific week interval.
+	 *
+	 * Uses EXCLUSIVE date ranges — no overlap between intervals:
+	 *   intervalWeeks=1 → returned 7–13 days ago
+	 *   intervalWeeks=2 → returned 14–20 days ago
+	 *   intervalWeeks=3 → returned 21–27 days ago
+	 *   intervalWeeks=4 → returned 28–34 days ago
 	 *
 	 * Conditions:
 	 * 1. active = true
-	 * 2. latest "resubmission_required" is older than periodDays
+	 * 2. latest "resubmission_required" falls within [rangeStart, rangeEnd]
 	 * 3. no later "submitted/approved" draft after that send-back event
 	 */
-	static async findInactiveStudents(periodDays) {
-		const thresholdDate = new Date()
-		thresholdDate.setDate(thresholdDate.getDate() - periodDays)
+	static async findInactiveStudentsByInterval(intervalWeeks) {
+		const now = new Date()
+		// rangeEnd = intervalWeeks * 7 days ago (start of this interval, more recent boundary)
+		// rangeStart = (intervalWeeks + 1) * 7 - 1 days ago (end of this interval, older boundary)
+		const rangeEndDate = new Date(now)
+		rangeEndDate.setDate(rangeEndDate.getDate() - intervalWeeks * 7)
+		rangeEndDate.setHours(23, 59, 59, 999)
+
+		const rangeStartDate = new Date(now)
+		rangeStartDate.setDate(rangeStartDate.getDate() - ((intervalWeeks + 1) * 7 - 1))
+		rangeStartDate.setHours(0, 0, 0, 0)
 
 		const students = await sequelize.query(
 			`
@@ -239,7 +253,8 @@ class MailServiceService {
 			) r ON true
 			WHERE s.active = true
 			  AND s.email IS NOT NULL
-			  AND r.withdrawn_at <= :thresholdDate
+			  AND r.withdrawn_at >= :rangeStartDate
+			  AND r.withdrawn_at <= :rangeEndDate
 			  AND NOT EXISTS (
 			    SELECT 1 FROM "Drafts" d2
 			    WHERE d2.student_id = s.student_id
@@ -249,7 +264,7 @@ class MailServiceService {
 			ORDER BY last_activity ASC
 			`,
 			{
-				replacements: { thresholdDate },
+				replacements: { rangeStartDate, rangeEndDate },
 				type: sequelize.QueryTypes.SELECT,
 			}
 		)
@@ -285,10 +300,11 @@ class MailServiceService {
 	}
 
 	/**
-	 * Send emails to period-inactive students (Condition 1 - manual trigger)
+	 * Send emails to interval-inactive students (Condition 1 - manual trigger)
+	 * Message is composed at send-time, not read from DB settings.
 	 */
-	static async sendInactiveStudentEmails(periodDays, subject, body, user) {
-		const students = await MailServiceService.findInactiveStudents(periodDays)
+	static async sendInactiveStudentEmails(intervalWeeks, subject, body, user) {
+		const students = await MailServiceService.findInactiveStudentsByInterval(intervalWeeks)
 
 		if (students.length === 0) {
 			return { total: 0, successful: 0, failed: 0, students: [] }

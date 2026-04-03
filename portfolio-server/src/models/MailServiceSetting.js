@@ -50,6 +50,16 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.ENUM('Admin', 'Staff'),
 				allowNull: true,
 			},
+			schedule_day_of_month: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				comment: 'Day of month to send periodic email (1-28)',
+			},
+			schedule_hour: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				comment: 'Hour of day to send periodic email (0-23, Tashkent time)',
+			},
 		},
 		{
 			sequelize,
