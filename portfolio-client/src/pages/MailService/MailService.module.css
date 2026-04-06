@@ -56,8 +56,10 @@
 .selectRow {
 	display: flex;
 	gap: 16px;
+	row-gap: 16px;
 	flex-wrap: wrap;
 	align-items: flex-start;
+	margin-bottom: 20px;
 }
 
 .selectRow > * {
