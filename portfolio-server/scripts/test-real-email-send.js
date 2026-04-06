@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 /**
  * Test the actual email sending flow for inactive students.
- * Sends emails to students inactive for >= 17 days.
+ * Sends emails to students inactive in the selected interval week.
  *
  * ⚠️  This ACTUALLY sends emails via AWS SES!
  * Run only when you want to test real email delivery.
  *
- * Usage: node scripts/test-real-email-send.js [periodDays]
+ * Usage: node scripts/test-real-email-send.js [intervalWeeks]
  */
-require('dotenv').config()
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 const http = require('http')
 
+process.env.EMAIL_TEST_TO = '225158x@jdu.uz'
+
 const BASE_URL = `http://localhost:${process.env.PORT || 8000}`
-const PERIOD_DAYS = parseInt(process.argv[2]) || 17
+const INTERVAL_WEEKS = parseInt(process.argv[2]) || 2
 
 function request(method, path, body = null, cookie = null) {
 	return new Promise((resolve, reject) => {
@@ -48,7 +51,7 @@ function request(method, path, body = null, cookie = null) {
 
 async function main() {
 	console.log('📧 Real Email Send Test')
-	console.log(`   Period: ${PERIOD_DAYS} days`)
+	console.log(`   Interval: ${INTERVAL_WEEKS} weeks`)
 	console.log(`   Server: ${BASE_URL}\n`)
 
 	// 1. Login
@@ -69,11 +72,11 @@ async function main() {
 	console.log('✅ Logged in as admin\n')
 
 	// 2. Search first
-	const searchRes = await request('GET', `/api/mail-service/inactive-students/search?periodDays=${PERIOD_DAYS}`, null, token)
-	console.log(`🔍 Found ${searchRes.data.count} inactive students (> ${PERIOD_DAYS} days):`)
+	const searchRes = await request('GET', `/api/mail-service/inactive-students/search?intervalWeeks=${INTERVAL_WEEKS}`, null, token)
+	console.log(`🔍 Found ${searchRes.data.count} interval-inactive students (week ${INTERVAL_WEEKS}):`)
 	if (searchRes.data.students) {
 		searchRes.data.students.forEach((s, i) => {
-			console.log(`   ${i + 1}. ${s.name} (${s.student_id}) — ${s.email} — last updated: ${s.last_updated}`)
+			console.log(`   ${i + 1}. ${s.name} (${s.student_id}) — ${s.email} — last activity: ${s.last_activity}`)
 		})
 	}
 
@@ -89,7 +92,7 @@ async function main() {
 		'POST',
 		'/api/mail-service/inactive-students/send',
 		{
-			periodDays: PERIOD_DAYS,
+			intervalWeeks: INTERVAL_WEEKS,
 			subject: 'ポートフォリオの更新をお願いします',
 			body: '学生の皆さん、こんにちは。\n\nあなたのポートフォリオがしばらく更新されていないことに気づきました。\n最新の情報でポートフォリオを更新して、リクルーターがあなたを見つけやすくしてください。\n\nよろしくお願いします。\nJDUチーム',
 		},

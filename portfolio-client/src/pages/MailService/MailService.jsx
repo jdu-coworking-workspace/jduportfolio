@@ -17,15 +17,14 @@ const PERIODIC_OPTIONS = [
 ]
 
 /**
- * Search period options for inactive student search (Tab 2):
- * 1 week, 2 weeks, 1 month, 3 months, 6 months
+ * Search interval options for inactive student search (Tab 2):
+ * Exclusive weekly intervals — no overlap between groups
  */
 const INACTIVE_SEARCH_OPTIONS = [
-	{ value: 7, labelKey: 'ms_1_week' },
-	{ value: 14, labelKey: 'ms_2_weeks' },
-	{ value: 30, labelKey: 'ms_1_month' },
-	{ value: 90, labelKey: 'ms_3_months' },
-	{ value: 180, labelKey: 'ms_6_months_plus' },
+	{ value: 1, labelKey: 'ms_1_week' },
+	{ value: 2, labelKey: 'ms_2_weeks' },
+	{ value: 3, labelKey: 'ms_3_weeks' },
+	{ value: 4, labelKey: 'ms_4_weeks' },
 ]
 
 const MailService = () => {
@@ -78,8 +77,6 @@ const MailService = () => {
 			if (periodic) setPeriodicSetting(periodic)
 			if (inactive) {
 				setInactiveSetting(inactive)
-				setInactiveSubject(inactive.message_subject || '')
-				setInactiveBody(inactive.message_body || '')
 			}
 			if (neverActive) {
 				setNeverActiveMailSetting(neverActive)
@@ -119,6 +116,8 @@ const MailService = () => {
 			setSaving(true)
 			const res = await axios.put('/api/mail-service/periodic_email', {
 				period_days: periodicSetting.period_days,
+				schedule_day_of_month: periodicSetting.schedule_day_of_month || null,
+				schedule_hour: periodicSetting.schedule_hour !== undefined && periodicSetting.schedule_hour !== '' ? periodicSetting.schedule_hour : null,
 				message_subject: periodicSetting.message_subject,
 				message_body: periodicSetting.message_body,
 			})
@@ -132,13 +131,13 @@ const MailService = () => {
 		}
 	}
 
-	// Search for inactive students
+	// Search for inactive students by interval
 	const handleSearchInactive = async () => {
 		if (!searchPeriod) return
 		try {
 			setSearching(true)
 			setSendResult(null)
-			const res = await axios.get(`/api/mail-service/inactive-students/search?periodDays=${searchPeriod}`)
+			const res = await axios.get(`/api/mail-service/inactive-students/search?intervalWeeks=${searchPeriod}`)
 			setInactiveStudents(res.data)
 		} catch (error) {
 			console.error('Error searching inactive students:', error)
@@ -153,6 +152,8 @@ const MailService = () => {
 		setSearchPeriod('')
 		setInactiveStudents(null)
 		setSendResult(null)
+		setInactiveSubject('')
+		setInactiveBody('')
 	}
 
 	// Send emails to inactive students
@@ -164,7 +165,7 @@ const MailService = () => {
 		try {
 			setSendingInactive(true)
 			const res = await axios.post('/api/mail-service/inactive-students/send', {
-				periodDays: Number(searchPeriod),
+				intervalWeeks: Number(searchPeriod),
 				subject: inactiveSubject,
 				body: inactiveBody,
 			})
@@ -297,6 +298,54 @@ const MailService = () => {
 									{PERIODIC_OPTIONS.map(opt => (
 										<MenuItem key={opt.value} value={opt.value}>
 											{t(opt.labelKey)}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+						</div>
+
+						<div className={styles.selectRow}>
+							<FormControl size='small' sx={{ minWidth: 180 }}>
+								<InputLabel>{t('ms_schedule_day_of_month')}</InputLabel>
+								<Select
+									value={periodicSetting.schedule_day_of_month ?? ''}
+									label={t('ms_schedule_day_of_month')}
+									onChange={e =>
+										setPeriodicSetting(prev => ({
+											...prev,
+											schedule_day_of_month: e.target.value === '' ? null : Number(e.target.value),
+										}))
+									}
+								>
+									<MenuItem value=''>
+										<em>—</em>
+									</MenuItem>
+									{Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+										<MenuItem key={day} value={day}>
+											{day}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+
+							<FormControl size='small' sx={{ minWidth: 150 }}>
+								<InputLabel>{t('ms_schedule_hour')}</InputLabel>
+								<Select
+									value={periodicSetting.schedule_hour ?? ''}
+									label={t('ms_schedule_hour')}
+									onChange={e =>
+										setPeriodicSetting(prev => ({
+											...prev,
+											schedule_hour: e.target.value === '' ? null : Number(e.target.value),
+										}))
+									}
+								>
+									<MenuItem value=''>
+										<em>—</em>
+									</MenuItem>
+									{Array.from({ length: 24 }, (_, i) => i).map(hour => (
+										<MenuItem key={hour} value={hour}>
+											{String(hour).padStart(2, '0')}:00
 										</MenuItem>
 									))}
 								</Select>

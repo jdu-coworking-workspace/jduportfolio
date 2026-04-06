@@ -78,7 +78,7 @@ class MailServiceController {
 	}
 
 	/**
-	 * Condition 1: Find sent-back students who have not resubmitted in period
+	 * Condition 1: Find sent-back students who have not resubmitted within a specific week interval
 	 */
 	static async findInactiveStudents(req, res) {
 		try {
@@ -87,12 +87,12 @@ class MailServiceController {
 				return res.status(403).json({ error: 'Only Admin and Staff can access this feature' })
 			}
 
-			const { periodDays } = req.query
-			if (!periodDays || isNaN(Number(periodDays))) {
-				return res.status(400).json({ error: 'periodDays query parameter is required and must be a number' })
+			const { intervalWeeks } = req.query
+			if (!intervalWeeks || isNaN(Number(intervalWeeks)) || Number(intervalWeeks) < 1) {
+				return res.status(400).json({ error: 'intervalWeeks query parameter is required and must be a positive number' })
 			}
 
-			const students = await MailServiceService.findInactiveStudents(Number(periodDays))
+			const students = await MailServiceService.findInactiveStudentsByInterval(Number(intervalWeeks))
 			res.json({
 				count: students.length,
 				students: students.map(s => ({
@@ -137,7 +137,7 @@ class MailServiceController {
 	}
 
 	/**
-	 * Send emails to sent-back students who have not resubmitted in period
+	 * Send emails to sent-back students who have not resubmitted within a specific week interval
 	 */
 	static async sendInactiveStudentEmails(req, res) {
 		try {
@@ -146,12 +146,12 @@ class MailServiceController {
 				return res.status(403).json({ error: 'Only Admin and Staff can send emails' })
 			}
 
-			const { periodDays, subject, body } = req.body
-			if (!periodDays || !subject || !body) {
-				return res.status(400).json({ error: 'periodDays, subject, and body are required' })
+			const { intervalWeeks, subject, body } = req.body
+			if (!intervalWeeks || !subject || !body) {
+				return res.status(400).json({ error: 'intervalWeeks, subject, and body are required' })
 			}
 
-			const result = await MailServiceService.sendInactiveStudentEmails(Number(periodDays), subject, body, req.user)
+			const result = await MailServiceService.sendInactiveStudentEmails(Number(intervalWeeks), subject, body, req.user)
 			res.json(result)
 		} catch (error) {
 			console.error('Error sending inactive student emails:', error)

@@ -11,15 +11,18 @@
  * 3. GET  /api/mail-service/:key         — Get a single setting
  * 4. PUT  /api/mail-service/:key         — Update setting
  * 5. PATCH /api/mail-service/:key/toggle — Toggle is_active
- * 6. GET  /api/mail-service/inactive-students/search?periodDays=N — Condition 1: period-inactive (visibility=true)
- * 7. POST /api/mail-service/inactive-students/send — Send to period-inactive
+ * 6. GET  /api/mail-service/inactive-students/search?intervalWeeks=N — Condition 1: interval-inactive
+ * 7. POST /api/mail-service/inactive-students/send — Send to interval-inactive
  * 8. GET  /api/mail-service/never-active-students/search — Condition 2: zero drafts
  * 9. POST /api/mail-service/never-active-students/send — Send to never-active
  * 10. Cron logic verification (sendPeriodicEmails)
  */
 
-require('dotenv').config()
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 const http = require('http')
+
+process.env.EMAIL_TEST_TO = '225158x@jdu.uz'
 
 const BASE_URL = `http://localhost:${process.env.PORT || 8000}`
 let TOKEN = null
@@ -181,13 +184,13 @@ async function testToggle() {
 async function testSearchInactiveStudents() {
 	console.log('\n🔍 Test: GET /api/mail-service/inactive-students/search (Condition 1)')
 
-	// Search with 1 day
-	const res1 = await request('GET', '/api/mail-service/inactive-students/search?periodDays=1', null, TOKEN)
-	assert(res1.status === 200, 'Search with periodDays=1 returns 200')
+	// Search with 1 week
+	const res1 = await request('GET', '/api/mail-service/inactive-students/search?intervalWeeks=1', null, TOKEN)
+	assert(res1.status === 200, 'Search with intervalWeeks=1 returns 200')
 	assert(typeof res1.data.count === 'number', 'Response has count field')
 	assert(Array.isArray(res1.data.students), 'Response has students array')
 	assert(!('neverActiveCount' in res1.data), 'Response does NOT have neverActiveCount (separate endpoint now)')
-	console.log(`    Found ${res1.data.count} period-inactive students (visibility=true)`)
+	console.log(`    Found ${res1.data.count} interval-inactive students`)
 
 	// Verify student shape if any found
 	if (res1.data.students.length > 0) {
@@ -200,18 +203,18 @@ async function testSearchInactiveStudents() {
 		assert(s.last_activity !== null, 'Period-inactive student has non-null last_activity')
 	}
 
-	// Test with large period — may find more students
-	const res365 = await request('GET', '/api/mail-service/inactive-students/search?periodDays=365', null, TOKEN)
-	assert(res365.status === 200, 'Search with periodDays=365 returns 200')
-	assert(res365.data.count >= res1.data.count, 'Larger period finds >= same students', `1d=${res1.data.count}, 365d=${res365.data.count}`)
+	// Test with large interval — may find more students
+	const res52 = await request('GET', '/api/mail-service/inactive-students/search?intervalWeeks=52', null, TOKEN)
+	assert(res52.status === 200, 'Search with intervalWeeks=52 returns 200')
+	assert(res52.data.count >= res1.data.count, 'Larger interval finds >= same students', `1w=${res1.data.count}, 52w=${res52.data.count}`)
 
-	// Test validation: missing periodDays
+	// Test validation: missing intervalWeeks
 	const resBad = await request('GET', '/api/mail-service/inactive-students/search', null, TOKEN)
-	assert(resBad.status === 400, 'Missing periodDays returns 400', `status=${resBad.status}`)
+	assert(resBad.status === 400, 'Missing intervalWeeks returns 400', `status=${resBad.status}`)
 
-	// Test validation: invalid periodDays
-	const resBad2 = await request('GET', '/api/mail-service/inactive-students/search?periodDays=abc', null, TOKEN)
-	assert(resBad2.status === 400, 'Invalid periodDays returns 400', `status=${resBad2.status}`)
+	// Test validation: invalid intervalWeeks
+	const resBad2 = await request('GET', '/api/mail-service/inactive-students/search?intervalWeeks=abc', null, TOKEN)
+	assert(resBad2.status === 400, 'Invalid intervalWeeks returns 400', `status=${resBad2.status}`)
 }
 
 async function testSendInactiveEmails() {
@@ -221,16 +224,15 @@ async function testSendInactiveEmails() {
 	const resBad1 = await request('POST', '/api/mail-service/inactive-students/send', {}, TOKEN)
 	assert(resBad1.status === 400, 'Empty body returns 400', `status=${resBad1.status}`)
 
-	const resBad2 = await request('POST', '/api/mail-service/inactive-students/send', { periodDays: 30, subject: 'test' }, TOKEN)
+	const resBad2 = await request('POST', '/api/mail-service/inactive-students/send', { intervalWeeks: 2, subject: 'test' }, TOKEN)
 	assert(resBad2.status === 400, 'Missing body field returns 400', `status=${resBad2.status}`)
 
-	// Use periodDays=9999 — now that we only check draft activity (not updatedAt),
-	// this may still return students who have zero drafts. Verify the endpoint works.
+	// Use intervalWeeks=520 — long interval to exercise the endpoint without assuming data size.
 	const resDry = await request(
 		'POST',
 		'/api/mail-service/inactive-students/send',
 		{
-			periodDays: 9999,
+			intervalWeeks: 520,
 			subject: 'テスト件名',
 			body: 'テスト本文',
 		},
@@ -250,7 +252,7 @@ async function testSearchNeverActiveStudents() {
 	assert(Array.isArray(res.data.students), 'Response has students array')
 	console.log(`    Found ${res.data.count} never-active students`)
 
-	// No periodDays needed — this is the key difference from Condition 1
+	// No intervalWeeks needed — this is the key difference from Condition 1
 	assert(!res.data.neverActiveCount, 'No neverActiveCount in response (flat structure)')
 
 	// Verify student shape if any found
@@ -274,7 +276,7 @@ async function testSendNeverActiveEmails() {
 	const resBad2 = await request('POST', '/api/mail-service/never-active-students/send', { subject: 'test' }, TOKEN)
 	assert(resBad2.status === 400, 'Missing body field returns 400', `status=${resBad2.status}`)
 
-	// No periodDays needed for never-active send
+	// No intervalWeeks needed for never-active send
 	const resDry = await request('POST', '/api/mail-service/never-active-students/send', { subject: 'テスト件名', body: 'テスト本文' }, TOKEN)
 	assert(resDry.status === 200, 'Send to never-active returns 200', `status=${resDry.status}`)
 	assert(typeof resDry.data.total === 'number', 'Response has total field', `total=${resDry.data.total}`)
@@ -304,16 +306,16 @@ async function testPeriodicEmailServiceLogic() {
 	assert(emailHtml.includes('<br>'), 'Email template preserves line breaks')
 	assert(emailHtml.includes('このメールはシステムによって'), 'Email template includes auto-send warning')
 
-	// Test findInactiveStudents (Condition 1 — returns array)
-	const inactiveResult = await MailServiceService.findInactiveStudents(30)
-	assert(Array.isArray(inactiveResult), 'findInactiveStudents returns array')
+	// Test findInactiveStudentsByInterval (Condition 1 — returns array)
+	const inactiveResult = await MailServiceService.findInactiveStudentsByInterval(4)
+	assert(Array.isArray(inactiveResult), 'findInactiveStudentsByInterval returns array')
 	if (inactiveResult.length > 0) {
 		const s = inactiveResult[0]
 		assert('email' in s, 'Inactive student has email')
 		assert('student_id' in s, 'Inactive student has student_id')
 		assert('last_activity' in s, 'Inactive student has last_activity')
 	}
-	console.log(`    findInactiveStudents(30): ${inactiveResult.length} students`)
+	console.log(`    findInactiveStudentsByInterval(4): ${inactiveResult.length} students`)
 
 	// Test findNeverActiveStudents (Condition 2 — returns array, no params)
 	const neverActiveResult = await MailServiceService.findNeverActiveStudents()
@@ -327,8 +329,60 @@ async function testPeriodicEmailServiceLogic() {
 	console.log(`    findNeverActiveStudents(): ${neverActiveResult.length} students`)
 }
 
+async function testPeriodicEmailJob() {
+	console.log('\n🕒 Test: Periodic email job (schedule match)')
+
+	const CronService = require('../src/services/cronService')
+
+	const current = await request('GET', '/api/mail-service/periodic_email', null, TOKEN)
+	assert(current.status === 200, 'Loaded periodic_email setting', `status=${current.status}`)
+	const original = current.data
+
+	const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' }))
+	const needsToggle = !original.is_active
+	try {
+		if (needsToggle) {
+			const toggleOn = await request('PATCH', '/api/mail-service/periodic_email/toggle', null, TOKEN)
+			assert(toggleOn.status === 200, 'Enabled periodic_email for job test', `status=${toggleOn.status}`)
+		}
+
+		const updateRes = await request(
+			'PUT',
+			'/api/mail-service/periodic_email',
+			{
+				period_days: original.period_days ?? 30,
+				schedule_day_of_month: now.getDate(),
+				schedule_hour: now.getHours(),
+				message_subject: original.message_subject || '【テスト】定期メール',
+				message_body: original.message_body || 'これは定期メールのテスト送信です。',
+			},
+			TOKEN
+		)
+		assert(updateRes.status === 200, 'Updated periodic_email schedule for job test', `status=${updateRes.status}`)
+
+		await CronService.runPeriodicEmailJob()
+		assert(true, 'Periodic email job executed without error')
+	} finally {
+		await request(
+			'PUT',
+			'/api/mail-service/periodic_email',
+			{
+				period_days: original.period_days,
+				schedule_day_of_month: original.schedule_day_of_month,
+				schedule_hour: original.schedule_hour,
+				message_subject: original.message_subject,
+				message_body: original.message_body,
+			},
+			TOKEN
+		)
+		if (needsToggle) {
+			await request('PATCH', '/api/mail-service/periodic_email/toggle', null, TOKEN)
+		}
+	}
+}
+
 async function testCronJobLogic() {
-	console.log('\n🕐 Test: Cron job interval check logic')
+	console.log('\n🕐 Test: Cron job schedule check logic')
 
 	const { Sequelize } = require('sequelize')
 	const config = require('../config/config.js').development
@@ -344,16 +398,20 @@ async function testCronJobLogic() {
 	const setting = rows[0]
 
 	if (setting) {
-		const daysSinceLastUpdate = Math.floor((Date.now() - new Date(setting.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
-		console.log(`    Setting period_days: ${setting.period_days}`)
-		console.log(`    Days since last update: ${daysSinceLastUpdate}`)
+		const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tashkent' }))
+		const dayMatches = setting.schedule_day_of_month === null || setting.schedule_day_of_month === undefined ? true : now.getDate() === setting.schedule_day_of_month
+		const hourMatches = setting.schedule_hour === null || setting.schedule_hour === undefined ? true : now.getHours() === setting.schedule_hour
+		const hasSubject = typeof setting.message_subject === 'string' && setting.message_subject.trim().length > 0
+		const hasBody = typeof setting.message_body === 'string' && setting.message_body.trim().length > 0
+		const shouldSend = Boolean(setting.is_active && dayMatches && hourMatches && hasSubject && hasBody)
+
+		console.log(`    schedule_day_of_month: ${setting.schedule_day_of_month ?? '—'}`)
+		console.log(`    schedule_hour: ${setting.schedule_hour ?? '—'}`)
 		console.log(`    is_active: ${setting.is_active}`)
-		console.log(`    Would send: ${setting.is_active && (daysSinceLastUpdate >= setting.period_days || setting.updated_by_id === null)}`)
+		console.log(`    has_subject: ${hasSubject}`)
+		console.log(`    has_body: ${hasBody}`)
+		console.log(`    Would send now: ${shouldSend}`)
 
-		assert(typeof daysSinceLastUpdate === 'number', 'Days calculation is valid')
-
-		// The cron logic: only send if period elapsed OR first run (updated_by_id is null)
-		const shouldSend = setting.is_active && setting.period_days && (daysSinceLastUpdate >= setting.period_days || setting.updated_by_id === null)
 		assert(typeof shouldSend === 'boolean', 'Cron send decision is deterministic')
 	}
 
@@ -370,7 +428,7 @@ async function testRealEmailSend() {
 	/*
 	// Uncomment to actually send:
 	const res = await request('POST', '/api/mail-service/inactive-students/send', {
-		periodDays: 30,
+		intervalWeeks: 4,
 		subject: '【テスト】ポートフォリオ更新のお願い',
 		body: 'ポートフォリオの更新をお願いします。\nこれはテストメールです。',
 	}, TOKEN)
@@ -403,6 +461,7 @@ async function run() {
 		await testSendNeverActiveEmails()
 		await testUnauthorizedAccess()
 		await testPeriodicEmailServiceLogic()
+		await testPeriodicEmailJob()
 		await testCronJobLogic()
 		await testRealEmailSend()
 	} catch (err) {
