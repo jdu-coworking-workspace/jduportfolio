@@ -542,6 +542,41 @@ class StudentController {
 		}
 	}
 
+	static async getLinkStatus(req, res, next) {
+		try {
+			const studentId = req.params.id
+
+			const student = await StudentService.getStudentByStudentId(studentId)
+			if (!student) {
+				return res.status(404).json({ error: 'Student not found' })
+			}
+
+			if (req.user?.userType !== 'Student' || req.user.id !== student.id) {
+				return res.status(403).json({ error: 'Forbidden' })
+			}
+
+			const link = await ShareableLink.findOne({ where: { studentId } })
+
+			if (!link || new Date() > link.expiresAt) {
+				if (link) await link.destroy()
+				return res.status(200).json({ hasLink: false })
+			}
+
+			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+			const timeRemainingMs = link.expiresAt.getTime() - Date.now()
+
+			return res.status(200).json({
+				hasLink: true,
+				url: `${frontendUrl}/student/share/${link.id}`,
+				createdAt: link.createdAt,
+				expiresAt: link.expiresAt,
+				timeRemainingMs,
+			})
+		} catch (error) {
+			next(error)
+		}
+	}
+
 	static async getProfileByPublicLink(req, res, next) {
 		try {
 			const { uuid } = req.params
