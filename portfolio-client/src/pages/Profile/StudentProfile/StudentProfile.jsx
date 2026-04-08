@@ -83,13 +83,18 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 				setStudent(response.data)
 				setLoading(false)
 			} catch (err) {
+				// For public/shareable links, redirect to home on any error instead of showing error
+				if (isPublic) {
+					navigate('/')
+					return
+				}
 				setError(err.response?.data?.message || 'errorFetchingStudent')
 				setLoading(false)
 			}
 		}
 
 		fetchStudent()
-	}, [id, studentId, userId, role, isPublic, isInitializing, uuid])
+	}, [id, studentId, userId, role, isPublic, isInitializing, uuid, navigate])
 
 	useEffect(() => {
 		if (isPublic || role !== 'Recruiter' || !student?.id) return
@@ -269,78 +274,80 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 						<Avatar src={student.photo} alt={student.first_name} sx={{ width: 120, height: 120 }} />
 					</Box>
 				)}
-				<Box className={styles.infoContainer}>
-					<Box className={styles.nameEmailContainer}>
-						<Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-							<div style={{ fontSize: 20, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
-								{student.first_name} {student.last_name}
-								{!isPublic && role === 'Recruiter' && (
-									<IconButton onClick={handleToggleBookmark} disabled={bookmarkLoading} sx={{ color: isBookmarked ? '#faaf00' : '#ccc' }}>
-										{isBookmarked ? <StarIcon /> : <StarBorderIcon />}
-									</IconButton>
-								)}
-							</div>
+				{!isPublic && (
+					<Box className={styles.infoContainer}>
+						<Box className={styles.nameEmailContainer}>
+							<Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+								<div style={{ fontSize: 20, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+									{student.first_name} {student.last_name}
+									{!isPublic && role === 'Recruiter' && (
+										<IconButton onClick={handleToggleBookmark} disabled={bookmarkLoading} sx={{ color: isBookmarked ? '#faaf00' : '#ccc' }}>
+											{isBookmarked ? <StarIcon /> : <StarBorderIcon />}
+										</IconButton>
+									)}
+								</div>
 
-							<div className={styles.inlineInfoRow}>
-								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>{t('student_id')}:</div>
-									<div>{student.student_id || 'N/A'}</div>
-								</div>
-								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>{t('age')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.date_of_birth ? calculateAge(student.date_of_birth) : '0'}</div>
-								</div>
-								<div className={styles.infoPair}>
-									<div style={{ color: '#787878' }}>{t('expected_graduation_month')}:</div>
-									<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{formattedGraduationMonth}</div>
-								</div>
-							</div>
-							{/* partner university info - desktop */}
-							<div className={styles.desktopUniversityGroup}>
-								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-									<div style={{ display: 'flex' }}>
-										<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
-										<div>{student.partner_university && student.faculty && student.department ? [formattedPartnerUniversity, student.faculty, student.department].filter(Boolean).join(' ') : formattedPartnerUniversity}</div>
+								<div className={styles.inlineInfoRow}>
+									<div className={styles.infoPair}>
+										<div style={{ color: '#787878' }}>{t('student_id')}:</div>
+										<div>{student.student_id || 'N/A'}</div>
+									</div>
+									<div className={styles.infoPair}>
+										<div style={{ color: '#787878' }}>{t('age')}:</div>
+										<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{student.date_of_birth ? calculateAge(student.date_of_birth) : '0'}</div>
+									</div>
+									<div className={styles.infoPair}>
+										<div style={{ color: '#787878' }}>{t('expected_graduation_month')}:</div>
+										<div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{formattedGraduationMonth}</div>
 									</div>
 								</div>
-							</div>
-
-							{/* partner university info - mobile */}
-							<div className={`${styles.mobileUniversityGroup} ${styles.mobileOnly}`}>
-								<div className={styles.uniLabel}>
-									{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{formattedPartnerUniversity}</div>
+								{/* partner university info - desktop */}
+								<div className={styles.desktopUniversityGroup}>
+									<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+										<div style={{ display: 'flex' }}>
+											<div style={{ color: '#787878' }}>{t('enrolled_partner_university')}:</div>
+											<div>{student.partner_university && student.faculty && student.department ? [formattedPartnerUniversity, student.faculty, student.department].filter(Boolean).join(' ') : formattedPartnerUniversity}</div>
+										</div>
+									</div>
 								</div>
-								{(student.faculty || student.department) && (
-									<>
-										<div className={styles.uniLabelSpacer}></div>
-										<div className={styles.uniValueLineDep}>{[student.faculty, student.department].filter(Boolean).join(' ')}</div>
-									</>
-								)}
-							</div>
-						</Box>
-						{['Admin', 'Staff', 'Recruiter'].includes(role) || (role === 'Student' && !isPublic) ? (
-							<Box>
-								<a href={`mailto:${student.email}`} className={styles.email}>
-									<EmailIcon className={styles.emailIcon} />
-									{student.email}
-								</a>
-								<Box className={styles.statusChipContainer}>
-									<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</div>
 
-									<Box
-										id='saveButton'
-										sx={{
-											display: 'flex',
-											gap: '12px',
-											alignItems: 'center',
-											marginTop: '10px',
-										}}
-									></Box>
-								</Box>
+								{/* partner university info - mobile */}
+								<div className={`${styles.mobileUniversityGroup} ${styles.mobileOnly}`}>
+									<div className={styles.uniLabel}>
+										{t('enrolled_partner_university')}:<div className={styles.uniValueLine}>{formattedPartnerUniversity}</div>
+									</div>
+									{(student.faculty || student.department) && (
+										<>
+											<div className={styles.uniLabelSpacer}></div>
+											<div className={styles.uniValueLineDep}>{[student.faculty, student.department].filter(Boolean).join(' ')}</div>
+										</>
+									)}
+								</div>
 							</Box>
-						) : null}
+							{['Admin', 'Staff', 'Recruiter'].includes(role) || (role === 'Student' && !isPublic) ? (
+								<Box>
+									<a href={`mailto:${student.email}`} className={styles.email}>
+										<EmailIcon className={styles.emailIcon} />
+										{student.email}
+									</a>
+									<Box className={styles.statusChipContainer}>
+										<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</div>
+
+										<Box
+											id='saveButton'
+											sx={{
+												display: 'flex',
+												gap: '12px',
+												alignItems: 'center',
+												marginTop: '10px',
+											}}
+										></Box>
+									</Box>
+								</Box>
+							) : null}
+						</Box>
 					</Box>
-				</Box>
+				)}
 			</Box>
 			<Outlet context={{ student, isPublic }} />
 		</Box>

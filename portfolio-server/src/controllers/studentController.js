@@ -494,6 +494,17 @@ class StudentController {
 	static async generateShareableLink(req, res, next) {
 		try {
 			const studentId = req.params.id
+			const requestedExpiry = String(req.body?.expiresIn || req.body?.expirationPeriod || req.body?.duration || '24h')
+				.trim()
+				.toLowerCase()
+
+			const expiryMap = {
+				'24h': 24 * 60 * 60 * 1000,
+				'7d': 7 * 24 * 60 * 60 * 1000,
+				'1m': 30 * 24 * 60 * 60 * 1000,
+			}
+			const expiresInMs = expiryMap[requestedExpiry] || expiryMap['24h']
+			const expiresInKey = expiryMap[requestedExpiry] ? requestedExpiry : '24h'
 
 			if (!ShareableLink) {
 				return res.status(500).json({ error: 'ShareableLink model is not loaded' })
@@ -517,8 +528,7 @@ class StudentController {
 					transaction,
 				})
 
-				expiresAt = new Date()
-				expiresAt.setHours(expiresAt.getHours() + 24)
+				expiresAt = new Date(Date.now() + expiresInMs)
 
 				newLink = await ShareableLink.create(
 					{
@@ -536,6 +546,71 @@ class StudentController {
 				success: true,
 				url: shareableUrl,
 				expiresAt: expiresAt,
+				expiresIn: expiresInKey,
+			})
+		} catch (error) {
+			next(error)
+		}
+	}
+
+	static async deactivateShareableLink(req, res, next) {
+		try {
+			const studentId = req.params.id
+
+			if (!ShareableLink) {
+				return res.status(500).json({ error: 'ShareableLink model is not loaded' })
+			}
+
+			const student = await StudentService.getStudentByStudentId(studentId)
+			if (!student) {
+				return res.status(404).json({ error: 'Student not found' })
+			}
+
+			if (req.user?.userType !== 'Student' || req.user.id !== student.id) {
+				return res.status(403).json({ error: 'Forbidden' })
+			}
+
+			const deletedCount = await ShareableLink.destroy({ where: { studentId } })
+
+			return res.status(200).json({
+				success: true,
+				message: 'Shareable link deactivated successfully',
+				deletedCount,
+			})
+		} catch (error) {
+			next(error)
+		}
+	}
+
+	static async getLinkStatus(req, res, next) {
+		try {
+			const studentId = req.params.id
+
+			const student = await StudentService.getStudentByStudentId(studentId)
+			if (!student) {
+				return res.status(404).json({ error: 'Student not found' })
+			}
+
+			if (req.user?.userType !== 'Student' || req.user.id !== student.id) {
+				return res.status(403).json({ error: 'Forbidden' })
+			}
+
+			const link = await ShareableLink.findOne({ where: { studentId } })
+
+			if (!link || new Date() > link.expiresAt) {
+				if (link) await link.destroy()
+				return res.status(200).json({ hasLink: false })
+			}
+
+			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+			const timeRemainingMs = link.expiresAt.getTime() - Date.now()
+
+			return res.status(200).json({
+				hasLink: true,
+				url: `${frontendUrl}/student/share/${link.id}`,
+				createdAt: link.createdAt,
+				expiresAt: link.expiresAt,
+				timeRemainingMs,
 			})
 		} catch (error) {
 			next(error)
