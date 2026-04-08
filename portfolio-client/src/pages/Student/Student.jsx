@@ -245,7 +245,7 @@ const Student = ({ OnlyBookmarked = false }) => {
 			disablePadding: false,
 			label: t('age'),
 			minWidth: '80px !important',
-			suffix: ` ${t('age')}`,
+			suffix: t('age_unit'),
 			isSort: true,
 		},
 		{

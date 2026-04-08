@@ -36,6 +36,7 @@ import Arubaito from '../Arubaito/Arubaito'
 import { Education } from '../Education/Education'
 import { Licenses } from '../Licenses/Licenses'
 import WorkExperience from '../WorkExperience/WorkExperience'
+import GuestPortfolioView from '../GuestPortfolioView/GuestPortfolioView'
 import styles from './Top.module.css'
 
 const Top = () => {
@@ -1133,6 +1134,11 @@ const Top = () => {
 			)}
 		</Box>
 	)
+
+	// For public guest users, show modern portfolio view
+	if (isPublic && profileOutlet.student) {
+		return <GuestPortfolioView student={profileOutlet.student} />
+	}
 
 	return (
 		<>
