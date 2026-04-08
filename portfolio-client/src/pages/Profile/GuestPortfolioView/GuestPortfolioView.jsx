@@ -16,6 +16,18 @@ const parseArray = data => {
 	return []
 }
 
+const isNullLikeString = value => {
+	if (typeof value !== 'string') return false
+	const normalized = value.trim().toLowerCase()
+	return normalized === '' || normalized === 'null' || normalized === 'undefined'
+}
+
+const hasMeaningfulValue = value => {
+	if (value === null || value === undefined) return false
+	if (typeof value === 'string') return !isNullLikeString(value)
+	return true
+}
+
 const getSkillName = s => (typeof s === 'string' ? s : (s?.name ?? ''))
 
 const calcAge = dob => {
@@ -42,6 +54,7 @@ const parseObject = data => {
 }
 
 const formatCertificationValue = value => {
+	if (!hasMeaningfulValue(value)) return ''
 	const parsed = parseObject(value)
 	if (!parsed) return value
 
@@ -58,6 +71,23 @@ const formatCertificationValue = value => {
 	if (highest) return highest
 	if (history) return history
 	return typeof value === 'string' ? value : JSON.stringify(parsed)
+}
+
+const normalizeProjectItem = item => {
+	if (!item || typeof item !== 'object') return null
+
+	const title = [item.title, item.name, item.project_name, item.projectTitle].find(v => typeof v === 'string' && v.trim()) || ''
+	const description = [item.description, item.text, item.summary, item.content].find(v => typeof v === 'string' && v.trim()) || ''
+	const url = [item.url, item.image_url, item.imageUrl, item.file_url, item.fileUrl].find(v => typeof v === 'string' && v.trim()) || ''
+
+	if (!title && !description && !url) return null
+
+	return {
+		...item,
+		title,
+		description,
+		url,
+	}
 }
 
 const initials = (first, last) => `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase()
@@ -122,10 +152,27 @@ const AboutCard = ({ label, value }) => (
 			border: '1px solid #f0f0f0',
 			borderRadius: 12,
 			padding: '16px 18px',
+			minHeight: 172,
+			display: 'flex',
+			flexDirection: 'column',
 		}}
 	>
 		<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#aaa', marginBottom: 6 }}>{label}</p>
-		<p style={{ fontSize: '.95rem', fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{value}</p>
+		<p
+			title={String(value)}
+			style={{
+				fontSize: '.95rem',
+				fontWeight: 600,
+				color: '#111',
+				lineHeight: 1.45,
+				display: '-webkit-box',
+				WebkitLineClamp: 6,
+				WebkitBoxOrient: 'vertical',
+				overflow: 'hidden',
+			}}
+		>
+			{value}
+		</p>
 	</div>
 )
 
@@ -278,8 +325,8 @@ const GuestPortfolioView = ({ student }) => {
 	const otherSkills = parseArray(student.other_skills)
 	const workExp = parseArray(student.work_experience)
 	const arubaito = parseArray(student.arubaito)
-	const gallery = parseArray(student.gallery)
-	const deliverables = parseArray(student.deliverables)
+	const gallery = parseArray(student.gallery).map(normalizeProjectItem).filter(Boolean)
+	const deliverables = parseArray(student.deliverables).map(normalizeProjectItem).filter(Boolean)
 	const allProjects = [...gallery, ...deliverables]
 	const graduationText = student.graduation_year && student.graduation_season ? `${student.graduation_year}年${student.graduation_season}` : null
 	const jlptValue = formatCertificationValue(student.jlpt)
@@ -291,7 +338,7 @@ const GuestPortfolioView = ({ student }) => {
 
 	/* tab visibility */
 	const tabs = TABS.filter(t => {
-		if (t === 'Skills') return itSkills.length || languageSkills.length || otherSkills.length || student.jlpt || student.ielts || student.jdu_japanese_certification
+		if (t === 'Skills') return itSkills.length || languageSkills.length || otherSkills.length || hasMeaningfulValue(jlptValue) || hasMeaningfulValue(ieltsValue) || hasMeaningfulValue(jduCertValue)
 		if (t === 'Experience') return workExp.length || arubaito.length
 		if (t === 'Education') return student.partner_university
 		if (t === 'Portfolio') return allProjects.length
@@ -464,13 +511,13 @@ const GuestPortfolioView = ({ student }) => {
 							</div>
 						)}
 
-						{(student.jlpt || student.ielts || student.jdu_japanese_certification) && (
+						{(hasMeaningfulValue(jlptValue) || hasMeaningfulValue(ieltsValue) || hasMeaningfulValue(jduCertValue)) && (
 							<div style={section}>
 								<SectionLabel>Certifications</SectionLabel>
 								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-									{student.jlpt && <CertBadge label='JLPT' value={jlptValue} color='amber' />}
-									{student.ielts && <CertBadge label='IELTS' value={ieltsValue} color='blue' />}
-									{student.jdu_japanese_certification && <CertBadge label='JDU Cert.' value={jduCertValue} color='purple' />}
+									{hasMeaningfulValue(jlptValue) && <CertBadge label='JLPT' value={jlptValue} color='amber' />}
+									{hasMeaningfulValue(ieltsValue) && <CertBadge label='IELTS' value={ieltsValue} color='blue' />}
+									{hasMeaningfulValue(jduCertValue) && <CertBadge label='JDU Cert.' value={jduCertValue} color='purple' />}
 								</div>
 							</div>
 						)}
@@ -743,9 +790,9 @@ GuestPortfolioView.propTypes = {
 		it_skills: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
 		language_skills: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
 		other_skills: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
-		jlpt: PropTypes.string,
-		ielts: PropTypes.string,
-		jdu_japanese_certification: PropTypes.string,
+		jlpt: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+		ielts: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+		jdu_japanese_certification: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
 		work_experience: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
 		arubaito: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
 		gallery: PropTypes.oneOfType([PropTypes.array, PropTypes.string]),
