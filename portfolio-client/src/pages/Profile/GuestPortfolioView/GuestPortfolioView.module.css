@@ -1,0 +1,298 @@
+.portfolioContainer {
+	background: #ffffff;
+	min-height: 100vh;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Hero Section */
+.heroSection {
+	background: linear-gradient(135deg, #5627db 0%, #7d3ff2 100%);
+	color: white;
+	padding: 100px 20px;
+	position: relative;
+	overflow: hidden;
+}
+
+.heroSection::before {
+	content: '';
+	position: absolute;
+	top: -50%;
+	right: -10%;
+	width: 500px;
+	height: 500px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 50%;
+	pointer-events: none;
+	z-index: 0;
+}
+
+.heroSection::after {
+	content: '';
+	position: absolute;
+	bottom: -30%;
+	left: -5%;
+	width: 300px;
+	height: 300px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 50%;
+	pointer-events: none;
+	z-index: 0;
+}
+
+.heroSection > div {
+	position: relative;
+	z-index: 1;
+}
+
+/* Sections */
+.section {
+	padding: 80px 20px;
+}
+
+.sectionTitle {
+	font-weight: 800;
+	margin-bottom: 50px;
+	font-size: 2.2rem;
+	color: #1a1a1a;
+	letter-spacing: -0.5px;
+	text-align: left;
+}
+
+/* Info Cards */
+.infoCard {
+	border: none;
+	border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	background: white;
+	border: 1px solid #f0f0f0;
+}
+
+.infoCard:hover {
+	transform: translateY(-6px);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Skills Section */
+.skillGroup {
+	background: white;
+	padding: 0;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+/* Timeline */
+.timeline {
+	position: relative;
+	padding-left: 40px;
+}
+
+.timeline::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 2px;
+	background: linear-gradient(to bottom, #5627db, #7d3ff2, #c7b3f0);
+	border-radius: 2px;
+}
+
+.timelineItem {
+	position: relative;
+	margin-bottom: 50px;
+	animation: fadeInUp 0.6s ease-out both;
+}
+
+.timelineDot {
+	position: absolute;
+	left: -50px;
+	top: 10px;
+	width: 18px;
+	height: 18px;
+	background: white;
+	border: 3px solid #5627db;
+	border-radius: 50%;
+	box-shadow: 0 0 0 6px rgba(86, 39, 219, 0.12);
+	transition: all 0.3s ease;
+	z-index: 2;
+}
+
+.timelineItem:hover .timelineDot {
+	transform: scale(1.25);
+	box-shadow: 0 0 0 10px rgba(86, 39, 219, 0.18);
+}
+
+.experienceCard {
+	border: none;
+	border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+	transition: all 0.3s ease;
+	background: white;
+	border-left: 5px solid #5627db;
+}
+
+.experienceCard:hover {
+	transform: translateX(8px);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Portfolio Cards */
+.portfolioCard {
+	border: none;
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	background: white;
+	border: 1px solid #f0f0f0;
+}
+
+.portfolioCard:hover {
+	transform: translateY(-10px);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.portfolioCard:hover img {
+	transform: scale(1.08);
+}
+
+.portfolioCard img {
+	transition: transform 0.3s ease;
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* Hover Card Design */
+.hoverCard {
+	border: none;
+	border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+	transition: all 0.3s ease;
+	background: white;
+	cursor: pointer;
+	overflow: hidden;
+	border: 1px solid #f0f0f0;
+}
+
+.hoverCard:hover {
+	transform: translateY(-8px);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Education Card */
+.educationCard {
+	border: none;
+	border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+	background: white;
+	transition: all 0.3s ease;
+	border: 1px solid #f0f0f0;
+}
+
+.educationCard:hover {
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Contact Section */
+.contactSection {
+	background: linear-gradient(135deg, #5627db 0%, #7d3ff2 100%);
+	color: white;
+	padding: 80px 20px;
+	position: relative;
+	overflow: hidden;
+}
+
+.contactSection::before {
+	content: '';
+	position: absolute;
+	top: -50%;
+	right: -10%;
+	width: 400px;
+	height: 400px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 50%;
+	pointer-events: none;
+}
+
+.contactSection > div {
+	position: relative;
+	z-index: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+	.heroSection {
+		padding: 60px 20px;
+	}
+
+	.section {
+		padding: 60px 20px;
+	}
+
+	.sectionTitle {
+		font-size: 1.8rem;
+		margin-bottom: 40px;
+	}
+}
+
+@media (max-width: 600px) {
+	.heroSection {
+		padding: 40px 16px;
+	}
+
+	.section {
+		padding: 40px 16px;
+	}
+
+	.sectionTitle {
+		font-size: 1.5rem;
+		margin-bottom: 30px;
+	}
+
+	.timeline {
+		padding-left: 30px;
+	}
+
+	.timelineDot {
+		left: -41px;
+		width: 16px;
+		height: 16px;
+		border-width: 2px;
+	}
+
+	.timelineItem {
+		margin-bottom: 35px;
+	}
+}
+
+/* Animations */
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideIn {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Smooth scroll behavior */
+html {
+	scroll-behavior: smooth;
+}

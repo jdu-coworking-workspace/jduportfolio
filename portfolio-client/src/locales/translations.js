@@ -749,6 +749,10 @@ Please make sure that your profile does not fall under any of the prohibited act
 		enrolled_partner_university: 'Partner University',
 		not_set: 'Not set',
 		getLink: 'Get Link',
+		deactivate_link: 'Deactivate link',
+		deactivating: 'Deactivating...',
+		link_deactivated_success: 'Link deactivated',
+		link_deactivate_failed: 'Failed to deactivate link',
 		linkCopied: 'Link copied!',
 	},
 	ja: {
@@ -1510,6 +1514,10 @@ Please make sure that your profile does not fall under any of the prohibited act
 		enrolled_partner_university: '在籍提携大学',
 		not_set: '未設定',
 		getLink: 'リンクを取得',
+		deactivate_link: 'リンクを無効化',
+		deactivating: '無効化中...',
+		link_deactivated_success: 'リンクを無効化しました',
+		link_deactivate_failed: 'リンクの無効化に失敗しました',
 		linkCopied: 'リンクがコピーされました！',
 	},
 	uz: {
@@ -2257,6 +2265,10 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		enrolled_partner_university: 'Hamkor universitet',
 		not_set: 'Belgilanmagan',
 		getLink: 'Link olish',
+		deactivate_link: 'Linkni o‘chirish',
+		deactivating: 'O‘chirilmoqda...',
+		link_deactivated_success: 'Link o‘chirildi',
+		link_deactivate_failed: 'Linkni o‘chirishda xatolik',
 		linkCopied: 'Link nusxalandi!',
 	},
 	ru: {
@@ -2975,6 +2987,10 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		enrolled_partner_university: 'Партнёрский университет',
 		not_set: 'Не задано',
 		getLink: 'Получить ссылку',
+		deactivate_link: 'Деактивировать ссылку',
+		deactivating: 'Деактивация...',
+		link_deactivated_success: 'Ссылка деактивирована',
+		link_deactivate_failed: 'Не удалось деактивировать ссылку',
 		linkCopied: 'Ссылка скопирована!',
 	},
 }

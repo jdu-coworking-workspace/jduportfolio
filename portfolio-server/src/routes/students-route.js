@@ -250,5 +250,6 @@ router.delete('/:id', StudentController.deleteStudent)
 
 router.get('/:id/link-status', StudentController.getLinkStatus)
 router.post('/:id/generate-link', StudentController.generateShareableLink)
+router.delete('/:id/link-status', StudentController.deactivateShareableLink)
 
 module.exports = router

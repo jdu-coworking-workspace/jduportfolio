@@ -19,17 +19,55 @@ import SettingStyle from './Setting.module.css'
 import SaveIcon from '../../assets/icons/save-3-fill.svg'
 const Setting = () => {
 	const [generatedLink, setGeneratedLink] = useState('')
+	const [linkExpiresAt, setLinkExpiresAt] = useState(null)
+	const [linkTimeRemainingMs, setLinkTimeRemainingMs] = useState(0)
+	const [linkExpiryOption, setLinkExpiryOption] = useState('24h')
 	const [isGenerating, setIsGenerating] = useState(false)
+	const [isDeactivating, setIsDeactivating] = useState(false)
+	const [isLinkStatusLoading, setIsLinkStatusLoading] = useState(false)
 
 	const { activeUser, updateUser } = useContext(UserContext)
 	const { language, changeLanguage } = useLanguage()
 	const showAlert = useAlert()
+	const [role, setRole] = useState(null)
+	const [user, setUser] = useState({})
 
 	// Move t function outside or memoize it
 	const t = useCallback(key => translations[language][key] || key, [language])
 
-	const [role, setRole] = useState(null)
-	const [user, setUser] = useState({})
+	const getStudentShareId = useCallback(() => {
+		try {
+			const loginUser = JSON.parse(sessionStorage.getItem('loginUser'))
+			return activeUser?.studentId || activeUser?.student_id || user?.student_id || loginUser?.studentId || loginUser?.student_id || null
+		} catch {
+			return activeUser?.studentId || activeUser?.student_id || user?.student_id || null
+		}
+	}, [activeUser, user?.student_id])
+
+	const formatLinkValidity = useCallback(
+		ms => {
+			if (!ms || ms <= 0) return t('link_expired') || 'Link expired'
+			const totalMinutes = Math.floor(ms / 60000)
+			const hours = Math.floor(totalMinutes / 60)
+			const minutes = totalMinutes % 60
+			if (hours > 0) {
+				return `${hours}h ${minutes}m`
+			}
+			return `${minutes}m`
+		},
+		[t]
+	)
+
+	const inferLinkExpiryOption = useCallback((createdAt, expiresAt) => {
+		if (!createdAt || !expiresAt) return '24h'
+		const diffMs = new Date(expiresAt).getTime() - new Date(createdAt).getTime()
+		const dayMs = 24 * 60 * 60 * 1000
+		const monthMs = 30 * dayMs
+		if (Math.abs(diffMs - monthMs) < 2 * dayMs) return '1m'
+		if (Math.abs(diffMs - 7 * dayMs) < 6 * 60 * 60 * 1000) return '7d'
+		return '24h'
+	}, [])
+
 	const [avatarImage, setAvatarImage] = useState(null)
 	const [showCurrentPassword, setShowCurrentPassword] = useState(false)
 	const [showNewPassword, setShowNewPassword] = useState(false)
@@ -169,18 +207,73 @@ const Setting = () => {
 		fetchUser()
 	}, [fetchUser]) // Include fetchUser in dependencies
 
+	useEffect(() => {
+		const fetchLinkStatus = async () => {
+			if (role !== 'Student') {
+				setGeneratedLink('')
+				setLinkExpiresAt(null)
+				setLinkTimeRemainingMs(0)
+				return
+			}
+
+			const id = getStudentShareId()
+			if (!id) {
+				setGeneratedLink('')
+				setLinkExpiresAt(null)
+				setLinkTimeRemainingMs(0)
+				return
+			}
+
+			setIsLinkStatusLoading(true)
+			try {
+				const response = await axios.get(`/api/students/${id}/link-status`)
+				if (response.data?.hasLink && response.data?.url) {
+					setGeneratedLink(response.data.url)
+					setLinkExpiresAt(response.data.expiresAt || null)
+					setLinkTimeRemainingMs(response.data.timeRemainingMs || 0)
+					setLinkExpiryOption(inferLinkExpiryOption(response.data.createdAt, response.data.expiresAt))
+				} else {
+					setGeneratedLink('')
+					setLinkExpiresAt(null)
+					setLinkTimeRemainingMs(0)
+				}
+			} catch (error) {
+				if (error.response?.status !== 403 && error.response?.status !== 404) {
+					console.error('Link status xatosi:', error.response?.data || error.message)
+				} else {
+					setGeneratedLink('')
+					setLinkExpiresAt(null)
+					setLinkTimeRemainingMs(0)
+				}
+			} finally {
+				setIsLinkStatusLoading(false)
+			}
+		}
+
+		fetchLinkStatus()
+	}, [getStudentShareId, role])
+
 	const handleGenerateLink = async () => {
 		setIsGenerating(true)
 		try {
-			const id = activeUser?.studentId
+			const id = getStudentShareId()
 
 			if (!id) {
 				showAlert('Student ID topilmadi', 'error')
 				return
 			}
-			const response = await axios.post(`/api/students/${id}/generate-link`)
+			// Backend should calculate the actual expiration using the selected duration.
+			// Keep the payload explicit so the server can switch between 24h / 7d / 1m.
+			const response = await axios.post(`/api/students/${id}/generate-link`, {
+				expiresIn: linkExpiryOption,
+			})
 
 			setGeneratedLink(response.data.url)
+			setLinkExpiresAt(response.data.expiresAt || null)
+			setLinkTimeRemainingMs(response.data.expiresAt ? new Date(response.data.expiresAt).getTime() - Date.now() : 0)
+			if (response.data?.expiresIn) {
+				setLinkExpiryOption(response.data.expiresIn)
+			}
 			showAlert(t('link_generated_success') || 'Link muvaffaqiyatli yaratildi!', 'success')
 		} catch (error) {
 			console.error('Link xatosi:', error.response?.data || error.message)
@@ -190,7 +283,30 @@ const Setting = () => {
 		}
 	}
 
+	const handleDeactivateLink = async () => {
+		const id = getStudentShareId()
+		if (!id) {
+			showAlert('Student ID topilmadi', 'error')
+			return
+		}
+
+		setIsDeactivating(true)
+		try {
+			await axios.delete(`/api/students/${id}/link-status`)
+			setGeneratedLink('')
+			setLinkExpiresAt(null)
+			setLinkTimeRemainingMs(0)
+			showAlert(t('link_deactivated_success') || 'Link deactivated', 'success')
+		} catch (error) {
+			console.error('Link deactivate xatosi:', error.response?.data || error.message)
+			showAlert(t('link_deactivate_failed') || 'Link o‘chirishda xatolik', 'error')
+		} finally {
+			setIsDeactivating(false)
+		}
+	}
+
 	const copyToClipboard = () => {
+		if (!generatedLink) return
 		navigator.clipboard.writeText(generatedLink)
 		showAlert(t('link_copied') || 'Link nusxalandi!', 'info')
 	}
@@ -475,26 +591,35 @@ const Setting = () => {
 							{role === 'Student' && (
 								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 									{!generatedLink ? (
-										<Button
-											variant='outlined'
-											size='small'
-											startIcon={<LinkIcon />}
-											onClick={handleGenerateLink}
-											disabled={isGenerating}
-											sx={{
-												borderRadius: '8px',
-												textTransform: 'none',
-												fontSize: '13px',
-												color: '#5627DB',
-												borderColor: '#5627DB',
-												'&:hover': {
-													borderColor: '#4520A6',
-													backgroundColor: 'rgba(86, 39, 219, 0.05)',
-												},
-											}}
-										>
-											{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
-										</Button>
+										<>
+											<FormControl size='small' sx={{ minWidth: 160 }} disabled={isGenerating || isLinkStatusLoading}>
+												<Select value={linkExpiryOption} onChange={e => setLinkExpiryOption(e.target.value)} displayEmpty sx={{ borderRadius: '8px', fontSize: '13px', backgroundColor: '#fff' }}>
+													<MenuItem value='24h'>24 hours</MenuItem>
+													<MenuItem value='7d'>7 days</MenuItem>
+													<MenuItem value='1m'>1 month</MenuItem>
+												</Select>
+											</FormControl>
+											<Button
+												variant='outlined'
+												size='small'
+												startIcon={<LinkIcon />}
+												onClick={handleGenerateLink}
+												disabled={isGenerating || isLinkStatusLoading}
+												sx={{
+													borderRadius: '8px',
+													textTransform: 'none',
+													fontSize: '13px',
+													color: '#5627DB',
+													borderColor: '#5627DB',
+													'&:hover': {
+														borderColor: '#4520A6',
+														backgroundColor: 'rgba(86, 39, 219, 0.05)',
+													},
+												}}
+											>
+												{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
+											</Button>
+										</>
 									) : (
 										<Box
 											sx={{
@@ -515,11 +640,19 @@ const Setting = () => {
 											<IconButton size='small' onClick={copyToClipboard} color='primary' sx={{ flexShrink: 0 }}>
 												<CopyIcon fontSize='small' />
 											</IconButton>
+											<Button size='small' variant='text' onClick={handleDeactivateLink} disabled={isDeactivating} sx={{ textTransform: 'none', minWidth: 'auto', color: '#b00020' }}>
+												{isDeactivating ? t('deactivating') || 'Deactivating' : t('deactivate_link') || 'Deactivate'}
+											</Button>
 										</Box>
 									)}
 									{generatedLink && (
 										<Typography variant='caption' color='error' sx={{ display: 'block' }}>
-											* {t('link_expiry_notice') || 'Link 24 soat davomida amal qiladi'}
+											* {t('link_expiry_notice') || 'Link validity'} ({formatLinkValidity(linkTimeRemainingMs)})
+										</Typography>
+									)}
+									{linkExpiresAt && (
+										<Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
+											{new Date(linkExpiresAt).toLocaleString()}
 										</Typography>
 									)}
 								</Box>
