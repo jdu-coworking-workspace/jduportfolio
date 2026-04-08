@@ -2,7 +2,7 @@ import ArrowBackIosNewOutlinedIcon from '@mui/icons-material/ArrowBackIosNewOutl
 import EmailIcon from '@mui/icons-material/Email'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
-import { Avatar, Box, Button, IconButton, Tooltip } from '@mui/material'
+import { Avatar, Box, Button, IconButton } from '@mui/material'
 import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
 import { useContext, useEffect, useState } from 'react'
@@ -204,8 +204,6 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 		const basePath = listReturnPath || (location.pathname.startsWith('/checkprofile') ? '/checkprofile' : '/student')
 		navigate(`${basePath}/profile/${nextStudentId}/top`)
 	}
-	//bu link olish uchun qoshdim
-
 	const calculateAge = birthDateString => {
 		const today = new Date()
 		const birthDate = new Date(birthDateString)
@@ -326,16 +324,6 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 								</a>
 								<Box className={styles.statusChipContainer}>
 									<div>{student.visibility ? <div style={{ color: '#7ED6A7' }}>{t('published')}</div> : <div style={{ color: '#812958' }}>{t('private')}</div>}</div>
-
-									<Box
-										id='saveButton'
-										sx={{
-											display: 'flex',
-											gap: '12px',
-											alignItems: 'center',
-											marginTop: '10px',
-										}}
-									></Box>
 								</Box>
 							</Box>
 						) : null}

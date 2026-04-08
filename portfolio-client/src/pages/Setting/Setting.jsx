@@ -19,6 +19,7 @@ import SettingStyle from './Setting.module.css'
 import SaveIcon from '../../assets/icons/save-3-fill.svg'
 const Setting = () => {
 	const [generatedLink, setGeneratedLink] = useState('')
+	const [linkExpiresAt, setLinkExpiresAt] = useState(null)
 	const [isGenerating, setIsGenerating] = useState(false)
 
 	const { activeUser, updateUser } = useContext(UserContext)
@@ -169,18 +170,41 @@ const Setting = () => {
 		fetchUser()
 	}, [fetchUser]) // Include fetchUser in dependencies
 
+	useEffect(() => {
+		if (!activeUser?.studentId) return
+		const checkLinkStatus = async () => {
+			try {
+				const res = await axios.get(`/api/students/${activeUser.studentId}/link-status`)
+				if (res.data.hasLink) {
+					setGeneratedLink(res.data.url)
+					setLinkExpiresAt(new Date(res.data.expiresAt))
+				}
+			} catch {
+				// no active link
+			}
+		}
+		checkLinkStatus()
+	}, [activeUser?.studentId])
+
+	const formatTimeRemaining = ms => {
+		const totalMinutes = Math.floor(ms / 60000)
+		const hours = Math.floor(totalMinutes / 60)
+		const minutes = totalMinutes % 60
+		if (hours > 0) return `${hours}h ${minutes}m`
+		return `${minutes}m`
+	}
+
 	const handleGenerateLink = async () => {
 		setIsGenerating(true)
 		try {
 			const id = activeUser?.studentId
-
 			if (!id) {
 				showAlert('Student ID topilmadi', 'error')
 				return
 			}
 			const response = await axios.post(`/api/students/${id}/generate-link`)
-
 			setGeneratedLink(response.data.url)
+			setLinkExpiresAt(new Date(response.data.expiresAt))
 			showAlert(t('link_generated_success') || 'Link muvaffaqiyatli yaratildi!', 'success')
 		} catch (error) {
 			console.error('Link xatosi:', error.response?.data || error.message)
@@ -192,7 +216,7 @@ const Setting = () => {
 
 	const copyToClipboard = () => {
 		navigator.clipboard.writeText(generatedLink)
-		showAlert(t('link_copied') || 'Link nusxalandi!', 'info')
+		showAlert(t('linkCopied') || 'Link nusxalandi!', 'info')
 	}
 
 	const handleAvatarChange = event => {
@@ -473,12 +497,12 @@ const Setting = () => {
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
 							{role === 'Student' && (
-								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
 									{!generatedLink ? (
 										<Button
 											variant='outlined'
 											size='small'
-											startIcon={<LinkIcon />}
+											startIcon={isGenerating ? null : <LinkIcon />}
 											onClick={handleGenerateLink}
 											disabled={isGenerating}
 											sx={{
@@ -487,40 +511,43 @@ const Setting = () => {
 												fontSize: '13px',
 												color: '#5627DB',
 												borderColor: '#5627DB',
-												'&:hover': {
-													borderColor: '#4520A6',
-													backgroundColor: 'rgba(86, 39, 219, 0.05)',
-												},
+												'&:hover': { borderColor: '#4520A6', backgroundColor: 'rgba(86, 39, 219, 0.05)' },
 											}}
 										>
-											{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
+											{isGenerating ? t('generating') : t('getLink')}
 										</Button>
 									) : (
-										<Box
-											sx={{
-												display: 'flex',
-												alignItems: 'center',
-												gap: 1,
-												backgroundColor: '#f5f5f5',
-												px: 1.5,
-												py: 0.75,
-												borderRadius: '8px',
-												border: '1px solid #e0e0e0',
-												maxWidth: 320,
-											}}
-										>
-											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all', flex: 1 }}>
-												{generatedLink}
-											</Typography>
-											<IconButton size='small' onClick={copyToClipboard} color='primary' sx={{ flexShrink: 0 }}>
-												<CopyIcon fontSize='small' />
-											</IconButton>
-										</Box>
-									)}
-									{generatedLink && (
-										<Typography variant='caption' color='error' sx={{ display: 'block' }}>
-											* {t('link_expiry_notice') || 'Link 24 soat davomida amal qiladi'}
-										</Typography>
+										<>
+											<Box
+												sx={{
+													display: 'flex',
+													alignItems: 'center',
+													gap: 1,
+													backgroundColor: 'rgba(86,39,219,0.04)',
+													px: 1.5,
+													py: 0.75,
+													borderRadius: '8px',
+													border: '1px solid rgba(86,39,219,0.2)',
+													maxWidth: 320,
+												}}
+											>
+												<LinkIcon sx={{ fontSize: 14, color: '#5627DB', flexShrink: 0 }} />
+												<Typography variant='caption' sx={{ color: '#5627DB', wordBreak: 'break-all', flex: 1 }}>
+													{generatedLink}
+												</Typography>
+												<IconButton size='small' onClick={copyToClipboard} sx={{ flexShrink: 0, color: '#5627DB', p: '2px' }}>
+													<CopyIcon sx={{ fontSize: 14 }} />
+												</IconButton>
+											</Box>
+											<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 320 }}>
+												<Typography variant='caption' sx={{ color: linkExpiresAt && linkExpiresAt - Date.now() < 3600000 ? '#e65100' : '#787878' }}>
+													⏱ {t('linkExpiresIn')}: {linkExpiresAt ? formatTimeRemaining(linkExpiresAt - Date.now()) : '—'}
+												</Typography>
+												<Button size='small' onClick={handleGenerateLink} disabled={isGenerating} sx={{ fontSize: '11px', textTransform: 'none', color: '#5627DB', minWidth: 'unset', p: '2px 6px' }}>
+													{t('regenerateLink')}
+												</Button>
+											</Box>
+										</>
 									)}
 								</Box>
 							)}

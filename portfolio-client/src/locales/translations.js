@@ -750,6 +750,10 @@ Please make sure that your profile does not fall under any of the prohibited act
 		not_set: 'Not set',
 		getLink: 'Get Link',
 		linkCopied: 'Link copied!',
+		shareableLink: 'Shareable Link',
+		linkExpiresIn: 'Expires in',
+		regenerateLink: 'New Link',
+		noActiveLink: 'No active link',
 	},
 	ja: {
 		age: '歳',
@@ -1511,6 +1515,10 @@ Please make sure that your profile does not fall under any of the prohibited act
 		not_set: '未設定',
 		getLink: 'リンクを取得',
 		linkCopied: 'リンクがコピーされました！',
+		shareableLink: '共有リンク',
+		linkExpiresIn: '残り有効期限',
+		regenerateLink: '新しいリンク',
+		noActiveLink: 'アクティブなリンクなし',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2258,6 +2266,10 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		not_set: 'Belgilanmagan',
 		getLink: 'Link olish',
 		linkCopied: 'Link nusxalandi!',
+		shareableLink: 'Ulashish havolasi',
+		linkExpiresIn: 'Muddati tugashiga',
+		regenerateLink: 'Yangi link',
+		noActiveLink: "Aktiv havola yo'q",
 	},
 	ru: {
 		age: 'Возраст',
@@ -2976,6 +2988,10 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		not_set: 'Не задано',
 		getLink: 'Получить ссылку',
 		linkCopied: 'Ссылка скопирована!',
+		shareableLink: 'Ссылка для публикации',
+		linkExpiresIn: 'Истекает через',
+		regenerateLink: 'Новая ссылка',
+		noActiveLink: 'Нет активной ссылки',
 	},
 }
 

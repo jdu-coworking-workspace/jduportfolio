@@ -157,6 +157,91 @@
 	color: #ffffff !important;
 }
 
+/* /////////////////////////// SHAREABLE LINK /////////////////////////// */
+
+.shareableLinkSection {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 4px;
+	width: 100%;
+	align-items: flex-end;
+}
+
+.generateLinkBtn {
+	font-size: 13px !important;
+	text-transform: none !important;
+	color: #5627dc !important;
+	border: 1px solid rgba(86, 39, 220, 0.4) !important;
+	border-radius: 8px !important;
+	padding: 4px 14px !important;
+	background: rgba(86, 39, 220, 0.05) !important;
+	white-space: nowrap;
+}
+
+.generateLinkBtn:hover {
+	background: rgba(86, 39, 220, 0.12) !important;
+}
+
+.linkCard {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	background: rgba(86, 39, 220, 0.04);
+	border: 1px solid rgba(86, 39, 220, 0.2);
+	border-radius: 10px;
+	padding: 8px 12px;
+	width: 100%;
+	max-width: 320px;
+}
+
+.linkRow {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.linkUrl {
+	font-size: 11px;
+	color: #5627dc;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.linkFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.expiryBadge {
+	font-size: 11px;
+	color: #787878;
+	display: flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.expiryBadge.warning {
+	color: #e65100;
+}
+
+.regenerateBtn {
+	font-size: 11px !important;
+	text-transform: none !important;
+	color: #5627dc !important;
+	padding: 2px 8px !important;
+	min-width: unset !important;
+	border-radius: 6px !important;
+}
+
+.regenerateBtn:hover {
+	background: rgba(86, 39, 220, 0.1) !important;
+}
+
 /* /////////////////////////// MEDIA ///////////////////////////////////// */
 
 @media only screen and (max-width: 460px) {
