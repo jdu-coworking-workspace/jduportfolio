@@ -83,9 +83,8 @@ const StudentProfile = ({ userId = 0, isPublic = false }) => {
 				setStudent(response.data)
 				setLoading(false)
 			} catch (err) {
-				// For public/shareable links, redirect to home on any error instead of showing error
 				if (isPublic) {
-					navigate('/')
+					navigate('/link-expired')
 					return
 				}
 				setError(err.response?.data?.message || 'errorFetchingStudent')
