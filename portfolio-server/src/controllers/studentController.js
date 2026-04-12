@@ -519,6 +519,10 @@ class StudentController {
 				return res.status(403).json({ error: 'Forbidden' })
 			}
 
+			if (!student.visibility) {
+				return res.status(403).json({ error: 'profile_not_public', message: 'Profile must be public to generate a shareable link' })
+			}
+
 			const sequelize = ShareableLink.sequelize
 			let newLink
 			let expiresAt
