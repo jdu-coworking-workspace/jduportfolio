@@ -78,7 +78,10 @@ const normalizeProjectItem = item => {
 
 	const title = [item.title, item.name, item.project_name, item.projectTitle].find(v => typeof v === 'string' && v.trim()) || ''
 	const description = [item.description, item.text, item.summary, item.content].find(v => typeof v === 'string' && v.trim()) || ''
-	const url = [item.url, item.image_url, item.imageUrl, item.file_url, item.fileUrl].find(v => typeof v === 'string' && v.trim()) || ''
+
+	// image_urls is an array; fall back to legacy single-url fields
+	const imageUrlsFirst = Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls[0] : null
+	const url = [imageUrlsFirst, item.url, item.image_url, item.imageUrl, item.file_url, item.fileUrl].find(v => typeof v === 'string' && v.trim()) || ''
 
 	if (!title && !description && !url) return null
 
@@ -87,6 +90,8 @@ const normalizeProjectItem = item => {
 		title,
 		description,
 		url,
+		// expose all images for modal if needed
+		allImages: Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls : url ? [url] : [],
 	}
 }
 
@@ -145,36 +150,63 @@ SectionLabel.propTypes = {
 	children: PropTypes.node.isRequired,
 }
 
-const AboutCard = ({ label, value }) => (
-	<div
-		style={{
-			background: '#fafafa',
-			border: '1px solid #f0f0f0',
-			borderRadius: 12,
-			padding: '16px 18px',
-			minHeight: 172,
-			display: 'flex',
-			flexDirection: 'column',
-		}}
-	>
-		<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#aaa', marginBottom: 6 }}>{label}</p>
-		<p
-			title={String(value)}
+const AboutCard = ({ label, value }) => {
+	const [hovered, setHovered] = useState(false)
+	return (
+		<div
 			style={{
-				fontSize: '.95rem',
-				fontWeight: 600,
-				color: '#111',
-				lineHeight: 1.45,
-				display: '-webkit-box',
-				WebkitLineClamp: 6,
-				WebkitBoxOrient: 'vertical',
-				overflow: 'hidden',
+				background: '#fafafa',
+				border: '1px solid #f0f0f0',
+				borderRadius: 12,
+				padding: '16px 18px',
+				height: 140,
+				display: 'flex',
+				flexDirection: 'column',
+				position: 'relative',
+				cursor: 'default',
 			}}
+			onMouseEnter={() => setHovered(true)}
+			onMouseLeave={() => setHovered(false)}
 		>
-			{value}
-		</p>
-	</div>
-)
+			<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#aaa', marginBottom: 6, flexShrink: 0 }}>{label}</p>
+			<p
+				style={{
+					fontSize: '.95rem',
+					fontWeight: 600,
+					color: '#111',
+					lineHeight: 1.45,
+					display: '-webkit-box',
+					WebkitLineClamp: 4,
+					WebkitBoxOrient: 'vertical',
+					overflow: 'hidden',
+				}}
+			>
+				{value}
+			</p>
+			{hovered && (
+				<div
+					style={{
+						position: 'absolute',
+						bottom: 'calc(100% + 6px)',
+						left: 0,
+						minWidth: '100%',
+						maxWidth: 280,
+						background: '#fff',
+						border: '1px solid #e0e0e0',
+						borderRadius: 10,
+						padding: '12px 14px',
+						zIndex: 20,
+						boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+						pointerEvents: 'none',
+					}}
+				>
+					<p style={{ fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#aaa', marginBottom: 4 }}>{label}</p>
+					<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#111', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value}</p>
+				</div>
+			)}
+		</div>
+	)
+}
 
 AboutCard.propTypes = {
 	label: PropTypes.string.isRequired,

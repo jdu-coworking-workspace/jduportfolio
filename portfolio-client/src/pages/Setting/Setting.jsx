@@ -5,7 +5,7 @@ import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
 import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PersonIcon from '@mui/icons-material/Person'
-import { Link as LinkIcon, ContentCopy as CopyIcon } from '@mui/icons-material'
+import { Link as LinkIcon, ContentCopy as CopyIcon, RemoveCircleOutline as RemoveIcon } from '@mui/icons-material'
 import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
 import { useCallback, useContext, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -274,10 +274,10 @@ const Setting = () => {
 			if (response.data?.expiresIn) {
 				setLinkExpiryOption(response.data.expiresIn)
 			}
-			showAlert(t('link_generated_success') || 'Link muvaffaqiyatli yaratildi!', 'success')
+			showAlert(t('link_generated_success'), 'success')
 		} catch (error) {
 			console.error('Link xatosi:', error.response?.data || error.message)
-			showAlert(t('link_generation_failed') || 'Link yaratishda xatolik!', 'error')
+			showAlert(t('link_generation_failed'), 'error')
 		} finally {
 			setIsGenerating(false)
 		}
@@ -296,10 +296,10 @@ const Setting = () => {
 			setGeneratedLink('')
 			setLinkExpiresAt(null)
 			setLinkTimeRemainingMs(0)
-			showAlert(t('link_deactivated_success') || 'Link deactivated', 'success')
+			showAlert(t('link_deactivated_success'), 'success')
 		} catch (error) {
 			console.error('Link deactivate xatosi:', error.response?.data || error.message)
-			showAlert(t('link_deactivate_failed') || 'Link o‘chirishda xatolik', 'error')
+			showAlert(t('link_deactivate_failed'), 'error')
 		} finally {
 			setIsDeactivating(false)
 		}
@@ -589,10 +589,10 @@ const Setting = () => {
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
 							{role === 'Student' && (
-								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
 									{!generatedLink ? (
 										<>
-											<FormControl size='small' sx={{ minWidth: 160 }} disabled={isGenerating || isLinkStatusLoading}>
+											<FormControl size='small' sx={{ minWidth: 160 }} disabled={isGenerating || isLinkStatusLoading || !user.visibility}>
 												<Select value={linkExpiryOption} onChange={e => setLinkExpiryOption(e.target.value)} displayEmpty sx={{ borderRadius: '8px', fontSize: '13px', backgroundColor: '#fff' }}>
 													<MenuItem value='24h'>24 hours</MenuItem>
 													<MenuItem value='7d'>7 days</MenuItem>
@@ -604,56 +604,71 @@ const Setting = () => {
 												size='small'
 												startIcon={<LinkIcon />}
 												onClick={handleGenerateLink}
-												disabled={isGenerating || isLinkStatusLoading}
+												disabled={isGenerating || isLinkStatusLoading || !user.visibility}
+												title={!user.visibility ? t('profile_not_public') || 'Profile must be public to generate a link' : ''}
 												sx={{
 													borderRadius: '8px',
 													textTransform: 'none',
 													fontSize: '13px',
 													color: '#5627DB',
 													borderColor: '#5627DB',
-													'&:hover': {
-														borderColor: '#4520A6',
-														backgroundColor: 'rgba(86, 39, 219, 0.05)',
-													},
+													'&:hover': { borderColor: '#4520A6', backgroundColor: 'rgba(86, 39, 219, 0.05)' },
+													'&.Mui-disabled': { opacity: 0.45 },
 												}}
 											>
-												{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
+												{isGenerating ? t('generating') : t('getLink')}
 											</Button>
+											{!user.visibility && (
+												<Typography variant='caption' sx={{ color: '#999', fontSize: '11px' }}>
+													{t('profile_not_public') || 'Make your profile public first'}
+												</Typography>
+											)}
 										</>
 									) : (
-										<Box
-											sx={{
-												display: 'flex',
-												alignItems: 'center',
-												gap: 1,
-												backgroundColor: '#f5f5f5',
-												px: 1.5,
-												py: 0.75,
-												borderRadius: '8px',
-												border: '1px solid #e0e0e0',
-												maxWidth: 320,
-											}}
-										>
-											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all', flex: 1 }}>
-												{generatedLink}
-											</Typography>
-											<IconButton size='small' onClick={copyToClipboard} color='primary' sx={{ flexShrink: 0 }}>
-												<CopyIcon fontSize='small' />
-											</IconButton>
-											<Button size='small' variant='text' onClick={handleDeactivateLink} disabled={isDeactivating} sx={{ textTransform: 'none', minWidth: 'auto', color: '#b00020' }}>
-												{isDeactivating ? t('deactivating') || 'Deactivating' : t('deactivate_link') || 'Deactivate'}
-											</Button>
-										</Box>
-									)}
-									{generatedLink && (
-										<Typography variant='caption' color='error' sx={{ display: 'block' }}>
-											* {t('link_expiry_notice') || 'Link validity'} ({formatLinkValidity(linkTimeRemainingMs)})
-										</Typography>
-									)}
-									{linkExpiresAt && (
-										<Typography variant='caption' color='text.secondary' sx={{ display: 'block' }}>
-											{new Date(linkExpiresAt).toLocaleString()}
-										</Typography>
+										<>
+											<Box
+												sx={{
+													display: 'flex',
+													alignItems: 'center',
+													gap: 0.5,
+													backgroundColor: 'rgba(86,39,219,0.04)',
+													px: 1.5,
+													py: 0.75,
+													borderRadius: '8px',
+													border: '1px solid rgba(86,39,219,0.2)',
+													maxWidth: 320,
+												}}
+											>
+												<LinkIcon sx={{ fontSize: 14, color: '#5627DB', flexShrink: 0 }} />
+												<Typography
+													variant='caption'
+													sx={{
+														color: '#5627DB',
+														flex: 1,
+														overflow: 'hidden',
+														textOverflow: 'ellipsis',
+														whiteSpace: 'nowrap',
+													}}
+													title={generatedLink}
+												>
+													{generatedLink}
+												</Typography>
+												<IconButton size='small' onClick={copyToClipboard} sx={{ flexShrink: 0, color: '#5627DB', p: '2px' }}>
+													<CopyIcon sx={{ fontSize: 14 }} />
+												</IconButton>
+												<IconButton size='small' onClick={handleDeactivateLink} disabled={isDeactivating} sx={{ flexShrink: 0, color: '#b00020', p: '2px' }}>
+													<RemoveIcon sx={{ fontSize: 16 }} />
+												</IconButton>
+											</Box>
+											<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 320 }}>
+												<Typography variant='caption' sx={{ color: linkExpiresAt && new Date(linkExpiresAt) - Date.now() < 3600000 ? '#e65100' : '#787878' }}>
+													⏱ {t('linkExpiresIn')}: {formatLinkValidity(linkTimeRemainingMs)}
+												</Typography>
+												<Button size='small' onClick={handleGenerateLink} disabled={isGenerating} sx={{ fontSize: '11px', textTransform: 'none', color: '#5627DB', minWidth: 'unset', p: '2px 6px' }}>
+													{t('regenerateLink')}
+												</Button>
+											</Box>
+										</>
 									)}
 								</Box>
 							)}
