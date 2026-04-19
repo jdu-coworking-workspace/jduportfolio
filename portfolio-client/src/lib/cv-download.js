@@ -1,15 +1,14 @@
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+
 function formatJapaneseDateWithAge(birthdayStr) {
 	const birthday = new Date(birthdayStr)
 	const today = new Date()
 
-	// Bugungi sana (yaponcha format)
 	const y = today.getFullYear()
 	const m = String(today.getMonth() + 1).padStart(2, '0')
 	const d = String(today.getDate()).padStart(2, '0')
 
-	// Yoshni hisoblash
 	let age = y - birthday.getFullYear()
 
 	const hasNotBirthdayYet = today.getMonth() < birthday.getMonth() || (today.getMonth() === birthday.getMonth() && today.getDate() < birthday.getDate())
@@ -20,8 +19,19 @@ function formatJapaneseDateWithAge(birthdayStr) {
 
 	return `${birthday.getFullYear()}年 ${birthday.getMonth() + 1}月 ${birthday.getDate()}日 （満 ${age} 歳）`
 }
+
+// ─── Global font helper ───────────────────────────────────────────────────────
+// All cells use ＭＳ ゴシック. bold defaults to false (light).
+const msGothic = (size = 11, bold = false) => ({ name: 'ＭＳ ゴシック', size, bold })
+
+// Apply font + optional alignment to a cell
+const applyStyle = (cell, { size = 11, bold = false } = {}, alignment = null) => {
+	cell.font = msGothic(size, bold)
+	if (alignment) cell.alignment = alignment
+}
+
 export const downloadCV = async cvData => {
-	// Normalize array-like fields to avoid runtime errors when they are null/undefined
+	// Normalize array-like fields
 	const education = Array.isArray(cvData.education) ? cvData.education : cvData.education ? [cvData.education] : []
 	const work_experience = Array.isArray(cvData.work_experience) ? cvData.work_experience : cvData.work_experience ? [cvData.work_experience] : []
 	const licenses = Array.isArray(cvData.licenses) ? cvData.licenses : cvData.licenses ? [cvData.licenses] : []
@@ -36,95 +46,157 @@ export const downloadCV = async cvData => {
 
 	const today = new Date()
 
-	// SANA (E2)
-	sheet.getCell('E2').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
+	// ── Common alignments ──────────────────────────────────────────────────────
+	const centerMiddle = { vertical: 'middle', horizontal: 'center' }
+	const leftMiddle = { vertical: 'middle', horizontal: 'left' }
+	const rightMiddle = { vertical: 'middle', horizontal: 'right', wrapText: true }
 
-	// FURIGANA ISM (C3)
-	sheet.getCell('C3').value = `${cvData.first_name_furigana} ${cvData.last_name_furigana}`
+	// ── Sheet 1 ────────────────────────────────────────────────────────────────
 
-	// ISM FAMILIYA (C4)
-	sheet.getCell('C4').value = `${cvData.first_name} ${cvData.last_name}`
+	// E2 — current date
+	const e2 = sheet.getCell('E2')
+	e2.value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
+	applyStyle(e2, {}, leftMiddle)
 
-	// Jinsi erkak yoki urgochi
-	// Support both English ('Male'/'Female') and Japanese ('男'/'女') from Kintone
+	// C3 — furigana name
+	const c3 = sheet.getCell('C3')
+	c3.value = `${cvData.first_name_furigana} ${cvData.last_name_furigana}`
+	applyStyle(c3)
+
+	// C4 — full name
+	const c4 = sheet.getCell('C4')
+	c4.value = `${cvData.first_name} ${cvData.last_name}`
+	applyStyle(c4)
+
+	// F3 — gender
+	const f3 = sheet.getCell('F3')
 	const isMale = cvData.gender === 'Male' || cvData.gender === '男'
-	sheet.getCell('F3').value = isMale ? '男' : '女'
+	f3.value = isMale ? '男' : '女'
+	applyStyle(f3, {}, centerMiddle)
 
-	// TUG'ILGAN SANA (C6)
-	const jpFormatted = formatJapaneseDateWithAge(cvData.date_of_birth)
-	sheet.getCell('C6').value = jpFormatted
+	// C6 — date of birth (centered)
+	const c6 = sheet.getCell('C6')
+	c6.value = formatJapaneseDateWithAge(cvData.date_of_birth)
+	applyStyle(c6, {}, centerMiddle)
 
-	// Photo (G3) - Add image if available
-	sheet.getCell('G3').value = `写真を貼る位置
-写真を貼る必要がある場合
-1．縦  36～40mm　横  24～30mm
-2.本人単身胸から上
-3.裏面のりづけ
-4 裏面に氏名記入`
+	// G3 — photo placeholder
+	const g3 = sheet.getCell('G3')
+	g3.value = `写真を貼る位置\n写真を貼る必要がある場合\n1．縦  36～40mm　横  24～30mm\n2.本人単身胸から上\n3.裏面のりづけ\n4 裏面に氏名記入`
+	applyStyle(g3, { size: 9 })
 
-	// Additional address furigana (C7) - Row 7: Additional address (フリガナ)
-	sheet.getCell('C7').value = cvData.additional_info?.additionalAddressFurigana || ''
+	// C7 — additional address furigana
+	const c7 = sheet.getCell('C7')
+	c7.value = cvData.additional_info?.additionalAddressFurigana || ''
+	applyStyle(c7)
 
-	// tel nomer (G7)
-	sheet.getCell('G7').value = `電話：${cvData.additional_info?.additionalPhone || ''}`
+	// G7 — additional phone
+	const g7 = sheet.getCell('G7')
+	g7.value = `電話：${cvData.additional_info?.additionalPhone || ''}`
+	applyStyle(g7)
 
-	// Additional address email (G9) - Row 9: Additional address email
-	sheet.getCell('G9').value = cvData.additional_info?.additionalEmail || ''
+	// G9 — additional email
+	const g9 = sheet.getCell('G9')
+	g9.value = cvData.additional_info?.additionalEmail || ''
+	applyStyle(g9)
 
-	// Additional address index (B8) - Row 7: Additional address
-	// Prefer "indeks" but fall back to "additionalIndeks" so Settings updates are reflected
+	// B8 — additional address index
 	const additionalIndex = cvData.additional_info?.indeks || cvData.additional_info?.additionalIndeks || ''
-	sheet.getCell('B8').value = `現住所 （〒　　　${additionalIndex}　　　　　　）`
-	// Additional address (B9) - Row 7: Additional address
-	sheet.getCell('B9').value = cvData.additional_info?.additionalAddress || ''
-	// additional tel nomer (G11)
-	sheet.getCell('G11').value = `電話：${cvData.phone}`
+	const b8 = sheet.getCell('B8')
+	b8.value = `現住所 （〒　　　${additionalIndex}　　　　　　）`
+	applyStyle(b8)
 
-	// 連絡先 email (G13) - Row 13: 連絡先 email (student's main email)
-	sheet.getCell('G13').value = cvData.email || ''
+	// B9 — additional address
+	const b9 = sheet.getCell('B9')
+	b9.value = cvData.additional_info?.additionalAddress || ''
+	applyStyle(b9)
 
-	// 連絡先 furigana (C11) - Row 11: 連絡先 (フリガナ) (from 出身地 フリガナ) - Students table
-	const contactAddressFurigana = cvData.address_furigana || ''
-	sheet.getCell('C11').value = contactAddressFurigana
-	// 連絡先 index (B12) - Row 11: 連絡先 (from 出身地 postal_code) - Students table
-	const contactPostalCode = cvData.postal_code || ''
-	sheet.getCell('B12').value = `連絡先 （〒　　　${contactPostalCode}　　　　　　）`
-	// 連絡先 address (B13) - Row 13: 連絡先 (from 出身地) - Students table
-	const contactAddress = cvData.address || ''
-	sheet.getCell('B13').value = contactAddress
-	// EDUCATION (B9)
+	// G11 — main phone
+	const g11 = sheet.getCell('G11')
+	g11.value = `電話：${cvData.phone}`
+	applyStyle(g11)
+
+	// G13 — main email
+	const g13 = sheet.getCell('G13')
+	g13.value = cvData.email || ''
+	applyStyle(g13)
+
+	// C11 — contact address furigana
+	const c11 = sheet.getCell('C11')
+	c11.value = cvData.address_furigana || ''
+	applyStyle(c11)
+
+	// B12 — contact postal code
+	const b12 = sheet.getCell('B12')
+	b12.value = `連絡先 （〒　　　${cvData.postal_code || ''}　　　　　　）`
+	applyStyle(b12)
+
+	// B13 — contact address
+	const b13 = sheet.getCell('B13')
+	b13.value = cvData.address || ''
+	applyStyle(b13)
+
+	// ── Education (学歴) — font weight identical to work_experience ────────────
 	if (education.length > 0) {
-		education.map((item, index) => {
-			sheet.getCell(`B${17 + index}`).value = item.year
-			sheet.getCell(`C${17 + index}`).value = item.month
-			sheet.getCell(`D${17 + index}`).value = item.institution
-			sheet.getCell(`G${17 + index}`).value = item.status
-			const cell = sheet.getCell(`B${17 + index}`)
-			cell.value = item.year
-			cell.font = { size: 11 }
-			cell.alignment = { vertical: 'middle', horizontal: 'center' }
+		education.forEach((item, index) => {
+			const row = 17 + index
+
+			const yearCell = sheet.getCell(`B${row}`)
+			yearCell.value = item.year
+			applyStyle(yearCell, {}, centerMiddle)
+
+			const monthCell = sheet.getCell(`C${row}`)
+			monthCell.value = item.month
+			applyStyle(monthCell, {}, centerMiddle)
+
+			const institutionCell = sheet.getCell(`D${row}`)
+			institutionCell.value = item.institution
+			applyStyle(institutionCell, {}, leftMiddle)
+
+			const statusCell = sheet.getCell(`G${row}`)
+			statusCell.value = item.status
+			applyStyle(statusCell, {}, leftMiddle)
 		})
 	}
-	// workExperience (B9)
+
+	// ── Work Experience (職歴) ─────────────────────────────────────────────────
 	if (work_experience.length > 0) {
-		work_experience.map((item, index) => {
-			sheet.getCell(`B${23 + index}`).value = new Date(item.from).getFullYear()
-			sheet.getCell(`C${23 + index}`).value = new Date(item.from).getMonth() + 1
-			sheet.getCell(`D${23 + index}`).value = `${item.company} ${item.details}`
+		work_experience.forEach((item, index) => {
+			const row = 23 + index
+
+			const yearCell = sheet.getCell(`B${row}`)
+			yearCell.value = new Date(item.from).getFullYear()
+			applyStyle(yearCell, {}, centerMiddle)
+
+			const monthCell = sheet.getCell(`C${row}`)
+			monthCell.value = new Date(item.from).getMonth() + 1
+			applyStyle(monthCell, {}, centerMiddle)
+
+			const detailCell = sheet.getCell(`D${row}`)
+			detailCell.value = `${item.company} ${item.details}`
+			applyStyle(detailCell, {}, leftMiddle)
 		})
 	} else {
-		sheet.getCell('D23').value = 'なし'
-		sheet.getCell('D24').value = `                    以上`
+		const d23 = sheet.getCell('D23')
+		d23.value = 'なし'
+		applyStyle(d23, {}, leftMiddle)
+
+		const d24 = sheet.getCell('D24')
+		d24.value = `                    以上`
+		applyStyle(d24, {}, leftMiddle)
 	}
-	// certificatess
+
+	// ── Licenses / Certificates — Sheet 1 right side ──────────────────────────
 	if (licenses.length > 0) {
-		licenses.map((item, index) => {
-			sheet.getCell(`J${4 + index}`).value = item.year
-			sheet.getCell(`K${4 + index}`).value = item.month
+		licenses.forEach((item, index) => {
+			const jCell = sheet.getCell(`J${4 + index}`)
+			jCell.value = item.year
+			applyStyle(jCell, {}, centerMiddle)
+
+			const kCell = sheet.getCell(`K${4 + index}`)
+			kCell.value = item.month
+			applyStyle(kCell, {}, centerMiddle)
 
 			let certificateValue = item.certifacateName
-
-			// IELTS max score formatlash
 			if (certificateValue.startsWith('IELTS')) {
 				const jsonPart = certificateValue.slice(5).trim()
 				try {
@@ -134,98 +206,80 @@ export const downloadCV = async cvData => {
 				} catch (e) {}
 			}
 
-			sheet.getCell(`L${4 + index}`).value = certificateValue
+			const lCell = sheet.getCell(`L${4 + index}`)
+			lCell.value = certificateValue
+			applyStyle(lCell, {}, leftMiddle)
 		})
 	}
 
-	// 自己PR (B8)
-	sheet.getCell('J12').value = cvData.self_introduction
+	// J12 — self introduction
+	const j12 = sheet.getCell('J12')
+	j12.value = cvData.self_introduction
+	applyStyle(j12, {}, { wrapText: true, vertical: 'top' })
 
-	// 2 sheet boshlandi ------------------------------------------------------------------------------->
+	// ── Sheet 2 ────────────────────────────────────────────────────────────────
 
-	// ism familiya (D5)
-	sheet2.getCell('D5').value = `氏名 ${cvData.first_name} ${cvData.last_name}`
-	// bugungi sana (A4)
-	sheet2.getCell('A4').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
-	// projekt deliverables (A8) - Students table
+	// D5 — name
+	const d5 = sheet2.getCell('D5')
+	d5.value = `氏名 ${cvData.first_name} ${cvData.last_name}`
+	applyStyle(d5)
+
+	// A4 — current date
+	const a4 = sheet2.getCell('A4')
+	a4.value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
+	applyStyle(a4)
+
+	// Deliverables
 	if (cvData.deliverables && cvData.deliverables.length > 0) {
-		cvData.deliverables.map((item, index) => {
+		cvData.deliverables.forEach((item, index) => {
 			const offset = index * 2
 
-			sheet2.getCell(`A${8 + offset}`).value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
-			sheet2.getCell(`A${9 + offset}`).value = item.description
+			const titleCell = sheet2.getCell(`A${8 + offset}`)
+			titleCell.value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
+			applyStyle(titleCell, {}, leftMiddle)
 
 			const descCell = sheet2.getCell(`A${9 + offset}`)
 			descCell.value = item.description
-			descCell.alignment = { wrapText: true, vertical: 'top' }
+			applyStyle(descCell, {}, { wrapText: true, vertical: 'top' })
 
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
 			roleCell.value = `役割　${item.role.join(', ')}`
-			roleCell.alignment = {
-				wrapText: true,
-				vertical: 'top',
-				horizontal: 'left',
-			}
+			applyStyle(roleCell, {}, { wrapText: true, vertical: 'top', horizontal: 'left' })
 		})
 	}
-	// arubaito (A20)
+
+	// Arubaito
 	if (arubaito.length > 0) {
-		arubaito.map((item, index) => {
+		arubaito.forEach((item, index) => {
 			const row = 20 + index
 			sheet2.mergeCells(`A${row}:D${row}`)
-			sheet2.getCell(`A${row}`).value = `${item.period}  ${item.role}  ${item.company}`
-			sheet2.getCell(`A${row}`).alignment = {
-				vertical: 'middle',
-				horizontal: 'left',
-				wrapText: true,
-			}
+			const cell = sheet2.getCell(`A${row}`)
+			cell.value = `${item.period}  ${item.role}  ${item.company}`
+			applyStyle(cell, {}, { vertical: 'middle', horizontal: 'left', wrapText: true })
 		})
 	}
-	// ■資格など (A33)
-	const rightRegularStyle = {
-		alignment: {
-			horizontal: 'right',
-			vertical: 'middle',
-			wrapText: true,
-		},
-		font: {
-			bold: false,
-			size: 11,
-			name: 'Calibri',
-		},
-	}
 
+	// ■ Licenses — Sheet 2 (A33+)
 	if (cvData.licenses.length > 0) {
-		cvData.licenses.map((item, index) => {
+		cvData.licenses.forEach((item, index) => {
 			const row = 33 + index
 
-			// YEAR
 			const yearCell = sheet2.getCell(`A${row}`)
 			yearCell.value = item.year
-			yearCell.alignment = rightRegularStyle.alignment
-			yearCell.font = rightRegularStyle.font
+			applyStyle(yearCell, {}, rightMiddle)
 
-			// MONTH
 			const monthCell = sheet2.getCell(`B${row}`)
 			monthCell.value = item.month
-			monthCell.alignment = rightRegularStyle.alignment
-			monthCell.font = rightRegularStyle.font
+			applyStyle(monthCell, {}, rightMiddle)
 
-			// C–D MERGE
 			sheet2.mergeCells(`C${row}:D${row}`)
-
 			const certCell = sheet2.getCell(`C${row}`)
 			certCell.value = item.certifacateName
-			certCell.alignment = {
-				horizontal: 'left',
-				vertical: 'middle',
-				wrapText: true,
-			}
-			certCell.font = rightRegularStyle.font
+			applyStyle(certCell, {}, { horizontal: 'left', vertical: 'middle', wrapText: true })
 		})
 	}
 
-	// fileni yozib olish va saqlash
+	// Save
 	const buffer = await workbook.xlsx.writeBuffer()
 	saveAs(new Blob([buffer]), `${cvData.first_name}-CV.xlsx`)
 }
