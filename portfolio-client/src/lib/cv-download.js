@@ -256,6 +256,10 @@ export const downloadCV = async cvData => {
 			const cell = sheet2.getCell(`A${row}`)
 			cell.value = `${item.period}  ${item.role}  ${item.company}`
 			applyStyle(cell, {}, { vertical: 'middle', horizontal: 'left', wrapText: true })
+			// Merged range ichidagi barcha celllarga alignment majburlash
+			sheet2.getRow(row).eachCell({ includeEmpty: true }, c => {
+				c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+			})
 		})
 	}
 
@@ -266,16 +270,20 @@ export const downloadCV = async cvData => {
 
 			const yearCell = sheet2.getCell(`A${row}`)
 			yearCell.value = item.year
-			applyStyle(yearCell, {}, rightMiddle)
+			applyStyle(yearCell, {}, leftMiddle)
 
 			const monthCell = sheet2.getCell(`B${row}`)
 			monthCell.value = item.month
-			applyStyle(monthCell, {}, rightMiddle)
+			applyStyle(monthCell, {}, leftMiddle)
 
 			sheet2.mergeCells(`C${row}:D${row}`)
 			const certCell = sheet2.getCell(`C${row}`)
 			certCell.value = item.certifacateName
 			applyStyle(certCell, {}, { horizontal: 'left', vertical: 'middle', wrapText: true })
+			// Merged celllar uchun barcha ustunlarga alignment berish
+			sheet2.getRow(row).eachCell({ includeEmpty: true }, cell => {
+				cell.alignment = { ...cell.alignment, horizontal: 'left' }
+			})
 		})
 	}
 
