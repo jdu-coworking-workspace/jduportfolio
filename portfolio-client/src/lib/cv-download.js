@@ -96,7 +96,7 @@ export const downloadCV = async cvData => {
 
 	// G9 — additional email
 	const g9 = sheet.getCell('G9')
-	g9.value = cvData.additional_info?.additionalEmail || ''
+	g9.value = cvData.email || ''
 	applyStyle(g9)
 
 	// B8 — additional address index
@@ -117,7 +117,7 @@ export const downloadCV = async cvData => {
 
 	// G13 — main email
 	const g13 = sheet.getCell('G13')
-	g13.value = cvData.email || ''
+	g13.value = cvData.additional_info?.additionalEmail || ''
 	applyStyle(g13)
 
 	// C11 — contact address furigana
