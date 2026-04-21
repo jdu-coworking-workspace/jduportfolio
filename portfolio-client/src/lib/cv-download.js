@@ -43,7 +43,22 @@ export const downloadCV = async cvData => {
 	await workbook.xlsx.load(arrayBuffer)
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
+	const sheet4 = workbook.getWorksheet(4)
+	if (sheet4) {
+		for (let row = 17; row <= 20; row++) {
+			sheet4.getRow(row).eachCell({ includeEmpty: true }, cell => {
+				cell.alignment = {
+					...cell.alignment,
+					wrapText: false,
+					shrinkToFit: false,
+				}
+			})
+			sheet4.getRow(row).height = 14.25
+		}
 
+		// A ustunining kengligi
+		sheet4.getColumn('A').width = 18.65
+	}
 	const today = new Date()
 
 	// ── Common alignments ──────────────────────────────────────────────────────
@@ -250,7 +265,7 @@ export const downloadCV = async cvData => {
 
 	// Arubaito
 	if (arubaito.length > 0) {
-		arubaito.forEach((item, index) => {
+		arubaito.slice(0, 2).forEach((item, index) => {
 			const row = 20 + index
 			sheet2.mergeCells(`A${row}:D${row}`)
 			const cell = sheet2.getCell(`A${row}`)
@@ -266,7 +281,7 @@ export const downloadCV = async cvData => {
 	// ■ Licenses — Sheet 2 (A33+)
 	if (cvData.licenses.length > 0) {
 		cvData.licenses.forEach((item, index) => {
-			const row = 33 + index
+			const row = 35 + index
 
 			const yearCell = sheet2.getCell(`A${row}`)
 			yearCell.value = item.year
