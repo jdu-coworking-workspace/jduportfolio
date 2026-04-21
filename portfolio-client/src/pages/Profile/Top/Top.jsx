@@ -22,6 +22,7 @@ import { useLocation, useNavigate, useOutletContext, useParams } from 'react-rou
 import { activeUniverAtom, deletedUrlsAtom, deliverableImagesAtom, editDataAtom, editModeAtom, hobbiesInputAtom, newImagesAtom, showHobbiesInputAtom, showSpecialSkillsInputAtom, specialSkillsInputAtom, subTabIndexAtom, updateQAAtom } from '../../../atoms/profileEditAtoms'
 import Deliverables from '../../../components/Deliverables/Deliverables'
 import ProfileConfirmDialog from '../../../components/Dialogs/ProfileConfirmDialog'
+import ResumeWarningDialog from '../../../components/Dialogs/resume-warning-dialog/Resume-warning-dialog'
 import LanguageSkillSelector from '../../../components/LanguageSkillSelector/LanguageSkillSelector'
 import OtherSkillsSelector from '../../../components/OtherSkillsSelector/OtherSkillsSelector'
 import SkillSelector from '../../../components/SkillSelector/SkillSelector'
@@ -34,11 +35,10 @@ import QA from '../../../pages/Profile/QA/QA'
 import axios from '../../../utils/axiosUtils'
 import Arubaito from '../Arubaito/Arubaito'
 import { Education } from '../Education/Education'
+import GuestPortfolioView from '../GuestPortfolioView/GuestPortfolioView'
 import { Licenses } from '../Licenses/Licenses'
 import WorkExperience from '../WorkExperience/WorkExperience'
-import GuestPortfolioView from '../GuestPortfolioView/GuestPortfolioView'
 import styles from './Top.module.css'
-
 const Top = () => {
 	let id
 	const role = sessionStorage.getItem('role')
@@ -232,6 +232,7 @@ const Top = () => {
 	const [pendingLanguageChange, setPendingLanguageChange] = useState(null)
 	const [expandHobbies, setExpandHobbies] = useState(false)
 	const [expandSpecial, setExpandSpecial] = useState(false)
+	const [openResumeWarning, setOpenResumeWarning] = useState(false)
 
 	const cancelLanguageChange = () => {
 		setPendingLanguageChange(null)
@@ -965,6 +966,15 @@ const Top = () => {
 		}
 	}
 
+	const handleConfirmResume = () => {
+		setOpenResumeWarning(false)
+		try {
+			downloadCV(student)
+		} catch (err) {
+			console.log(err)
+		}
+	}
+
 	const handleDraftUpsert = async (formData = editData) => {
 		try {
 			if (newImages.length > 0) {
@@ -1070,18 +1080,8 @@ const Top = () => {
 				<>
 					{role === 'Student' && viewingLive ? (
 						<>
-							<Button
-								variant='contained'
-								size='small'
-								onClick={async () => {
-									try {
-										downloadCV(student)
-									} catch (err) {
-										console.log(err)
-									}
-								}}
-								sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
-							>
+							<ResumeWarningDialog open={openResumeWarning} onClose={() => setOpenResumeWarning(false)} onConfirm={handleConfirmResume} />
+							<Button variant='contained' size='small' onClick={() => setOpenResumeWarning(true)} sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}>
 								<DownloadIcon />
 								{t('download_cv')}
 							</Button>
