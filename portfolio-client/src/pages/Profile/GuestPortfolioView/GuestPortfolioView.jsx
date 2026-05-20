@@ -39,6 +39,22 @@ const calcAge = dob => {
 	return age
 }
 
+/* Returns an object keyed by proficiency level, e.g. { 上級: [{name,color}], 中級: [...], 初級: [...] }
+   Returns null when the data is not in object form (falls back to flat array handling). */
+const parseSkillsObject = data => {
+	if (!data) return null
+	let obj = data
+	if (typeof data === 'string') {
+		try {
+			obj = JSON.parse(data)
+		} catch {
+			return null
+		}
+	}
+	if (typeof obj !== 'object' || Array.isArray(obj)) return null
+	return obj
+}
+
 const parseObject = data => {
 	if (!data) return null
 	if (typeof data === 'object') return data
@@ -195,7 +211,7 @@ const AboutCard = ({ label, value }) => {
 						border: '1px solid #e0e0e0',
 						borderRadius: 10,
 						padding: '12px 14px',
-						zIndex: 20,
+						zIndex: 200,
 						boxShadow: '0 8px 24px rgba(0,0,0,.12)',
 						pointerEvents: 'none',
 					}}
@@ -211,6 +227,120 @@ const AboutCard = ({ label, value }) => {
 AboutCard.propTypes = {
 	label: PropTypes.string.isRequired,
 	value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+}
+
+/* ── IT Skills levels config ─────────────────────────────── */
+const LEVEL_CONFIG = {
+	上級: { label: '上級', sublabel: '3年以上', gradient: 'linear-gradient(135deg,#0f766e,#0d9488)', dot: '#0d9488', chipBg: '#F0FDFA', chipText: '#0f766e', chipBorder: '#99f6e4' },
+	中級: { label: '中級', sublabel: '3年未満', gradient: 'linear-gradient(135deg,#302b63,#6d28d9)', dot: '#6d28d9', chipBg: '#F5F3FF', chipText: '#5b21b6', chipBorder: '#ddd6fe' },
+	初級: { label: '初級', sublabel: '1年未満', gradient: 'linear-gradient(135deg,#374151,#6b7280)', dot: '#6b7280', chipBg: '#F9FAFB', chipText: '#374151', chipBorder: '#e5e7eb' },
+}
+const LEVEL_ORDER = ['上級', '中級', '初級']
+
+const ItSkillsGrouped = ({ skillsObj }) => {
+	const levels = LEVEL_ORDER.filter(lv => Array.isArray(skillsObj[lv]) && skillsObj[lv].length > 0)
+	if (!levels.length) return null
+	return (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+			{levels.map(lv => {
+				const cfg = LEVEL_CONFIG[lv] || LEVEL_CONFIG['初級']
+				const skills = skillsObj[lv]
+				return (
+					<div
+						key={lv}
+						style={{
+							background: '#fafafa',
+							border: '1px solid #f0f0f0',
+							borderRadius: 14,
+							overflow: 'hidden',
+						}}
+					>
+						{/* level header */}
+						<div
+							style={{
+								background: cfg.gradient,
+								padding: '12px 20px',
+								display: 'flex',
+								alignItems: 'center',
+								gap: 10,
+							}}
+						>
+							<span
+								style={{
+									fontSize: '1rem',
+									fontWeight: 700,
+									color: '#fff',
+									letterSpacing: 0.5,
+								}}
+							>
+								{cfg.label}
+							</span>
+							<span
+								style={{
+									fontSize: '.7rem',
+									color: 'rgba(255,255,255,.7)',
+									background: 'rgba(255,255,255,.15)',
+									padding: '2px 10px',
+									borderRadius: 100,
+									fontWeight: 500,
+								}}
+							>
+								{cfg.sublabel}
+							</span>
+							<span
+								style={{
+									marginLeft: 'auto',
+									fontSize: '.72rem',
+									color: 'rgba(255,255,255,.6)',
+									fontWeight: 500,
+								}}
+							>
+								{skills.length} skills
+							</span>
+						</div>
+						{/* skills chips */}
+						<div style={{ padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+							{skills.map((s, i) => {
+								const skillName = getSkillName(s)
+								return (
+									<span
+										key={i}
+										style={{
+											padding: '6px 16px',
+											borderRadius: 100,
+											fontSize: '.83rem',
+											fontWeight: 600,
+											background: cfg.chipBg,
+											color: cfg.chipText,
+											border: `1px solid ${cfg.chipBorder}`,
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: 6,
+										}}
+									>
+										<span
+											style={{
+												width: 6,
+												height: 6,
+												borderRadius: '50%',
+												background: cfg.dot,
+												flexShrink: 0,
+											}}
+										/>
+										{skillName}
+									</span>
+								)
+							})}
+						</div>
+					</div>
+				)
+			})}
+		</div>
+	)
+}
+
+ItSkillsGrouped.propTypes = {
+	skillsObj: PropTypes.object.isRequired,
 }
 
 const ExpCard = ({ position, company, period, description }) => (
@@ -352,7 +482,8 @@ const GuestPortfolioView = ({ student }) => {
 	if (!student) return null
 
 	const age = calcAge(student.date_of_birth)
-	const itSkills = parseArray(student.it_skills)
+	const itSkillsObj = parseSkillsObject(student.it_skills)
+	const itSkills = itSkillsObj ? Object.values(itSkillsObj).flat().filter(Boolean) : parseArray(student.it_skills)
 	const languageSkills = parseArray(student.language_skills)
 	const otherSkills = parseArray(student.other_skills)
 	const workExp = parseArray(student.work_experience)
@@ -442,15 +573,15 @@ const GuestPortfolioView = ({ student }) => {
 					) : null}
 
 					<div style={{ flex: 1, minWidth: 260 }}>
-						{name && <h1 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 700, letterSpacing: -1.5, lineHeight: 1.1, marginBottom: 6 }}>{name}</h1>}
+						{name && <h1 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 700, letterSpacing: -1.5, lineHeight: 1.1, marginBottom: 12 }}>{name}</h1>}
+						{student.self_introduction && <p style={{ fontSize: '.95rem', lineHeight: 1.7, color: 'rgba(255,255,255,.82)', maxWidth: 520, marginBottom: 14 }}>{student.self_introduction}</p>}
 						{(student.major || student.job_type) && (
-							<p style={{ fontSize: '1rem', color: 'rgba(255,255,255,.6)', marginBottom: 14 }}>
+							<p style={{ fontSize: '1rem', color: 'rgba(255,255,255,.6)', marginBottom: 20 }}>
 								{student.major}
 								{student.major && student.job_type ? ' • ' : ''}
 								{student.job_type}
 							</p>
 						)}
-						{student.self_introduction && <p style={{ fontSize: '.95rem', lineHeight: 1.7, color: 'rgba(255,255,255,.82)', maxWidth: 520, marginBottom: 20 }}>{student.self_introduction}</p>}
 
 						{/* private fields like student ID are intentionally hidden */}
 						<div style={{ display: 'grid', gap: 6, marginBottom: 22 }}>
@@ -523,12 +654,18 @@ const GuestPortfolioView = ({ student }) => {
 					<div>
 						{itSkills.length > 0 && (
 							<div style={section}>
-								<SectionLabel>Technical skills</SectionLabel>
-								<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-									{itSkills.map((s, i) => (
-										<Chip key={i} label={getSkillName(s)} color='blue' />
-									))}
-								</div>
+								<SectionLabel>IT Skills</SectionLabel>
+								{itSkillsObj ? (
+									/* Grouped by proficiency level */
+									<ItSkillsGrouped skillsObj={itSkillsObj} />
+								) : (
+									/* Flat fallback */
+									<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+										{itSkills.map((s, i) => (
+											<Chip key={i} label={getSkillName(s)} color='blue' />
+										))}
+									</div>
+								)}
 							</div>
 						)}
 
