@@ -1,5 +1,79 @@
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+
+// Theme color index → explicit ARGB mapping (from the resume template's theme1.xml).
+// ExcelJS does not always preserve theme-indexed colors correctly during a load→save
+// roundtrip, which causes a cellXfs count mismatch that makes MS Excel unable to render
+// sheets 3 and 4. Converting them to explicit ARGB values before saving prevents this.
+const THEME_COLORS = {
+	0: 'FFFFFFFF', // lt1
+	1: 'FF000000', // dk1
+	2: 'FF44546A', // dk2
+	3: 'FFE7E6E6', // lt2
+	4: 'FF4472C4', // accent1
+	5: 'FFED7D31', // accent2
+	6: 'FFA5A5A5', // accent3
+	7: 'FFFFC000', // accent4
+	8: 'FF5B9BD5', // accent5
+	9: 'FF70AD47', // accent6
+}
+
+function resolveThemeColor(color) {
+	if (!color || color.theme === undefined) return color
+	return { argb: THEME_COLORS[color.theme] || 'FF000000' }
+}
+
+/**
+ * Walk every cell on every worksheet and replace theme-indexed font/fill
+ * colors with their resolved ARGB equivalents so that MS Excel can render
+ * them without triggering a file-repair dialog.
+ */
+function fixThemeColors(workbook) {
+	workbook.worksheets.forEach(ws => {
+		// Fix ExcelJS bug where it saves invalid DPI values (4294967295) that crash MS Excel XML parser
+		if (ws.pageSetup) {
+			delete ws.pageSetup.horizontalDpi
+			delete ws.pageSetup.verticalDpi
+		}
+
+		// Fix ExcelJS bug where it writes outlinePr out of order in sheetPr, violating OpenXML schema and crashing MS Excel
+		if (ws.properties && ws.properties.outlineProperties) {
+			delete ws.properties.outlineProperties
+		}
+
+		ws.eachRow({ includeEmpty: false }, row => {
+			row.eachCell({ includeEmpty: false }, cell => {
+				// Font color
+				if (cell.font?.color?.theme !== undefined) {
+					cell.font = { ...cell.font, color: resolveThemeColor(cell.font.color) }
+				}
+				// Fill colors
+				if (cell.fill) {
+					let changed = false
+					const newFill = { ...cell.fill }
+					if (newFill.fgColor?.theme !== undefined) {
+						newFill.fgColor = resolveThemeColor(newFill.fgColor)
+						changed = true
+					}
+					if (newFill.bgColor?.theme !== undefined) {
+						newFill.bgColor = resolveThemeColor(newFill.bgColor)
+						changed = true
+					}
+					if (changed) cell.fill = newFill
+				}
+				// Rich-text runs
+				if (cell.value?.richText) {
+					cell.value.richText.forEach(rt => {
+						if (rt.font?.color?.theme !== undefined) {
+							rt.font = { ...rt.font, color: resolveThemeColor(rt.font.color) }
+						}
+					})
+				}
+			})
+		})
+	})
+}
+
 function formatJapaneseDateWithAge(birthdayStr) {
 	const birthday = new Date(birthdayStr)
 	const today = new Date()
@@ -31,13 +105,17 @@ export const downloadCV = async cvData => {
 	const arrayBuffer = await response.arrayBuffer()
 	const workbook = new ExcelJS.Workbook()
 	await workbook.xlsx.load(arrayBuffer)
+
+	// Fix theme-indexed colors to prevent MS Excel rendering issues on sheets 3 & 4
+	fixThemeColors(workbook)
+
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
 
 	const today = new Date()
 
-	// SANA (E2)
-	sheet.getCell('E2').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
+	// SANA (D2)
+	sheet.getCell('D2').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
 
 	// FURIGANA ISM (C3)
 	sheet.getCell('C3').value = `${cvData.first_name_furigana} ${cvData.last_name_furigana}`
