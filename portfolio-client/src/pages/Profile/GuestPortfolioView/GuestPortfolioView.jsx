@@ -69,12 +69,12 @@ const parseObject = data => {
 	return null
 }
 
-const formatCertificationValue = value => {
+const formatCertificationValue = (value, labels = PUBLIC_LABELS.ja) => {
 	if (!hasMeaningfulValue(value)) return ''
 	const parsed = parseObject(value)
 	if (!parsed) return value
 
-	const highest = parsed.highest ? `Highest: ${parsed.highest}` : null
+	const highest = parsed.highest ? `${labels.highest}: ${parsed.highest}` : null
 	const historyKey = ['jlptlist', 'ieltslist', 'list', 'history'].find(key => Array.isArray(parsed[key]))
 	const history = historyKey
 		? parsed[historyKey]
@@ -211,7 +211,7 @@ const AboutCard = ({ label, value }) => {
 						border: '1px solid #e0e0e0',
 						borderRadius: 10,
 						padding: '12px 14px',
-						zIndex: 200,
+						zIndex: 9999,
 						boxShadow: '0 8px 24px rgba(0,0,0,.12)',
 						pointerEvents: 'none',
 					}}
@@ -375,7 +375,7 @@ const projectItemPropType = PropTypes.shape({
 	url: PropTypes.string,
 })
 
-const GalleryCard = ({ item, onClick }) => (
+const GalleryCard = ({ item, onClick, labels }) => (
 	<div
 		onClick={() => onClick(item)}
 		style={{
@@ -395,9 +395,9 @@ const GalleryCard = ({ item, onClick }) => (
 			e.currentTarget.style.boxShadow = ''
 		}}
 	>
-		{item.url ? <img src={item.url} alt={item.title} style={{ width: '100%', height: 170, objectFit: 'cover', display: 'block' }} /> : <div style={{ height: 170, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 14 }}>No image</div>}
+		{item.url ? <img src={item.url} alt={item.title} style={{ width: '100%', height: 170, objectFit: 'cover', display: 'block' }} /> : <div style={{ height: 170, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 14 }}>{labels.noImage}</div>}
 		<div style={{ padding: 16 }}>
-			<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#111', marginBottom: 4 }}>{item.title || 'Project'}</p>
+			<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#111', marginBottom: 4 }}>{item.title || labels.project}</p>
 			{item.description && <p style={{ fontSize: '.8rem', color: '#888', lineHeight: 1.5 }}>{item.description.length > 80 ? `${item.description.slice(0, 80)}…` : item.description}</p>}
 		</div>
 	</div>
@@ -406,9 +406,10 @@ const GalleryCard = ({ item, onClick }) => (
 GalleryCard.propTypes = {
 	item: projectItemPropType.isRequired,
 	onClick: PropTypes.func.isRequired,
+	labels: PropTypes.object.isRequired,
 }
 
-const Modal = ({ item, onClose }) => {
+const Modal = ({ item, onClose, labels }) => {
 	if (!item) return null
 	return (
 		<div
@@ -438,7 +439,7 @@ const Modal = ({ item, onClose }) => {
 				{item.url && <img src={item.url} alt={item.title} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: '16px 16px 0 0', background: '#f5f5f5' }} />}
 				<div style={{ padding: '24px 28px' }}>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-						<p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111' }}>{item.title || 'Project'}</p>
+						<p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111' }}>{item.title || labels.project}</p>
 						<button
 							onClick={onClose}
 							style={{
@@ -459,7 +460,7 @@ const Modal = ({ item, onClose }) => {
 							✕
 						</button>
 					</div>
-					<p style={{ fontSize: '.9rem', color: '#555', lineHeight: 1.7 }}>{item.description || 'No description provided.'}</p>
+					<p style={{ fontSize: '.9rem', color: '#555', lineHeight: 1.7 }}>{item.description || labels.noDescription}</p>
 				</div>
 			</div>
 		</div>
@@ -469,14 +470,178 @@ const Modal = ({ item, onClose }) => {
 Modal.propTypes = {
 	item: projectItemPropType,
 	onClose: PropTypes.func.isRequired,
+	labels: PropTypes.object.isRequired,
 }
 
+/* ─── public link labels ───────────────────────────────────── */
+const PUBLIC_LABELS = {
+	ja: {
+		about: '概要',
+		skills: 'スキル',
+		experience: '経験',
+		education: '学歴',
+		portfolio: 'ポートフォリオ',
+		overview: '概要',
+		major: '専攻',
+		careerFocus: '希望職種',
+		interests: '趣味',
+		age: '年齢',
+		ageValue: age => `${age}歳`,
+		semester: '学期',
+		semesterValue: semester => `${semester}学期`,
+		graduationMonth: 'JDU卒業予定月',
+		affiliatedUniversity: '所属大学',
+		contactMe: '連絡する',
+		technicalSkills: 'ITスキル',
+		languages: '言語',
+		certifications: '資格',
+		otherCompetencies: 'その他のスキル',
+		professionalExperience: '職務経験',
+		partTimeWork: 'アルバイト',
+		academicBackground: '学歴',
+		graduation: '卒業',
+		projects: '制作物・成果物',
+		workTogether: '一緒に働きましょう',
+		opportunities: 'インターン、アルバイト、正社員の機会を探しています',
+		email: 'メール',
+		phone: '電話',
+		location: '住所',
+		sendMessage: 'メッセージを送る',
+		noImage: '画像なし',
+		project: 'プロジェクト',
+		position: '役職',
+		company: '会社',
+		noDescription: '説明はありません。',
+		highest: '最高',
+	},
+	en: {
+		about: 'About',
+		skills: 'Skills',
+		experience: 'Experience',
+		education: 'Education',
+		portfolio: 'Portfolio',
+		overview: 'Overview',
+		major: 'Major',
+		careerFocus: 'Career focus',
+		interests: 'Interests',
+		age: 'Age',
+		ageValue: age => `${age} years old`,
+		semester: 'Semester',
+		semesterValue: semester => `Semester ${semester}`,
+		graduationMonth: 'JDU graduation month',
+		affiliatedUniversity: 'Affiliated university',
+		contactMe: 'Contact me',
+		technicalSkills: 'Technical skills',
+		languages: 'Languages',
+		certifications: 'Certifications',
+		otherCompetencies: 'Other competencies',
+		professionalExperience: 'Professional experience',
+		partTimeWork: 'Part-time work',
+		academicBackground: 'Academic background',
+		graduation: 'Graduation',
+		projects: 'Projects & deliverables',
+		workTogether: "Let's work together",
+		opportunities: 'Open to internships, part-time, and full-time opportunities',
+		email: 'Email',
+		phone: 'Phone',
+		location: 'Location',
+		sendMessage: 'Send a message',
+		noImage: 'No image',
+		project: 'Project',
+		position: 'Position',
+		company: 'Company',
+		noDescription: 'No description provided.',
+		highest: 'Highest',
+	},
+	uz: {
+		about: 'Haqida',
+		skills: "Ko'nikmalar",
+		experience: 'Tajriba',
+		education: "Ta'lim",
+		portfolio: 'Portfolio',
+		overview: 'Umumiy',
+		major: 'Mutaxassislik',
+		careerFocus: "Kasbiy yo'nalish",
+		interests: 'Qiziqishlar',
+		age: 'Yosh',
+		ageValue: age => `${age} yosh`,
+		semester: 'Semestr',
+		semesterValue: semester => `${semester}-semestr`,
+		graduationMonth: 'JDU bitiruv oyi',
+		affiliatedUniversity: 'Hamkor universitet',
+		contactMe: "Bog'lanish",
+		technicalSkills: "Texnik ko'nikmalar",
+		languages: 'Tillar',
+		certifications: 'Sertifikatlar',
+		otherCompetencies: "Boshqa ko'nikmalar",
+		professionalExperience: 'Ish tajribasi',
+		partTimeWork: 'Yarim stavkali ish',
+		academicBackground: "Ta'lim tarixi",
+		graduation: 'Bitiruv',
+		projects: 'Loyihalar va ishlar',
+		workTogether: 'Birga ishlaymiz',
+		opportunities: "Amaliyot, yarim stavkali va to'liq stavkali imkoniyatlarga ochiq",
+		email: 'Email',
+		phone: 'Telefon',
+		location: 'Manzil',
+		sendMessage: 'Xabar yuborish',
+		noImage: "Rasm yo'q",
+		project: 'Loyiha',
+		position: 'Lavozim',
+		company: 'Kompaniya',
+		noDescription: "Tavsif yo'q.",
+		highest: 'Eng yuqori',
+	},
+	ru: {
+		about: 'О себе',
+		skills: 'Навыки',
+		experience: 'Опыт',
+		education: 'Образование',
+		portfolio: 'Портфолио',
+		overview: 'Обзор',
+		major: 'Специальность',
+		careerFocus: 'Карьерный фокус',
+		interests: 'Интересы',
+		age: 'Возраст',
+		ageValue: age => `${age} лет`,
+		semester: 'Семестр',
+		semesterValue: semester => `${semester} семестр`,
+		graduationMonth: 'Месяц выпуска JDU',
+		affiliatedUniversity: 'Партнерский университет',
+		contactMe: 'Связаться',
+		technicalSkills: 'Технические навыки',
+		languages: 'Языки',
+		certifications: 'Сертификаты',
+		otherCompetencies: 'Другие навыки',
+		professionalExperience: 'Профессиональный опыт',
+		partTimeWork: 'Подработка',
+		academicBackground: 'Образование',
+		graduation: 'Выпуск',
+		projects: 'Проекты и работы',
+		workTogether: 'Давайте работать вместе',
+		opportunities: 'Открыт к стажировкам, подработке и полной занятости',
+		email: 'Email',
+		phone: 'Телефон',
+		location: 'Адрес',
+		sendMessage: 'Отправить сообщение',
+		noImage: 'Нет изображения',
+		project: 'Проект',
+		position: 'Должность',
+		company: 'Компания',
+		noDescription: 'Описание не указано.',
+		highest: 'Лучший результат',
+	},
+}
+
+const getPublicLabels = language => PUBLIC_LABELS[language] || PUBLIC_LABELS.ja
+
 /* ─── nav tabs ─────────────────────────────────────────────── */
-const TABS = ['About', 'Skills', 'Experience', 'Education', 'Portfolio']
+const TABS = ['about', 'skills', 'experience', 'education', 'portfolio']
 
 /* ─── main component ───────────────────────────────────────── */
-const GuestPortfolioView = ({ student }) => {
-	const [activeTab, setActiveTab] = useState('About')
+const GuestPortfolioView = ({ student, language = 'ja' }) => {
+	const labels = getPublicLabels(language)
+	const [activeTab, setActiveTab] = useState('about')
 	const [expandedProject, setExpandedProject] = useState(null)
 
 	if (!student) return null
@@ -492,19 +657,19 @@ const GuestPortfolioView = ({ student }) => {
 	const deliverables = parseArray(student.deliverables).map(normalizeProjectItem).filter(Boolean)
 	const allProjects = [...gallery, ...deliverables]
 	const graduationText = student.graduation_year && student.graduation_season ? `${student.graduation_year}年${student.graduation_season}` : null
-	const jlptValue = formatCertificationValue(student.jlpt)
-	const ieltsValue = formatCertificationValue(student.ielts)
-	const jduCertValue = formatCertificationValue(student.jdu_japanese_certification)
+	const jlptValue = formatCertificationValue(student.jlpt, labels)
+	const ieltsValue = formatCertificationValue(student.ielts, labels)
+	const jduCertValue = formatCertificationValue(student.jdu_japanese_certification, labels)
 
 	const name = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
 	const ini = initials(student.first_name, student.last_name)
 
 	/* tab visibility */
 	const tabs = TABS.filter(t => {
-		if (t === 'Skills') return itSkills.length || languageSkills.length || otherSkills.length || hasMeaningfulValue(jlptValue) || hasMeaningfulValue(ieltsValue) || hasMeaningfulValue(jduCertValue)
-		if (t === 'Experience') return workExp.length || arubaito.length
-		if (t === 'Education') return student.partner_university
-		if (t === 'Portfolio') return allProjects.length
+		if (t === 'skills') return itSkills.length || languageSkills.length || otherSkills.length || hasMeaningfulValue(jlptValue) || hasMeaningfulValue(ieltsValue) || hasMeaningfulValue(jduCertValue)
+		if (t === 'experience') return workExp.length || arubaito.length
+		if (t === 'education') return student.partner_university
+		if (t === 'portfolio') return allProjects.length
 		return true
 	})
 
@@ -585,16 +750,28 @@ const GuestPortfolioView = ({ student }) => {
 
 						{/* private fields like student ID are intentionally hidden */}
 						<div style={{ display: 'grid', gap: 6, marginBottom: 22 }}>
-							{age && <p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>年: {age}</p>}
-							{graduationText && <p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>JDU graduation month: {graduationText}</p>}
-							{student.partner_university && <p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>Affiliated university: {student.partner_university}</p>}
+							{age && (
+								<p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>
+									{labels.age}: {age}
+								</p>
+							)}
+							{graduationText && (
+								<p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>
+									{labels.graduationMonth}: {graduationText}
+								</p>
+							)}
+							{student.partner_university && (
+								<p style={{ fontSize: '.98rem', color: 'rgba(255,255,255,.92)' }}>
+									{labels.affiliatedUniversity}: {student.partner_university}
+								</p>
+							)}
 						</div>
 
 						{/* CTA buttons */}
 						<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 							{student.email && (
 								<a href={`mailto:${student.email}`} style={btnPrimary}>
-									✉ Contact me
+									✉ {labels.contactMe}
 								</a>
 							)}
 							{student.phone && (
@@ -627,7 +804,7 @@ const GuestPortfolioView = ({ student }) => {
 								transition: 'all .2s',
 							}}
 						>
-							{t}
+							{labels[t]}
 						</button>
 					))}
 				</div>
@@ -636,25 +813,25 @@ const GuestPortfolioView = ({ student }) => {
 			{/* ── MAIN ── */}
 			<div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
 				{/* ABOUT */}
-				{activeTab === 'About' && (
+				{activeTab === 'about' && (
 					<div style={section}>
-						<SectionLabel>Overview</SectionLabel>
+						<SectionLabel>{labels.overview}</SectionLabel>
 						<div style={{ ...sectionGrid, gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))' }}>
-							{student.major && <AboutCard label='Major' value={student.major} />}
-							{student.job_type && <AboutCard label='Career focus' value={student.job_type} />}
-							{student.hobbies && <AboutCard label='Interests' value={student.hobbies} />}
-							{age && <AboutCard label='Age' value={`${age} years old`} />}
-							{student.semester && <AboutCard label='Semester' value={`Semester ${student.semester}`} />}
+							{student.major && <AboutCard label={labels.major} value={student.major} />}
+							{student.job_type && <AboutCard label={labels.careerFocus} value={student.job_type} />}
+							{student.hobbies && <AboutCard label={labels.interests} value={student.hobbies} />}
+							{age && <AboutCard label={labels.age} value={labels.ageValue(age)} />}
+							{student.semester && <AboutCard label={labels.semester} value={labels.semesterValue(student.semester)} />}
 						</div>
 					</div>
 				)}
 
 				{/* SKILLS */}
-				{activeTab === 'Skills' && (
+				{activeTab === 'skills' && (
 					<div>
 						{itSkills.length > 0 && (
 							<div style={section}>
-								<SectionLabel>IT Skills</SectionLabel>
+								<SectionLabel>{labels.technicalSkills}</SectionLabel>
 								{itSkillsObj ? (
 									/* Grouped by proficiency level */
 									<ItSkillsGrouped skillsObj={itSkillsObj} />
@@ -671,10 +848,10 @@ const GuestPortfolioView = ({ student }) => {
 
 						{languageSkills.length > 0 && (
 							<div style={section}>
-								<SectionLabel>Languages</SectionLabel>
+								<SectionLabel>{labels.languages}</SectionLabel>
 								<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
 									{languageSkills.map((l, i) => (
-										<Chip key={i} label={typeof l === 'string' ? l : (l?.name ?? 'Language')} color='purple' />
+										<Chip key={i} label={typeof l === 'string' ? l : (l?.name ?? labels.languages)} color='purple' />
 									))}
 								</div>
 							</div>
@@ -682,7 +859,7 @@ const GuestPortfolioView = ({ student }) => {
 
 						{(hasMeaningfulValue(jlptValue) || hasMeaningfulValue(ieltsValue) || hasMeaningfulValue(jduCertValue)) && (
 							<div style={section}>
-								<SectionLabel>Certifications</SectionLabel>
+								<SectionLabel>{labels.certifications}</SectionLabel>
 								<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 									{hasMeaningfulValue(jlptValue) && <CertBadge label='JLPT' value={jlptValue} color='amber' />}
 									{hasMeaningfulValue(ieltsValue) && <CertBadge label='IELTS' value={ieltsValue} color='blue' />}
@@ -693,7 +870,7 @@ const GuestPortfolioView = ({ student }) => {
 
 						{otherSkills.length > 0 && (
 							<div style={section}>
-								<SectionLabel>Other competencies</SectionLabel>
+								<SectionLabel>{labels.otherCompetencies}</SectionLabel>
 								<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
 									{otherSkills.map((s, i) => (
 										<Chip key={i} label={getSkillName(s)} color='rose' />
@@ -705,11 +882,11 @@ const GuestPortfolioView = ({ student }) => {
 				)}
 
 				{/* EXPERIENCE */}
-				{activeTab === 'Experience' && (
+				{activeTab === 'experience' && (
 					<div>
 						{workExp.length > 0 && (
 							<div style={section}>
-								<SectionLabel>Professional experience</SectionLabel>
+								<SectionLabel>{labels.professionalExperience}</SectionLabel>
 								<div style={{ position: 'relative', paddingLeft: 28 }}>
 									<div style={{ position: 'absolute', left: 0, top: 8, bottom: 0, width: 1.5, background: 'linear-gradient(to bottom,#302b63,#e0e0e0)' }} />
 									{workExp.map((exp, i) => (
@@ -727,7 +904,7 @@ const GuestPortfolioView = ({ student }) => {
 													boxShadow: '0 0 0 4px rgba(48,43,99,.1)',
 												}}
 											/>
-											<ExpCard position={exp.position || exp.title || 'Position'} company={exp.company || exp.organization || 'Company'} period={exp.period} description={exp.description} />
+											<ExpCard position={exp.position || exp.title || labels.position} company={exp.company || exp.organization || labels.company} period={exp.period} description={exp.description} />
 										</div>
 									))}
 								</div>
@@ -736,10 +913,10 @@ const GuestPortfolioView = ({ student }) => {
 
 						{arubaito.length > 0 && (
 							<div style={section}>
-								<SectionLabel>Part-time work</SectionLabel>
+								<SectionLabel>{labels.partTimeWork}</SectionLabel>
 								<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14 }}>
 									{arubaito.map((job, i) => (
-										<ExpCard key={i} position={job.role || 'Position'} company={job.company || 'Company'} period={job.period} description={job.description} />
+										<ExpCard key={i} position={job.role || labels.position} company={job.company || labels.company} period={job.period} description={job.description} />
 									))}
 								</div>
 							</div>
@@ -748,9 +925,9 @@ const GuestPortfolioView = ({ student }) => {
 				)}
 
 				{/* EDUCATION */}
-				{activeTab === 'Education' && student.partner_university && (
+				{activeTab === 'education' && student.partner_university && (
 					<div style={section}>
-						<SectionLabel>Academic background</SectionLabel>
+						<SectionLabel>{labels.academicBackground}</SectionLabel>
 						<div
 							style={{
 								background: '#fafafa',
@@ -784,7 +961,7 @@ const GuestPortfolioView = ({ student }) => {
 								<div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
 									{student.graduation_year && (
 										<div>
-											<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 3 }}>Graduation</p>
+											<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 3 }}>{labels.graduation}</p>
 											<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#333' }}>
 												{student.graduation_year}
 												{student.graduation_season ? ` (${student.graduation_season})` : ''}
@@ -793,8 +970,8 @@ const GuestPortfolioView = ({ student }) => {
 									)}
 									{student.semester && (
 										<div>
-											<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 3 }}>Semester</p>
-											<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#333' }}>Semester {student.semester}</p>
+											<p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 3 }}>{labels.semester}</p>
+											<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#333' }}>{labels.semesterValue(student.semester)}</p>
 										</div>
 									)}
 								</div>
@@ -804,12 +981,12 @@ const GuestPortfolioView = ({ student }) => {
 				)}
 
 				{/* PORTFOLIO */}
-				{activeTab === 'Portfolio' && allProjects.length > 0 && (
+				{activeTab === 'portfolio' && allProjects.length > 0 && (
 					<div style={section}>
-						<SectionLabel>Projects & deliverables</SectionLabel>
+						<SectionLabel>{labels.projects}</SectionLabel>
 						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 16 }}>
 							{allProjects.map((item, i) => (
-								<GalleryCard key={i} item={item} onClick={setExpandedProject} />
+								<GalleryCard key={i} item={item} onClick={setExpandedProject} labels={labels} />
 							))}
 						</div>
 					</div>
@@ -830,12 +1007,12 @@ const GuestPortfolioView = ({ student }) => {
 				>
 					<div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'rgba(255,255,255,.04)', top: -180, right: -120, pointerEvents: 'none' }} />
 					<div style={{ position: 'relative', zIndex: 1 }}>
-						<p style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Let&apos;s work together</p>
-						<p style={{ color: 'rgba(255,255,255,.55)', fontSize: '.9rem', marginBottom: 32 }}>Open to internships, part-time, and full-time opportunities</p>
+						<p style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>{labels.workTogether}</p>
+						<p style={{ color: 'rgba(255,255,255,.55)', fontSize: '.9rem', marginBottom: 32 }}>{labels.opportunities}</p>
 						<div style={{ display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap', marginBottom: 36 }}>
-							{student.email && <ContactItem icon='✉' label='Email' value={student.email} />}
-							{student.phone && <ContactItem icon='📞' label='Phone' value={student.phone} />}
-							{student.address && <ContactItem icon='📍' label='Location' value={student.address} />}
+							{student.email && <ContactItem icon='✉' label={labels.email} value={student.email} />}
+							{student.phone && <ContactItem icon='📞' label={labels.phone} value={student.phone} />}
+							{student.address && <ContactItem icon='📍' label={labels.location} value={student.address} />}
 						</div>
 						{student.email && (
 							<a
@@ -851,7 +1028,7 @@ const GuestPortfolioView = ({ student }) => {
 									textDecoration: 'none',
 								}}
 							>
-								Send a message →
+								{labels.sendMessage} →
 							</a>
 						)}
 					</div>
@@ -859,7 +1036,7 @@ const GuestPortfolioView = ({ student }) => {
 			)}
 
 			{/* ── PROJECT MODAL ── */}
-			<Modal item={expandedProject} onClose={() => setExpandedProject(null)} />
+			<Modal item={expandedProject} onClose={() => setExpandedProject(null)} labels={labels} />
 		</div>
 	)
 }
@@ -975,6 +1152,7 @@ GuestPortfolioView.propTypes = {
 		japanese_employment_credits: PropTypes.number,
 		business_skills_credits: PropTypes.number,
 	}).isRequired,
+	language: PropTypes.string,
 }
 
 export default GuestPortfolioView
