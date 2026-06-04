@@ -6,6 +6,21 @@ const generatePassword = require('generate-password')
 const { sendStudentWelcomeEmail, formatStudentProfilePublicEmail } = require('../utils/emailToStudent')
 const { sendEmail } = require('../utils/emailService')
 const { Student, ShareableLink } = require('../models')
+const ShareableLinkTranslationService = require('../services/shareableLinkTranslationService')
+
+const buildShareableLinkResponse = link => {
+	const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+	const expiresAt = link.expiresAt instanceof Date ? link.expiresAt : new Date(link.expiresAt)
+	return {
+		id: link.id,
+		language: link.language || 'ja',
+		url: `${frontendUrl}/student/share/${link.id}`,
+		createdAt: link.createdAt,
+		expiresAt: link.expiresAt,
+		timeRemainingMs: expiresAt.getTime() - Date.now(),
+		translationStatus: link.translationStatus || 'not_required',
+	}
+}
 
 class StudentController {
 	// Get student IDs for autocomplete
@@ -494,6 +509,7 @@ class StudentController {
 	static async generateShareableLink(req, res, next) {
 		try {
 			const studentId = req.params.id
+			const language = ShareableLinkTranslationService.normalizeLanguage(req.body?.language || req.body?.lang || req.query?.language || 'ja')
 			const requestedExpiry = String(req.body?.expiresIn || req.body?.expirationPeriod || req.body?.duration || '24h')
 				.trim()
 				.toLowerCase()
@@ -523,12 +539,36 @@ class StudentController {
 				return res.status(403).json({ error: 'profile_not_public', message: 'Profile must be public to generate a shareable link' })
 			}
 
+			const publicProfile = await StudentService.getStudentByStudentId(
+				studentId,
+				false,
+				null,
+				'Guest',
+				true // bypassVisibility = true
+			)
+			const sourceProfile = ShareableLinkTranslationService.prepareSourceProfile(publicProfile)
+			const sourceProfileHash = ShareableLinkTranslationService.hashProfile(sourceProfile)
+			const existingLink = await ShareableLink.findOne({ where: { studentId, language } })
+			let translation
+
+			if (existingLink?.translatedPayload && existingLink.sourceProfileHash === sourceProfileHash) {
+				translation = {
+					payload: existingLink.translatedPayload,
+					status: existingLink.translationStatus || (language === 'ja' ? 'not_required' : 'translated'),
+					translatedAt: existingLink.translatedAt,
+					error: existingLink.translationError || null,
+					hash: sourceProfileHash,
+				}
+			} else {
+				translation = await ShareableLinkTranslationService.translateProfile(sourceProfile, language)
+			}
+
 			const sequelize = ShareableLink.sequelize
 			let newLink
 			let expiresAt
 			await sequelize.transaction(async transaction => {
 				await ShareableLink.destroy({
-					where: { studentId },
+					where: { studentId, language },
 					transaction,
 				})
 
@@ -537,22 +577,44 @@ class StudentController {
 				newLink = await ShareableLink.create(
 					{
 						studentId,
+						language,
 						expiresAt,
+						translatedPayload: translation.payload,
+						translatedAt: translation.translatedAt,
+						translationStatus: translation.status,
+						translationError: translation.error,
+						sourceProfileHash: translation.hash,
 					},
 					{ transaction }
 				)
 			})
 
-			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
-			const shareableUrl = `${frontendUrl}/student/share/${newLink.id}`
+			const linkResponse = buildShareableLinkResponse(newLink)
 
 			res.status(201).json({
 				success: true,
-				url: shareableUrl,
+				url: linkResponse.url,
+				link: linkResponse,
+				language,
 				expiresAt: expiresAt,
 				expiresIn: expiresInKey,
 			})
 		} catch (error) {
+			if (error.message === 'GEMINI_API_KEY is not configured') {
+				return res.status(500).json({ error: 'translation_not_configured', message: error.message })
+			}
+			if (error.code === 'translation_rate_limited' || error.response?.status === 429) {
+				return res.status(429).json({
+					error: 'translation_rate_limited',
+					message: 'Gemini translation quota or rate limit was reached. Please try again later or generate a Japanese link.',
+				})
+			}
+			if (error.code === 'translation_provider_unavailable') {
+				return res.status(503).json({
+					error: 'translation_provider_unavailable',
+					message: 'Translation service is temporarily unavailable. Please try again later or generate a Japanese link.',
+				})
+			}
 			next(error)
 		}
 	}
@@ -574,12 +636,19 @@ class StudentController {
 				return res.status(403).json({ error: 'Forbidden' })
 			}
 
-			const deletedCount = await ShareableLink.destroy({ where: { studentId } })
+			const language = req.query?.language || req.body?.language || null
+			const where = { studentId }
+			if (language) {
+				where.language = ShareableLinkTranslationService.normalizeLanguage(language)
+			}
+
+			const deletedCount = await ShareableLink.destroy({ where })
 
 			return res.status(200).json({
 				success: true,
 				message: 'Shareable link deactivated successfully',
 				deletedCount,
+				language: where.language || null,
 			})
 		} catch (error) {
 			next(error)
@@ -599,22 +668,35 @@ class StudentController {
 				return res.status(403).json({ error: 'Forbidden' })
 			}
 
-			const link = await ShareableLink.findOne({ where: { studentId } })
+			const requestedLanguage = ShareableLinkTranslationService.normalizeLanguage(req.query?.language || 'ja')
+			const links = await ShareableLink.findAll({
+				where: { studentId },
+				order: [['createdAt', 'DESC']],
+			})
 
-			if (!link || new Date() > link.expiresAt) {
-				if (link) await link.destroy()
-				return res.status(200).json({ hasLink: false })
+			const activeLinks = []
+			for (const link of links) {
+				if (new Date() > link.expiresAt) {
+					await link.destroy()
+				} else {
+					activeLinks.push(link)
+				}
 			}
 
-			const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
-			const timeRemainingMs = link.expiresAt.getTime() - Date.now()
+			const linkMap = activeLinks.reduce((acc, link) => {
+				acc[link.language || 'ja'] = buildShareableLinkResponse(link)
+				return acc
+			}, {})
+			const requestedLink = linkMap[requestedLanguage] || null
 
 			return res.status(200).json({
-				hasLink: true,
-				url: `${frontendUrl}/student/share/${link.id}`,
-				createdAt: link.createdAt,
-				expiresAt: link.expiresAt,
-				timeRemainingMs,
+				hasLink: Boolean(requestedLink),
+				url: requestedLink?.url || null,
+				createdAt: requestedLink?.createdAt || null,
+				expiresAt: requestedLink?.expiresAt || null,
+				timeRemainingMs: requestedLink?.timeRemainingMs || 0,
+				language: requestedLanguage,
+				links: linkMap,
 			})
 		} catch (error) {
 			next(error)
@@ -634,13 +716,18 @@ class StudentController {
 				await linkData.destroy()
 				return res.status(410).json({ message: 'Link muddati tugagan' })
 			}
-			const student = await StudentService.getStudentByStudentId(
-				linkData.studentId,
-				false,
-				null,
-				'Guest',
-				true // bypassVisibility = true
-			)
+			const student =
+				linkData.translatedPayload ||
+				(await StudentService.getStudentByStudentId(
+					linkData.studentId,
+					false,
+					null,
+					'Guest',
+					true // bypassVisibility = true
+				))
+
+			student.linkLanguage = linkData.language || 'ja'
+			student.publicLanguage = linkData.language || 'ja'
 
 			res.status(200).json(student)
 		} catch (error) {

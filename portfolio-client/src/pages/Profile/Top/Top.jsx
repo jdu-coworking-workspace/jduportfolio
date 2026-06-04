@@ -1137,7 +1137,7 @@ const Top = () => {
 
 	// For public guest users, show modern portfolio view
 	if (isPublic && profileOutlet.student) {
-		return <GuestPortfolioView student={profileOutlet.student} />
+		return <GuestPortfolioView student={profileOutlet.student} language={profileOutlet.student.publicLanguage || profileOutlet.student.linkLanguage || 'ja'} />
 	}
 
 	return (
