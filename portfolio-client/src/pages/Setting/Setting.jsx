@@ -5,9 +5,9 @@ import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom'
 import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import PersonIcon from '@mui/icons-material/Person'
-import { Link as LinkIcon, ContentCopy as CopyIcon } from '@mui/icons-material'
+import { Link as LinkIcon, ContentCopy as CopyIcon, RemoveCircleOutline as RemoveIcon } from '@mui/icons-material'
 import { Accordion, AccordionDetails, AccordionSummary, Avatar, Box, Button, Card, CardContent, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Radio, RadioGroup, Select, TextField, Typography } from '@mui/material'
-import { useCallback, useContext, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useAlert } from '../../contexts/AlertContext'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -17,19 +17,90 @@ import axios from '../../utils/axiosUtils'
 import SettingStyle from './Setting.module.css'
 // Custom icons import
 import SaveIcon from '../../assets/icons/save-3-fill.svg'
+
+const SHARE_LINK_LANGUAGES = [
+	{ code: 'ja', label: '日本語' },
+	{ code: 'en', label: 'English' },
+	{ code: 'uz', label: "O'zbek" },
+	{ code: 'ru', label: 'Русский' },
+]
+
+const getShareLinkLoadingMessages = languageCode => {
+	const base = ['Link tayyorlanmoqda...', 'Profil maʼlumotlari yig‘ilmoqda...', 'Link saqlanmoqda...']
+	if (languageCode === 'ja') return base
+	return ['Tarjima boshlanmoqda...', 'Matnlar tarjima qilinmoqda...', 'Profil moslashtirilmoqda...', ...base]
+}
+
+const getShareLinkErrorMessage = error => {
+	const errorCode = error.response?.data?.error
+	const status = error.response?.status
+
+	if (errorCode === 'translation_rate_limited' || status === 429) {
+		return 'AI tarjima servisi hozircha javob bermayapti. Iltimos, birozdan keyin qayta urinib ko‘ring yoki 日本語 link yarating.'
+	}
+	if (errorCode === 'translation_not_configured') {
+		return 'AI tarjima servisi sozlanmagan. Iltimos, administratorga murojaat qiling.'
+	}
+	if (errorCode === 'translation_provider_unavailable') {
+		return 'Tarjima servisi hozircha javob bermayapti. Iltimos, birozdan keyin qayta urinib ko‘ring yoki 日本語 link yarating.'
+	}
+	if (status >= 500) {
+		return 'Link yaratishda server tarafida vaqtinchalik xatolik yuz berdi. Iltimos, birozdan keyin qayta urinib ko‘ring.'
+	}
+	return null
+}
+
 const Setting = () => {
-	const [generatedLink, setGeneratedLink] = useState('')
+	const [shareLinks, setShareLinks] = useState({})
+	const [shareLinkLanguage, setShareLinkLanguage] = useState('ja')
+	const [linkExpiryOption, setLinkExpiryOption] = useState('24h')
 	const [isGenerating, setIsGenerating] = useState(false)
+	const [generateLoadingStep, setGenerateLoadingStep] = useState(0)
+	const [isDeactivating, setIsDeactivating] = useState(false)
+	const [isLinkStatusLoading, setIsLinkStatusLoading] = useState(false)
 
 	const { activeUser, updateUser } = useContext(UserContext)
 	const { language, changeLanguage } = useLanguage()
 	const showAlert = useAlert()
+	const [role, setRole] = useState(null)
+	const [user, setUser] = useState({})
 
 	// Move t function outside or memoize it
 	const t = useCallback(key => translations[language][key] || key, [language])
 
-	const [role, setRole] = useState(null)
-	const [user, setUser] = useState({})
+	const getStudentShareId = useCallback(() => {
+		try {
+			const loginUser = JSON.parse(sessionStorage.getItem('loginUser'))
+			return activeUser?.studentId || activeUser?.student_id || user?.student_id || loginUser?.studentId || loginUser?.student_id || null
+		} catch {
+			return activeUser?.studentId || activeUser?.student_id || user?.student_id || null
+		}
+	}, [activeUser, user?.student_id])
+
+	const formatLinkValidity = useCallback(
+		ms => {
+			if (!ms || ms <= 0) return t('link_expired') || 'Link expired'
+			const totalMinutes = Math.floor(ms / 60000)
+			const hours = Math.floor(totalMinutes / 60)
+			const minutes = totalMinutes % 60
+			if (hours > 0) {
+				return `${hours}h ${minutes}m`
+			}
+			return `${minutes}m`
+		},
+		[t]
+	)
+
+	const inferLinkExpiryOption = useCallback((createdAt, expiresAt) => {
+		if (!createdAt || !expiresAt) return '24h'
+		const diffMs = new Date(expiresAt).getTime() - new Date(createdAt).getTime()
+		const dayMs = 24 * 60 * 60 * 1000
+		const monthMs = 30 * dayMs
+		if (Math.abs(diffMs - monthMs) < 2 * dayMs) return '1m'
+		if (Math.abs(diffMs - 7 * dayMs) < 6 * 60 * 60 * 1000) return '7d'
+		return '24h'
+	}, [])
+
 	const [avatarImage, setAvatarImage] = useState(null)
 	const [showCurrentPassword, setShowCurrentPassword] = useState(false)
 	const [showNewPassword, setShowNewPassword] = useState(false)
@@ -42,6 +113,39 @@ const Setting = () => {
 	const [showLanguageConfirm, setShowLanguageConfirm] = useState(false)
 	const [pendingLanguage, setPendingLanguage] = useState(null)
 	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+	const shareLinkEntries = useMemo(
+		() =>
+			SHARE_LINK_LANGUAGES.map(item => ({
+				...item,
+				link: shareLinks[item.code],
+			})).filter(item => item.link?.url),
+		[shareLinks]
+	)
+	const availableShareLinkLanguages = useMemo(() => SHARE_LINK_LANGUAGES.filter(item => !shareLinks[item.code]?.url), [shareLinks])
+	const canCreateShareLink = availableShareLinkLanguages.length > 0
+	const selectedCreateLanguage = availableShareLinkLanguages.some(item => item.code === shareLinkLanguage) ? shareLinkLanguage : availableShareLinkLanguages[0]?.code || ''
+	const shareLinkLoadingMessages = useMemo(() => getShareLinkLoadingMessages(selectedCreateLanguage), [selectedCreateLanguage])
+	const shareLinkLoadingText = shareLinkLoadingMessages[generateLoadingStep % shareLinkLoadingMessages.length]
+
+	useEffect(() => {
+		if (availableShareLinkLanguages.length > 0 && !availableShareLinkLanguages.some(item => item.code === shareLinkLanguage)) {
+			setShareLinkLanguage(availableShareLinkLanguages[0].code)
+		}
+	}, [availableShareLinkLanguages, shareLinkLanguage])
+
+	useEffect(() => {
+		if (!isGenerating) {
+			setGenerateLoadingStep(0)
+			return undefined
+		}
+
+		const intervalId = setInterval(() => {
+			setGenerateLoadingStep(prev => prev + 1)
+		}, 1800)
+
+		return () => clearInterval(intervalId)
+	}, [isGenerating])
 
 	// Default values with empty strings to prevent undefined
 	const defaultValues = {
@@ -169,29 +273,126 @@ const Setting = () => {
 		fetchUser()
 	}, [fetchUser]) // Include fetchUser in dependencies
 
+	useEffect(() => {
+		const fetchLinkStatus = async () => {
+			if (role !== 'Student') {
+				setShareLinks({})
+				return
+			}
+
+			const id = getStudentShareId()
+			if (!id) {
+				setShareLinks({})
+				return
+			}
+
+			setIsLinkStatusLoading(true)
+			try {
+				const response = await axios.get(`/api/students/${id}/link-status`)
+				const links = response.data?.links || {}
+				setShareLinks(links)
+				const selectedLink = links[shareLinkLanguage]
+				if (selectedLink?.url) {
+					setLinkExpiryOption(inferLinkExpiryOption(selectedLink.createdAt, selectedLink.expiresAt))
+				} else if (response.data?.hasLink && response.data?.url) {
+					const fallbackLanguage = response.data.language || shareLinkLanguage
+					setShareLinks(prev => ({
+						...prev,
+						[fallbackLanguage]: {
+							url: response.data.url,
+							createdAt: response.data.createdAt,
+							expiresAt: response.data.expiresAt,
+							timeRemainingMs: response.data.timeRemainingMs,
+						},
+					}))
+					setLinkExpiryOption(inferLinkExpiryOption(response.data.createdAt, response.data.expiresAt))
+				}
+			} catch (error) {
+				if (error.response?.status !== 403 && error.response?.status !== 404) {
+					console.error('Link status xatosi:', error.response?.data || error.message)
+				} else {
+					setShareLinks({})
+				}
+			} finally {
+				setIsLinkStatusLoading(false)
+			}
+		}
+
+		fetchLinkStatus()
+	}, [getStudentShareId, inferLinkExpiryOption, role, shareLinkLanguage])
+
 	const handleGenerateLink = async () => {
 		setIsGenerating(true)
 		try {
-			const id = activeUser?.studentId
+			const id = getStudentShareId()
 
 			if (!id) {
 				showAlert('Student ID topilmadi', 'error')
 				return
 			}
-			const response = await axios.post(`/api/students/${id}/generate-link`)
+			if (!selectedCreateLanguage) {
+				showAlert('Barcha tillar uchun link allaqachon yaratilgan.', 'info')
+				return
+			}
+			// Backend should calculate the actual expiration using the selected duration.
+			// Keep the payload explicit so the server can switch between 24h / 7d / 1m.
+			const response = await axios.post(`/api/students/${id}/generate-link`, {
+				expiresIn: linkExpiryOption,
+				language: selectedCreateLanguage,
+			})
 
-			setGeneratedLink(response.data.url)
-			showAlert(t('link_generated_success') || 'Link muvaffaqiyatli yaratildi!', 'success')
+			const nextLink = response.data?.link || {
+				url: response.data.url,
+				expiresAt: response.data.expiresAt,
+				language: response.data.language || shareLinkLanguage,
+			}
+			setShareLinks(prev => ({
+				...prev,
+				[nextLink.language || shareLinkLanguage]: nextLink,
+			}))
+			if (response.data?.expiresIn) {
+				setLinkExpiryOption(response.data.expiresIn)
+			}
+			showAlert(t('link_generated_success'), 'success')
 		} catch (error) {
 			console.error('Link xatosi:', error.response?.data || error.message)
-			showAlert(t('link_generation_failed') || 'Link yaratishda xatolik!', 'error')
+			showAlert(getShareLinkErrorMessage(error) || t('link_generation_failed'), 'error')
 		} finally {
 			setIsGenerating(false)
 		}
 	}
 
-	const copyToClipboard = () => {
-		navigator.clipboard.writeText(generatedLink)
+	const handleDeactivateLink = async languageCode => {
+		const id = getStudentShareId()
+		if (!id) {
+			showAlert('Student ID topilmadi', 'error')
+			return
+		}
+
+		const targetLanguage = languageCode || shareLinkLanguage
+		setIsDeactivating(true)
+		try {
+			await axios.delete(`/api/students/${id}/link-status`, {
+				params: { language: targetLanguage },
+			})
+			setShareLinks(prev => {
+				const next = { ...prev }
+				delete next[targetLanguage]
+				return next
+			})
+			setShareLinkLanguage(targetLanguage)
+			showAlert(t('link_deactivated_success'), 'success')
+		} catch (error) {
+			console.error('Link deactivate xatosi:', error.response?.data || error.message)
+			showAlert(t('link_deactivate_failed'), 'error')
+		} finally {
+			setIsDeactivating(false)
+		}
+	}
+
+	const copyToClipboard = link => {
+		if (!link) return
+		navigator.clipboard.writeText(link)
 		showAlert(t('link_copied') || 'Link nusxalandi!', 'info')
 	}
 
@@ -473,53 +674,110 @@ const Setting = () => {
 								{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : t('user')}
 							</Typography>
 							{role === 'Student' && (
-								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-									{!generatedLink ? (
-										<Button
-											variant='outlined'
-											size='small'
-											startIcon={<LinkIcon />}
-											onClick={handleGenerateLink}
-											disabled={isGenerating}
-											sx={{
-												borderRadius: '8px',
-												textTransform: 'none',
-												fontSize: '13px',
-												color: '#5627DB',
-												borderColor: '#5627DB',
-												'&:hover': {
-													borderColor: '#4520A6',
-													backgroundColor: 'rgba(86, 39, 219, 0.05)',
-												},
-											}}
-										>
-											{isGenerating ? t('generating') : t('getLink') || 'プロフィールリンク'}
-										</Button>
-									) : (
-										<Box
-											sx={{
-												display: 'flex',
-												alignItems: 'center',
-												gap: 1,
-												backgroundColor: '#f5f5f5',
-												px: 1.5,
-												py: 0.75,
-												borderRadius: '8px',
-												border: '1px solid #e0e0e0',
-												maxWidth: 320,
-											}}
-										>
-											<Typography variant='caption' sx={{ color: '#555', wordBreak: 'break-all', flex: 1 }}>
-												{generatedLink}
-											</Typography>
-											<IconButton size='small' onClick={copyToClipboard} color='primary' sx={{ flexShrink: 0 }}>
-												<CopyIcon fontSize='small' />
-											</IconButton>
+								<Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+									{shareLinkEntries.length > 0 && (
+										<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, maxWidth: 430 }}>
+											{shareLinkEntries.map(item => {
+												const itemExpiresAt = item.link.expiresAt || null
+												const itemTimeRemainingMs = item.link.timeRemainingMs || (itemExpiresAt ? new Date(itemExpiresAt).getTime() - Date.now() : 0)
+												return (
+													<Box
+														key={item.code}
+														sx={{
+															display: 'flex',
+															alignItems: 'center',
+															gap: 0.75,
+															backgroundColor: 'rgba(86,39,219,0.04)',
+															px: 1.25,
+															py: 0.75,
+															borderRadius: '8px',
+															border: '1px solid rgba(86,39,219,0.2)',
+															maxWidth: 520,
+														}}
+													>
+														<Typography variant='caption' sx={{ color: '#302b63', fontWeight: 700, minWidth: 56 }}>
+															{item.label}
+														</Typography>
+														<LinkIcon sx={{ fontSize: 14, color: '#5627DB', flexShrink: 0 }} />
+														<Typography
+															variant='caption'
+															sx={{
+																color: '#5627DB',
+																flex: 1,
+																minWidth: 80,
+																overflow: 'hidden',
+																textOverflow: 'ellipsis',
+																whiteSpace: 'nowrap',
+															}}
+															title={item.link.url}
+														>
+															{item.link.url}
+														</Typography>
+														<Typography
+															variant='caption'
+															sx={{
+																color: itemExpiresAt && new Date(itemExpiresAt) - Date.now() < 3600000 ? '#e65100' : '#787878',
+																whiteSpace: 'nowrap',
+																flexShrink: 0,
+																fontSize: '11px',
+															}}
+														>
+															⏱ {formatLinkValidity(itemTimeRemainingMs)}
+														</Typography>
+														<IconButton size='small' onClick={() => copyToClipboard(item.link.url)} sx={{ flexShrink: 0, color: '#5627DB', p: '2px' }}>
+															<CopyIcon sx={{ fontSize: 14 }} />
+														</IconButton>
+														<IconButton size='small' onClick={() => handleDeactivateLink(item.code)} disabled={isDeactivating} sx={{ flexShrink: 0, color: '#b00020', p: '2px' }}>
+															<RemoveIcon sx={{ fontSize: 16 }} />
+														</IconButton>
+													</Box>
+												)
+											})}
 										</Box>
 									)}
-									{generatedLink && (
-										<Typography variant='caption' color='error' sx={{ display: 'block' }}>
-											* {t('link_expiry_notice') || 'Link 24 soat davomida amal qiladi'}
+									{canCreateShareLink && (
+										<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+											<FormControl size='small' sx={{ minWidth: 130, flex: '1 1 130px', maxWidth: 170 }} disabled={isGenerating || isLinkStatusLoading || !user.visibility}>
+												<Select value={selectedCreateLanguage} onChange={e => setShareLinkLanguage(e.target.value)} displayEmpty sx={{ borderRadius: '8px', fontSize: '13px', backgroundColor: '#fff' }}>
+													{availableShareLinkLanguages.map(item => (
+														<MenuItem key={item.code} value={item.code}>
+															{item.label}
+														</MenuItem>
+													))}
+												</Select>
+											</FormControl>
+											<FormControl size='small' sx={{ minWidth: 120, flex: '1 1 120px', maxWidth: 150 }} disabled={isGenerating || isLinkStatusLoading || !user.visibility}>
+												<Select value={linkExpiryOption} onChange={e => setLinkExpiryOption(e.target.value)} displayEmpty sx={{ borderRadius: '8px', fontSize: '13px', backgroundColor: '#fff' }}>
+													<MenuItem value='24h'>24 hours</MenuItem>
+													<MenuItem value='7d'>7 days</MenuItem>
+													<MenuItem value='1m'>1 month</MenuItem>
+												</Select>
+											</FormControl>
+											<Button
+												variant='outlined'
+												size='small'
+												startIcon={<LinkIcon />}
+												onClick={handleGenerateLink}
+												disabled={isGenerating || isLinkStatusLoading || !user.visibility}
+												title={!user.visibility ? t('profile_not_public') || 'Profile must be public to generate a link' : ''}
+												sx={{
+													borderRadius: '8px',
+													textTransform: 'none',
+													fontSize: '13px',
+													minWidth: 180,
+													color: '#5627DB',
+													borderColor: '#5627DB',
+													'&:hover': { borderColor: '#4520A6', backgroundColor: 'rgba(86, 39, 219, 0.05)' },
+													'&.Mui-disabled': { opacity: 0.45 },
+												}}
+											>
+												{isGenerating ? shareLinkLoadingText : t('getLink')}
+											</Button>
+										</Box>
+									)}
+									{!user.visibility && (
+										<Typography variant='caption' sx={{ color: '#999', fontSize: '11px' }}>
+											{t('profile_not_public') || 'Make your profile public first'}
 										</Typography>
 									)}
 								</Box>

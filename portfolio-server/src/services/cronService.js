@@ -141,8 +141,8 @@ class CronService {
 			const { MailServiceSetting } = require('../models')
 			const setting = await MailServiceSetting.findOne({ where: { key: 'periodic_email' } })
 
-			if (!setting || !setting.is_active || !setting.period_days) {
-				console.log('📧 Periodic email is disabled or not configured. Skipping.')
+			if (!setting || !setting.is_active) {
+				console.log('📧 Periodic email is disabled. Skipping.')
 				return
 			}
 
@@ -170,12 +170,23 @@ class CronService {
 				}
 			}
 
+			// Check if current hour matches the configured schedule
+			if (setting.schedule_hour !== null && setting.schedule_hour !== undefined) {
+				if (now.getHours() !== setting.schedule_hour) {
+					return // Not the configured hour — skip silently
+				}
+			}
+
+			const hasSubject = typeof setting.message_subject === 'string' && setting.message_subject.trim().length > 0
+			const hasBody = typeof setting.message_body === 'string' && setting.message_body.trim().length > 0
+			if (!hasSubject || !hasBody) {
+				console.log('📧 Periodic email message is missing. Skipping.')
+				return
+			}
+
 			const report = await MailServiceService.sendPeriodicEmails()
 
-			// Update the timestamp only when this job runs successfully.
-			if (report !== null) {
-				await setting.update({ last_sent_at: new Date() })
-			}
+			void report
 		} catch (error) {
 			console.error('❌ Error in periodic email job:', error)
 		}

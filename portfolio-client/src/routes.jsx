@@ -23,6 +23,7 @@ import Setting from './pages/Setting/Setting'
 import FAQ from './pages/FAQ/FAQ'
 import NotFound from './pages/NotFound/NotFound'
 import Unauthorized from './pages/Unauthorized/Unauthorized'
+import LinkExpired from './pages/LinkExpired/LinkExpired'
 import LogOut from './components/LogOut'
 import GoogleAuthCallback from './pages/GoogleAuthCallback.jsx'
 import { CreateSkill } from './pages/CreateSkill/CreateSkill.jsx'
@@ -140,6 +141,7 @@ const AppRoutes = () => {
 
 				{/* ── Standalone routes ── */}
 				<Route path='/credit-details/:studentId' element={<CreditDetails />} />
+				<Route path='/link-expired' element={<LinkExpired />} />
 				<Route path='*' element={<NotFound lang={language} />} />
 				<Route path='/login' element={<Login />} />
 				<Route path='/logout' element={<LogOut updateUser={updateUser} />} />
