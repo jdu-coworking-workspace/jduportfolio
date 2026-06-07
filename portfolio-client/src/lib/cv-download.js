@@ -329,10 +329,12 @@ export const downloadCV = async cvData => {
 			titleCell.value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
 			applyStyle(titleCell, {}, leftMiddle)
 
+			// Description row
 			const descCell = sheet2.getCell(`A${9 + offset}`)
 			descCell.value = item.description
 			applyStyle(descCell, {}, { wrapText: true, vertical: 'top' })
 
+			// Role
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
 			roleCell.value = `役割　${item.role.join(', ')}`
 			applyStyle(roleCell, {}, { wrapText: true, vertical: 'top', horizontal: 'left' })
