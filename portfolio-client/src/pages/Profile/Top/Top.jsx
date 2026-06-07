@@ -228,6 +228,7 @@ const Top = () => {
 	const [showSpecialSkillsInput, setShowSpecialSkillsInput] = useAtom(showSpecialSkillsInputAtom)
 	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 	const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+	const [showCvDownloadDialog, setShowCvDownloadDialog] = useState(false)
 	const [pendingLanguageChange, setPendingLanguageChange] = useState(null)
 	const [expandHobbies, setExpandHobbies] = useState(false)
 	const [expandSpecial, setExpandSpecial] = useState(false)
@@ -1069,18 +1070,7 @@ const Top = () => {
 				<>
 					{role === 'Student' && viewingLive ? (
 						<>
-							<Button
-								variant='contained'
-								size='small'
-								onClick={async () => {
-									try {
-										downloadCV(student)
-									} catch (err) {
-										console.log(err)
-									}
-								}}
-								sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}
-							>
+							<Button variant='contained' size='small' onClick={() => setShowCvDownloadDialog(true)} sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}>
 								<DownloadIcon />
 								{t('download_cv')}
 							</Button>
@@ -1577,6 +1567,50 @@ const Top = () => {
 					<DialogActions>
 						<Button onClick={() => setWarningModal({ open: false, message: '' })} color='primary' autoFocus>
 							{t('ok')}
+						</Button>
+					</DialogActions>
+				</Dialog>
+
+				{/* CV Download Warning Dialog */}
+				<Dialog open={showCvDownloadDialog} onClose={() => setShowCvDownloadDialog(false)} maxWidth='sm' fullWidth>
+					<DialogTitle sx={{ fontWeight: 'bold', color: '#e65100', display: 'flex', alignItems: 'center', gap: 1 }}>⚠️ CVダウンロード前の確認</DialogTitle>
+					<DialogContent>
+						<DialogContentText sx={{ mb: 2 }}>ダウンロード後、以下の項目をご自身の情報に合わせて編集してください：</DialogContentText>
+						<Box sx={{ backgroundColor: '#fff3e0', border: '1px solid #ff9800', borderRadius: '8px', p: 2, mb: 2 }}>
+							<Box sx={{ fontWeight: 'bold', mb: 1 }}>■ 職務経歴書（2枚目）</Box>
+							<Box component='ul' sx={{ m: 0, pl: 3 }}>
+								<li>フロントエンド　○○○</li>
+								<li>バックエンド　○○○</li>
+								<li>フレームワーク　○○○</li>
+								<li>他　○○○</li>
+							</Box>
+						</Box>
+						<Box sx={{ backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '8px', p: 2 }}>
+							<Box sx={{ fontWeight: 'bold', mb: 1 }}>■ 言語スキル</Box>
+							<Box component='ul' sx={{ m: 0, pl: 3 }}>
+								<li>・言語スキル）　レベル</li>
+								<li>英語　IELTS ○ / ロシア語　○○ / 日本語　○○</li>
+							</Box>
+						</Box>
+						<DialogContentText sx={{ mt: 2, fontWeight: 'bold', color: '#d32f2f' }}>○○○の部分をご自身のスキルや情報に置き換えてください。</DialogContentText>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={() => setShowCvDownloadDialog(false)} color='inherit'>
+							キャンセル
+						</Button>
+						<Button
+							onClick={async () => {
+								setShowCvDownloadDialog(false)
+								try {
+									downloadCV(student)
+								} catch (err) {
+									console.log(err)
+								}
+							}}
+							variant='contained'
+							color='primary'
+						>
+							確認してダウンロード
 						</Button>
 					</DialogActions>
 				</Dialog>
