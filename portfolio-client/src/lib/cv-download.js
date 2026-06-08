@@ -73,14 +73,17 @@ function fixThemeColors(workbook) {
 		})
 	})
 }
+
 function formatJapaneseDateWithAge(birthdayStr) {
 	const birthday = new Date(birthdayStr)
 	const today = new Date()
 
+	// Bugungi sana (yaponcha format)
 	const y = today.getFullYear()
 	const m = String(today.getMonth() + 1).padStart(2, '0')
 	const d = String(today.getDate()).padStart(2, '0')
 
+	// Yoshni hisoblash
 	let age = y - birthday.getFullYear()
 
 	const hasNotBirthdayYet = today.getMonth() < birthday.getMonth() || (today.getMonth() === birthday.getMonth() && today.getDate() < birthday.getDate())
@@ -91,19 +94,8 @@ function formatJapaneseDateWithAge(birthdayStr) {
 
 	return `${birthday.getFullYear()}年 ${birthday.getMonth() + 1}月 ${birthday.getDate()}日 （満 ${age} 歳）`
 }
-
-// ─── Global font helper ───────────────────────────────────────────────────────
-// All cells use ＭＳ ゴシック. bold defaults to false (light).
-const msGothic = (size = 11, bold = false) => ({ name: 'ＭＳ ゴシック', size, bold })
-
-// Apply font + optional alignment to a cell
-const applyStyle = (cell, { size = 11, bold = false } = {}, alignment = null) => {
-	cell.font = msGothic(size, bold)
-	if (alignment) cell.alignment = alignment
-}
-
 export const downloadCV = async cvData => {
-	// Normalize array-like fields
+	// Normalize array-like fields to avoid runtime errors when they are null/undefined
 	const education = Array.isArray(cvData.education) ? cvData.education : cvData.education ? [cvData.education] : []
 	const work_experience = Array.isArray(cvData.work_experience) ? cvData.work_experience : cvData.work_experience ? [cvData.work_experience] : []
 	const licenses = Array.isArray(cvData.licenses) ? cvData.licenses : cvData.licenses ? [cvData.licenses] : []
@@ -119,175 +111,131 @@ export const downloadCV = async cvData => {
 
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
-	const sheet4 = workbook.getWorksheet(4)
-	if (sheet4) {
-		for (let row = 17; row <= 20; row++) {
-			sheet4.getRow(row).eachCell({ includeEmpty: true }, cell => {
-				cell.alignment = {
-					...cell.alignment,
-					wrapText: false,
-					shrinkToFit: false,
-				}
-			})
-			sheet4.getRow(row).height = 14.25
-		}
 
-		// A ustunining kengligi
-		sheet4.getColumn('A').width = 18.65
-	}
 	const today = new Date()
 
-	// ── Common alignments ──────────────────────────────────────────────────────
-	const centerMiddle = { vertical: 'middle', horizontal: 'center' }
-	const leftMiddle = { vertical: 'middle', horizontal: 'left' }
-	const rightMiddle = { vertical: 'middle', horizontal: 'right', wrapText: true }
+	// SANA (D2)
+	sheet.getCell('D2').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
 
-	// ── Sheet 1 ────────────────────────────────────────────────────────────────
+	// FURIGANA ISM (C3)
+	sheet.getCell('C3').value = `${cvData.first_name_furigana} ${cvData.last_name_furigana}`
 
-	// E2 — current date
-	const e2 = sheet.getCell('E2')
-	e2.value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
-	applyStyle(e2, {}, leftMiddle)
+	// ISM FAMILIYA (C4)
+	sheet.getCell('C4').value = `${cvData.first_name} ${cvData.last_name}`
 
-	// C3 — furigana name
-	const c3 = sheet.getCell('C3')
-	c3.value = `${cvData.first_name_furigana} ${cvData.last_name_furigana}`
-	applyStyle(c3)
-
-	// C4 — full name
-	const c4 = sheet.getCell('C4')
-	c4.value = `${cvData.first_name} ${cvData.last_name}`
-	applyStyle(c4)
-
-	// F3 — gender
-	const f3 = sheet.getCell('F3')
+	// Jinsi erkak yoki urgochi
+	// Support both English ('Male'/'Female') and Japanese ('男'/'女') from Kintone
 	const isMale = cvData.gender === 'Male' || cvData.gender === '男'
-	f3.value = isMale ? '男' : '女'
-	applyStyle(f3, {}, centerMiddle)
+	sheet.getCell('F3').value = isMale ? '男' : '女'
 
-	// C6 — date of birth (centered)
-	const c6 = sheet.getCell('C6')
-	c6.value = formatJapaneseDateWithAge(cvData.date_of_birth)
-	applyStyle(c6, {}, centerMiddle)
+	// TUG'ILGAN SANA (C6)
+	const jpFormatted = formatJapaneseDateWithAge(cvData.date_of_birth)
+	sheet.getCell('C6').value = jpFormatted
 
-	// G3 — photo placeholder
-	const g3 = sheet.getCell('G3')
-	g3.value = `写真を貼る位置\n写真を貼る必要がある場合\n1．縦  36～40mm　横  24～30mm\n2.本人単身胸から上\n3.裏面のりづけ\n4 裏面に氏名記入`
-	applyStyle(g3, { size: 9 })
+	// Photo (G3) - Add image if available
+	sheet.getCell('G3').value = `写真を貼る位置
+写真を貼る必要がある場合
+1．縦  36～40mm　横  24～30mm
+2.本人単身胸から上
+3.裏面のりづけ
+4 裏面に氏名記入`
 
-	// C7 — additional address furigana
-	const c7 = sheet.getCell('C7')
-	c7.value = cvData.additional_info?.additionalAddressFurigana || ''
-	applyStyle(c7)
+	// Additional address furigana (C7) - Row 7: Additional address (フリガナ)
+	const furiganaCell = sheet.getCell('C7')
+	furiganaCell.value = cvData.additional_info?.additionalAddressFurigana || ''
+	furiganaCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
-	// G7 — additional phone
-	const g7 = sheet.getCell('G7')
-	g7.value = `電話：${cvData.additional_info?.additionalPhone || ''}`
-	applyStyle(g7)
+	// tel nomer (G7)
+	const phoneCell = sheet.getCell('G7')
+	phoneCell.value = `電話：${cvData.additional_info?.additionalPhone || ''}`
+	phoneCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
-	// G9 — additional email
-	const g9 = sheet.getCell('G9')
-	g9.value = cvData.email || ''
-	applyStyle(g9)
+	// Additional address email (G9) - Row 9: Additional address email
+	const addEmailCell = sheet.getCell('G9')
+	addEmailCell.value = cvData.additional_info?.additionalEmail || ''
+	addEmailCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
-	// B8 — additional address index
+	// Additional address index (B8) - Row 7: Additional address
+	// Prefer "indeks" but fall back to "additionalIndeks" so Settings updates are reflected
 	const additionalIndex = cvData.additional_info?.indeks || cvData.additional_info?.additionalIndeks || ''
-	const b8 = sheet.getCell('B8')
-	b8.value = `現住所 （〒　　　${additionalIndex}　　　　　　）`
-	applyStyle(b8)
+	sheet.getCell('B8').value = `現住所 （〒　　　${additionalIndex}　　　　　　）`
+	// Additional address (B9) - Row 7: Additional address
+	const addAddressCell = sheet.getCell('B9')
+	addAddressCell.value = cvData.additional_info?.additionalAddress || ''
+	addAddressCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+	// additional tel nomer (G11)
+	const addPhoneCell = sheet.getCell('G11')
+	addPhoneCell.value = `電話：${cvData.phone}`
+	addPhoneCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
-	// B9 — additional address
-	const b9 = sheet.getCell('B9')
-	b9.value = cvData.additional_info?.additionalAddress || ''
-	applyStyle(b9)
+	// 連絡先 email (G13) - Row 13: 連絡先 email (student's main email)
+	const contactEmailCell = sheet.getCell('G13')
+	contactEmailCell.value = cvData.email || ''
+	contactEmailCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
-	// G11 — main phone
-	const g11 = sheet.getCell('G11')
-	g11.value = `電話：${cvData.phone}`
-	applyStyle(g11)
-
-	// G13 — main email
-	const g13 = sheet.getCell('G13')
-	g13.value = cvData.additional_info?.additionalEmail || ''
-	applyStyle(g13)
-
-	// C11 — contact address furigana
-	const c11 = sheet.getCell('C11')
-	c11.value = cvData.address_furigana || ''
-	applyStyle(c11)
-
-	// B12 — contact postal code
-	const b12 = sheet.getCell('B12')
-	b12.value = `連絡先 （〒　　　${cvData.postal_code || ''}　　　　　　）`
-	applyStyle(b12)
-
-	// B13 — contact address
-	const b13 = sheet.getCell('B13')
-	b13.value = cvData.address || ''
-	applyStyle(b13)
-
-	// ── Education (学歴) — font weight identical to work_experience ────────────
+	// 連絡先 furigana (C11) - Row 11: 連絡先 (フリガナ) (from 出身地 フリガナ) - Students table
+	const contactAddressFurigana = cvData.address_furigana || ''
+	const contactFuriganaCell = sheet.getCell('C11')
+	contactFuriganaCell.value = contactAddressFurigana
+	contactFuriganaCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+	// 連絡先 index (B12) - Row 11: 連絡先 (from 出身地 postal_code) - Students table
+	const contactPostalCode = cvData.postal_code || ''
+	sheet.getCell('B12').value = `連絡先 （〒　　　${contactPostalCode}　　　　　　）`
+	// 連絡先 address (B13) - Row 13: 連絡先 (from 出身地) - Students table
+	const contactAddress = cvData.address || ''
+	const contactAddressCell = sheet.getCell('B13')
+	contactAddressCell.value = contactAddress
+	contactAddressCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+	// EDUCATION (B9)
 	if (education.length > 0) {
-		education.forEach((item, index) => {
+		education.map((item, index) => {
 			const row = 17 + index
 
+			// Year
 			const yearCell = sheet.getCell(`B${row}`)
-			yearCell.value = item.year
-			applyStyle(yearCell, {}, centerMiddle)
+			yearCell.value = Number(item.year)
+			yearCell.font = { size: 11 }
+			yearCell.alignment = { vertical: 'middle', horizontal: 'center' }
 
+			// Month
 			const monthCell = sheet.getCell(`C${row}`)
-			monthCell.value = item.month
-			applyStyle(monthCell, {}, centerMiddle)
+			monthCell.value = Number(item.month)
+			monthCell.font = { size: 11 }
+			monthCell.alignment = { vertical: 'middle', horizontal: 'center' }
 
-			const institutionCell = sheet.getCell(`D${row}`)
-			institutionCell.value = item.institution
-			applyStyle(institutionCell, {}, leftMiddle)
+			// Institution (wrap text so it doesn't overflow into status column)
+			const instCell = sheet.getCell(`D${row}`)
+			instCell.value = item.institution
+			instCell.font = { size: 11 }
+			instCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
 
+			// Status (卒業, 入学, etc.)
 			const statusCell = sheet.getCell(`G${row}`)
 			statusCell.value = item.status
-			applyStyle(statusCell, {}, leftMiddle)
+			statusCell.font = { size: 11 }
+			statusCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
 		})
 	}
-
-	// ── Work Experience (職歴) ─────────────────────────────────────────────────
+	// workExperience (B9)
 	if (work_experience.length > 0) {
-		work_experience.forEach((item, index) => {
-			const row = 23 + index
-
-			const yearCell = sheet.getCell(`B${row}`)
-			yearCell.value = new Date(item.from).getFullYear()
-			applyStyle(yearCell, {}, centerMiddle)
-
-			const monthCell = sheet.getCell(`C${row}`)
-			monthCell.value = new Date(item.from).getMonth() + 1
-			applyStyle(monthCell, {}, centerMiddle)
-
-			const detailCell = sheet.getCell(`D${row}`)
-			detailCell.value = `${item.company} ${item.details}`
-			applyStyle(detailCell, {}, leftMiddle)
+		work_experience.map((item, index) => {
+			sheet.getCell(`B${23 + index}`).value = new Date(item.from).getFullYear()
+			sheet.getCell(`C${23 + index}`).value = new Date(item.from).getMonth() + 1
+			sheet.getCell(`D${23 + index}`).value = `${item.company} ${item.details}`
 		})
 	} else {
-		const d23 = sheet.getCell('D23')
-		d23.value = 'なし'
-		applyStyle(d23, {}, leftMiddle)
-
-		const d24 = sheet.getCell('D24')
-		d24.value = `                    以上`
-		applyStyle(d24, {}, leftMiddle)
+		sheet.getCell('D23').value = 'なし'
+		sheet.getCell('D24').value = `                    以上`
 	}
-
-	// ── Licenses / Certificates — Sheet 1 right side ──────────────────────────
+	// certificatess
 	if (licenses.length > 0) {
-		licenses.forEach((item, index) => {
-			const jCell = sheet.getCell(`J${4 + index}`)
-			jCell.value = item.year
-			applyStyle(jCell, {}, centerMiddle)
-
-			const kCell = sheet.getCell(`K${4 + index}`)
-			kCell.value = item.month
-			applyStyle(kCell, {}, centerMiddle)
+		licenses.map((item, index) => {
+			sheet.getCell(`J${4 + index}`).value = Number(item.year)
+			sheet.getCell(`K${4 + index}`).value = Number(item.month)
 
 			let certificateValue = item.certifacateName
+
+			// IELTS max score formatlash
 			if (certificateValue.startsWith('IELTS')) {
 				const jsonPart = certificateValue.slice(5).trim()
 				try {
@@ -297,90 +245,123 @@ export const downloadCV = async cvData => {
 				} catch (e) {}
 			}
 
-			const lCell = sheet.getCell(`L${4 + index}`)
-			lCell.value = certificateValue
-			applyStyle(lCell, {}, leftMiddle)
+			sheet.getCell(`L${4 + index}`).value = certificateValue
 		})
 	}
 
-	// J12 — self introduction
-	const j12 = sheet.getCell('J12')
-	j12.value = cvData.self_introduction
-	applyStyle(j12, {}, { wrapText: true, vertical: 'top' })
+	// 自己PR (B8)
+	sheet.getCell('J12').value = cvData.self_introduction
 
-	// ── Sheet 2 ────────────────────────────────────────────────────────────────
+	// 2 sheet boshlandi ------------------------------------------------------------------------------->
 
-	// D5 — name
-	const d5 = sheet2.getCell('D5')
-	d5.value = `氏名 ${cvData.first_name} ${cvData.last_name}`
-	applyStyle(d5)
+	// ism familiya (D5)
+	sheet2.getCell('D5').value = `氏名 ${cvData.first_name} ${cvData.last_name}`
+	// bugungi sana (A4)
+	sheet2.getCell('A4').value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
+	// projekt deliverables (A8) - Students table
+	// Template has 5 project slots (rows 8-17), each project uses 2 rows.
+	// If more than 5 projects, we insert extra rows so arubaito/certificates don't overlap.
+	const BASE_PROJECT_SLOTS = 5
+	const ROWS_PER_PROJECT = 2
+	const projectCount = cvData.deliverables?.length || 0
+	const extraProjects = Math.max(0, projectCount - BASE_PROJECT_SLOTS)
+	const extraRows = extraProjects * ROWS_PER_PROJECT
 
-	// A4 — current date
-	const a4 = sheet2.getCell('A4')
-	a4.value = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日  現在`
-	applyStyle(a4)
+	// Insert extra rows if needed (before arubaito section)
+	if (extraRows > 0) {
+		// Insert rows after the last template project slot (row 18)
+		// This pushes arubaito and certificates sections down
+		sheet2.insertRows(18, extraRows)
+	}
 
-	// Deliverables
 	if (cvData.deliverables && cvData.deliverables.length > 0) {
-		cvData.deliverables.forEach((item, index) => {
+		cvData.deliverables.map((item, index) => {
 			const offset = index * 2
 
+			// Title row
 			const titleCell = sheet2.getCell(`A${8 + offset}`)
 			titleCell.value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
-			applyStyle(titleCell, {}, leftMiddle)
+			titleCell.alignment = { wrapText: true, vertical: 'top' }
+			titleCell.font = { bold: true, size: 11 }
 
 			// Description row
 			const descCell = sheet2.getCell(`A${9 + offset}`)
 			descCell.value = item.description
-			applyStyle(descCell, {}, { wrapText: true, vertical: 'top' })
+			descCell.alignment = { wrapText: true, vertical: 'top' }
 
 			// Role
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
 			roleCell.value = `役割　${item.role.join(', ')}`
-			applyStyle(roleCell, {}, { wrapText: true, vertical: 'top', horizontal: 'left' })
+			roleCell.alignment = {
+				wrapText: true,
+				vertical: 'top',
+				horizontal: 'left',
+			}
 		})
 	}
 
-	// Arubaito
+	// Dynamic row offsets — arubaito and certificates shift down when extra projects are inserted
+	const arubaitoStartRow = 20 + extraRows
+	const certificatesStartRow = 33 + extraRows
+
+	// arubaito
 	if (arubaito.length > 0) {
-		arubaito.slice(0, 2).forEach((item, index) => {
-			const row = 20 + index
+		arubaito.map((item, index) => {
+			const row = arubaitoStartRow + index
 			sheet2.mergeCells(`A${row}:D${row}`)
-			const cell = sheet2.getCell(`A${row}`)
-			cell.value = `${item.period}  ${item.role}  ${item.company}`
-			applyStyle(cell, {}, { vertical: 'middle', horizontal: 'left', wrapText: true })
-			// Merged range ichidagi barcha celllarga alignment majburlash
-			sheet2.getRow(row).eachCell({ includeEmpty: true }, c => {
-				c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
-			})
+			sheet2.getCell(`A${row}`).value = `${item.period}  ${item.role}  ${item.company}`
+			sheet2.getCell(`A${row}`).alignment = {
+				vertical: 'middle',
+				horizontal: 'left',
+				wrapText: true,
+			}
 		})
 	}
+	// ■資格など
+	const rightRegularStyle = {
+		alignment: {
+			horizontal: 'right',
+			vertical: 'middle',
+			wrapText: true,
+		},
+		font: {
+			bold: false,
+			size: 11,
+			name: 'Calibri',
+		},
+	}
 
-	// ■ Licenses — Sheet 2 (A33+)
 	if (cvData.licenses.length > 0) {
-		cvData.licenses.forEach((item, index) => {
-			const row = 35 + index
+		cvData.licenses.map((item, index) => {
+			const row = certificatesStartRow + index
 
+			// YEAR
 			const yearCell = sheet2.getCell(`A${row}`)
-			yearCell.value = item.year
-			applyStyle(yearCell, {}, leftMiddle)
+			yearCell.value = `${item.year}年`
+			yearCell.alignment = rightRegularStyle.alignment
+			yearCell.font = rightRegularStyle.font
 
+			// MONTH
 			const monthCell = sheet2.getCell(`B${row}`)
-			monthCell.value = item.month
-			applyStyle(monthCell, {}, leftMiddle)
+			monthCell.value = `${item.month}月`
+			monthCell.alignment = rightRegularStyle.alignment
+			monthCell.font = rightRegularStyle.font
 
+			// C–D MERGE
 			sheet2.mergeCells(`C${row}:D${row}`)
+
 			const certCell = sheet2.getCell(`C${row}`)
 			certCell.value = item.certifacateName
-			applyStyle(certCell, {}, { horizontal: 'left', vertical: 'middle', wrapText: true })
-			// Merged celllar uchun barcha ustunlarga alignment berish
-			sheet2.getRow(row).eachCell({ includeEmpty: true }, cell => {
-				cell.alignment = { ...cell.alignment, horizontal: 'left' }
-			})
+			certCell.alignment = {
+				horizontal: 'left',
+				vertical: 'middle',
+				wrapText: true,
+			}
+			certCell.font = rightRegularStyle.font
 		})
 	}
 
-	// Save
+	// fileni yozib olish va saqlash
 	const buffer = await workbook.xlsx.writeBuffer()
 	saveAs(new Blob([buffer]), `${cvData.first_name}-CV.xlsx`)
 }
