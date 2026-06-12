@@ -229,6 +229,7 @@ const Top = () => {
 	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 	const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
 	const [showCvDownloadDialog, setShowCvDownloadDialog] = useState(false)
+	const [isCvDownloading, setIsCvDownloading] = useState(false)
 	const [pendingLanguageChange, setPendingLanguageChange] = useState(null)
 	const [expandHobbies, setExpandHobbies] = useState(false)
 	const [expandSpecial, setExpandSpecial] = useState(false)
@@ -1070,7 +1071,7 @@ const Top = () => {
 				<>
 					{role === 'Student' && viewingLive ? (
 						<>
-							<Button variant='contained' size='small' onClick={() => setShowCvDownloadDialog(true)} sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}>
+							<Button variant='contained' size='small' disabled={isCvDownloading} onClick={() => setShowCvDownloadDialog(true)} sx={{ display: 'flex', gap: 1, whiteSpace: 'nowrap' }}>
 								<DownloadIcon />
 								{t('download_cv')}
 							</Button>
@@ -1662,12 +1663,17 @@ const Top = () => {
 							{language === 'ja' ? 'キャンセル' : language === 'en' ? 'Cancel' : language === 'ru' ? 'Отмена' : 'Bekor qilish'}
 						</Button>
 						<Button
+							disabled={isCvDownloading}
 							onClick={async () => {
 								setShowCvDownloadDialog(false)
+								setIsCvDownloading(true)
 								try {
-									downloadCV(student)
+									await downloadCV(student)
 								} catch (err) {
-									console.log(err)
+									console.error('CV download failed:', err)
+									showAlert(t('download_failed'), 'error')
+								} finally {
+									setIsCvDownloading(false)
 								}
 							}}
 							variant='contained'
