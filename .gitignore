@@ -143,3 +143,4 @@ portfolio-server/backup.env
  # Google Auth Files
  portfolio-server/client_secret*.json
  portfolio-client/src/pages/GoogleAuthCallback.jsxtext.txt
+docs/
