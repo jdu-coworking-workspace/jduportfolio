@@ -94,14 +94,31 @@ function formatJapaneseDateWithAge(birthdayStr) {
 
 	return `${birthday.getFullYear()}年 ${birthday.getMonth() + 1}月 ${birthday.getDate()}日 （満 ${age} 歳）`
 }
+
+function toArray(value) {
+	if (Array.isArray(value)) return value
+	if (value) return [value]
+	return []
+}
+
+function formatDeliverableRole(role) {
+	if (Array.isArray(role)) return role.filter(Boolean).join(', ')
+	if (typeof role === 'string') return role.trim()
+	return ''
+}
+
 export const downloadCV = async cvData => {
 	// Normalize array-like fields to avoid runtime errors when they are null/undefined
-	const education = Array.isArray(cvData.education) ? cvData.education : cvData.education ? [cvData.education] : []
-	const work_experience = Array.isArray(cvData.work_experience) ? cvData.work_experience : cvData.work_experience ? [cvData.work_experience] : []
-	const licenses = Array.isArray(cvData.licenses) ? cvData.licenses : cvData.licenses ? [cvData.licenses] : []
-	const arubaito = Array.isArray(cvData.arubaito) ? cvData.arubaito : cvData.arubaito ? [cvData.arubaito] : []
+	const education = toArray(cvData.education)
+	const work_experience = toArray(cvData.work_experience)
+	const licenses = toArray(cvData.licenses)
+	const arubaito = toArray(cvData.arubaito)
+	const deliverables = toArray(cvData.deliverables)
 
 	const response = await fetch('/resume-template.xlsx')
+	if (!response.ok) {
+		throw new Error(`Failed to load resume template (${response.status})`)
+	}
 	const arrayBuffer = await response.arrayBuffer()
 	const workbook = new ExcelJS.Workbook()
 	await workbook.xlsx.load(arrayBuffer)
@@ -233,7 +250,7 @@ export const downloadCV = async cvData => {
 			sheet.getCell(`J${4 + index}`).value = Number(item.year)
 			sheet.getCell(`K${4 + index}`).value = Number(item.month)
 
-			let certificateValue = item.certifacateName
+			let certificateValue = item.certifacateName || ''
 
 			// IELTS max score formatlash
 			if (certificateValue.startsWith('IELTS')) {
@@ -263,7 +280,7 @@ export const downloadCV = async cvData => {
 	// If more than 5 projects, we insert extra rows so arubaito/certificates don't overlap.
 	const BASE_PROJECT_SLOTS = 5
 	const ROWS_PER_PROJECT = 2
-	const projectCount = cvData.deliverables?.length || 0
+	const projectCount = deliverables.length
 	const extraProjects = Math.max(0, projectCount - BASE_PROJECT_SLOTS)
 	const extraRows = extraProjects * ROWS_PER_PROJECT
 
@@ -271,11 +288,14 @@ export const downloadCV = async cvData => {
 	if (extraRows > 0) {
 		// Insert rows after the last template project slot (row 18)
 		// This pushes arubaito and certificates sections down
-		sheet2.insertRows(18, extraRows)
+		sheet2.insertRows(
+			18,
+			Array.from({ length: extraRows }, () => [])
+		)
 	}
 
-	if (cvData.deliverables && cvData.deliverables.length > 0) {
-		cvData.deliverables.map((item, index) => {
+	if (deliverables.length > 0) {
+		deliverables.map((item, index) => {
 			const offset = index * 2
 
 			// Title row
@@ -291,7 +311,7 @@ export const downloadCV = async cvData => {
 
 			// Role
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
-			roleCell.value = `役割　${item.role.join(', ')}`
+			roleCell.value = `役割　${formatDeliverableRole(item.role)}`
 			roleCell.alignment = {
 				wrapText: true,
 				vertical: 'top',
@@ -331,8 +351,8 @@ export const downloadCV = async cvData => {
 		},
 	}
 
-	if (cvData.licenses.length > 0) {
-		cvData.licenses.map((item, index) => {
+	if (licenses.length > 0) {
+		licenses.map((item, index) => {
 			const row = certificatesStartRow + index
 
 			// YEAR
