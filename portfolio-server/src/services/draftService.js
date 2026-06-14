@@ -259,7 +259,6 @@ class DraftService {
 				delete filter.visibility // Remove to avoid double handling
 			}
 
-			const searchableColumns = ['email', 'first_name', 'last_name', 'student_id', 'self_introduction', 'hobbies', 'jlpt']
 			let statusFilter = ''
 			let approvalStatusFilter = '' // New filter for approval_status
 
@@ -287,17 +286,31 @@ class DraftService {
 			Object.keys(filter).forEach(key => {
 				if (key !== 'draft_status' && !isEmptyFilterValue(filter[key])) {
 					if (key === 'search') {
-						// Escape SQL LIKE wildcards to prevent injection
-						const escapedSearch = escapeSqlLike(String(filter[key]).trim())
-						let searchConditions = searchableColumns.map(column => ({
-							[column]: { [Op.iLike]: `%${escapedSearch}%` },
-						}))
+						const searchValue = filter[key] ? String(filter[key]).trim() : ''
 
-						// Add JSONB search conditions for skills and it_skills using sequelize.where
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
-						searchConditions.push(sequelize.where(sequelize.cast(sequelize.col('Student.it_skills'), 'TEXT'), { [Op.iLike]: `%${escapedSearch}%` }))
+						if (searchValue) {
+							const escapedSearch = escapeSqlLike(searchValue)
 
-						querySearch[Op.or] = searchConditions
+							// Pure numeric: prefix match on student_id only (same as /student search)
+							if (/^\d+$/.test(searchValue)) {
+								querySearch[Op.or] = [{ student_id: { [Op.iLike]: `${escapedSearch}%` } }]
+							}
+							// JLPT level: exact match in jlpt field only
+							else if (/^N[1-5]$/i.test(searchValue)) {
+								const normalizedSearch = escapeSqlLike(searchValue.toUpperCase())
+								querySearch[Op.or] = [
+									{
+										jlpt: {
+											[Op.or]: [{ [Op.iLike]: `%"highest":"${normalizedSearch}"%` }, { [Op.iLike]: `%"highest":"${normalizedSearch}",%` }, { [Op.iLike]: `%"highest":"${normalizedSearch}"}%` }],
+										},
+									},
+								]
+							}
+							// Text: name fields and student_id prefix only
+							else {
+								querySearch[Op.or] = [{ first_name: { [Op.iLike]: `%${escapedSearch}%` } }, { last_name: { [Op.iLike]: `%${escapedSearch}%` } }, { student_id: { [Op.iLike]: `${escapedSearch}%` } }]
+							}
+						}
 					} else if (key === 'it_skills') {
 						const values = Array.isArray(filter[key]) ? filter[key] : [filter[key]]
 						const match = filter.it_skills_match === 'all' ? 'all' : 'any'
@@ -368,7 +381,11 @@ class DraftService {
 				query[Op.and] = []
 			}
 
-			query[Op.and].push(querySearch, queryOther, { active: true })
+			if (querySearch[Op.or] && querySearch[Op.or].length > 0) {
+				query[Op.and].push(querySearch)
+			}
+
+			query[Op.and].push(queryOther, { active: true })
 
 			// Combine status filters and reviewer filter
 			let combinedStatusFilter = ''
