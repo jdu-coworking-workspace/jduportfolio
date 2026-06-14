@@ -117,14 +117,14 @@ function formatDeliverableRole(role) {
  * column width. This avoids over-counting short segments.
  *
  * @param {string} text  - cell text content
- * @param {number} colWidthHW - column width in half-width character units (merged A-D ≈ 55)
+ * @param {number} colWidthHW - column width in half-width character units (merged A-D ≈ 60)
  * @param {number} fontSize - font size in points (default 11)
  * @param {number} minHeight - minimum row height in points
  * @returns {number} estimated row height in points
  */
-function estimateRowHeight(text, colWidthHW = 55, fontSize = 11, minHeight = 30) {
+function estimateRowHeight(text, colWidthHW = 60, fontSize = 11, minHeight = 30) {
 	if (!text) return minHeight
-	const str = String(text)
+	const str = String(text).trim()
 
 	// Split by explicit line breaks and calculate each segment separately.
 	const segments = str.split('\n')
@@ -141,7 +141,7 @@ function estimateRowHeight(text, colWidthHW = 55, fontSize = 11, minHeight = 30)
 		totalLines += Math.max(1, Math.ceil(charUnits / colWidthHW))
 	}
 
-	const lineHeight = fontSize * 1.4 // ~15.4pt per line at size 11
+	const lineHeight = fontSize * 1.2 // ~13.2pt per line at size 11 (matches Calibri default)
 	return Math.max(minHeight, totalLines * lineHeight)
 }
 
@@ -439,7 +439,7 @@ export const downloadCV = async cvData => {
 
 			// Auto-adjust row height so long descriptions are fully visible
 			const descRow = sheet2.getRow(descRowNum)
-			descRow.height = estimateRowHeight(item.description, 55, 11, 30)
+			descRow.height = estimateRowHeight(item.description, 60, 11, 30)
 
 			// Role
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
