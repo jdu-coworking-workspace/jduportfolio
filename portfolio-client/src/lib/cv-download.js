@@ -107,6 +107,44 @@ function formatDeliverableRole(role) {
 	return ''
 }
 
+/**
+ * Estimate the row height needed for wrapped text.
+ * ExcelJS does not auto-adjust row heights, so we calculate
+ * the approximate number of visual lines the text will occupy.
+ *
+ * Splits text by explicit line breaks first, then estimates
+ * how many wrapped lines each segment occupies based on the
+ * column width. This avoids over-counting short segments.
+ *
+ * @param {string} text  - cell text content
+ * @param {number} colWidthHW - column width in half-width character units (merged A-D ≈ 55)
+ * @param {number} fontSize - font size in points (default 11)
+ * @param {number} minHeight - minimum row height in points
+ * @returns {number} estimated row height in points
+ */
+function estimateRowHeight(text, colWidthHW = 55, fontSize = 11, minHeight = 30) {
+	if (!text) return minHeight
+	const str = String(text)
+
+	// Split by explicit line breaks and calculate each segment separately.
+	const segments = str.split('\n')
+	let totalLines = 0
+
+	for (const seg of segments) {
+		// Count segment width in half-width character units.
+		// Japanese / full-width characters count as ~2 half-width chars.
+		let charUnits = 0
+		for (const ch of seg) {
+			charUnits += ch.charCodeAt(0) > 0x7f ? 2 : 1
+		}
+		// Each segment occupies at least 1 line (even if empty)
+		totalLines += Math.max(1, Math.ceil(charUnits / colWidthHW))
+	}
+
+	const lineHeight = fontSize * 1.4 // ~15.4pt per line at size 11
+	return Math.max(minHeight, totalLines * lineHeight)
+}
+
 export const downloadCV = async cvData => {
 	// Normalize array-like fields to avoid runtime errors when they are null/undefined
 	const education = toArray(cvData.education)
@@ -286,12 +324,101 @@ export const downloadCV = async cvData => {
 
 	// Insert extra rows if needed (before arubaito section)
 	if (extraRows > 0) {
-		// Insert rows after the last template project slot (row 18)
-		// This pushes arubaito and certificates sections down
+		// Capture formatting from the last template project pair (rows 16-17)
+		// so that inserted rows replicate the same borders, fills, fonts & merges.
+		const TEMPLATE_TITLE_ROW = 16
+		const TEMPLATE_DESC_ROW = 17
+		const templatePairRows = [TEMPLATE_TITLE_ROW, TEMPLATE_DESC_ROW]
+
+		// 1. Capture cell styles AND values (borders, font, fill, alignment, labels like 【OS/ 言語/ DB など】)
+		// We capture values so template labels are replicated on new rows.
+		// The data-writing loop later overwrites cells A (title/desc) and E (role)
+		// with actual project data, so template labels in other cells remain intact.
+		const captureRowCells = rowNum => {
+			const row = sheet2.getRow(rowNum)
+			const cells = {}
+			for (let col = 1; col <= 10; col++) {
+				const cell = row.getCell(col)
+				const hasStyle = cell.style && Object.keys(cell.style).length > 0
+				const hasValue = cell.value !== null && cell.value !== undefined
+				if (hasStyle || hasValue) {
+					cells[col] = {
+						style: hasStyle ? JSON.parse(JSON.stringify(cell.style)) : null,
+						value: hasValue ? (typeof cell.value === 'object' ? JSON.parse(JSON.stringify(cell.value)) : cell.value) : null,
+					}
+				}
+			}
+			return { cells, height: row.height }
+		}
+
+		const titleTemplate = captureRowCells(TEMPLATE_TITLE_ROW)
+		const descTemplate = captureRowCells(TEMPLATE_DESC_ROW)
+
+		// 2. Capture merge ranges that belong to the template pair rows
+		const templateMerges = []
+		try {
+			const sheetMerges = sheet2.model?.merges || []
+			const rowSet = new Set(templatePairRows)
+			const baseRow = Math.min(...templatePairRows)
+			for (const range of sheetMerges) {
+				const m = range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+				if (!m) continue
+				const r1 = parseInt(m[2])
+				const r2 = parseInt(m[4])
+				if (rowSet.has(r1) || rowSet.has(r2)) {
+					templateMerges.push({
+						startCol: m[1],
+						endCol: m[3],
+						startRowOffset: r1 - baseRow,
+						endRowOffset: r2 - baseRow,
+					})
+				}
+			}
+		} catch (_) {
+			/* merge detection failed — rows will still get styles */
+		}
+
+		// 3. Insert empty rows after the last template slot (row 18)
 		sheet2.insertRows(
 			18,
 			Array.from({ length: extraRows }, () => [])
 		)
+
+		// 4. Apply captured styles, values & merges to each new project pair
+		const applyTemplateToCells = (row, templateCells) => {
+			Object.entries(templateCells).forEach(([col, data]) => {
+				const targetCell = row.getCell(Number(col))
+				if (data.style) targetCell.style = JSON.parse(JSON.stringify(data.style))
+				if (data.value !== null) targetCell.value = typeof data.value === 'object' ? JSON.parse(JSON.stringify(data.value)) : data.value
+			})
+		}
+
+		for (let i = 0; i < extraProjects; i++) {
+			const newTitleRowNum = 18 + i * 2
+			const newDescRowNum = 19 + i * 2
+
+			// — Title row (styles + labels)
+			const newTitleRow = sheet2.getRow(newTitleRowNum)
+			applyTemplateToCells(newTitleRow, titleTemplate.cells)
+			if (titleTemplate.height) newTitleRow.height = titleTemplate.height
+
+			// — Description row (styles + labels)
+			const newDescRow = sheet2.getRow(newDescRowNum)
+			applyTemplateToCells(newDescRow, descTemplate.cells)
+			if (descTemplate.height) newDescRow.height = descTemplate.height
+
+			// — Replicate merge ranges
+			const pairBase = newTitleRowNum
+			templateMerges.forEach(merge => {
+				try {
+					const r1 = pairBase + merge.startRowOffset
+					const r2 = pairBase + merge.endRowOffset
+					sheet2.mergeCells(`${merge.startCol}${r1}:${merge.endCol}${r2}`)
+				} catch (_) {
+					/* skip if merge conflicts with existing range */
+				}
+			})
+		}
 	}
 
 	if (deliverables.length > 0) {
@@ -305,9 +432,14 @@ export const downloadCV = async cvData => {
 			titleCell.font = { bold: true, size: 11 }
 
 			// Description row
-			const descCell = sheet2.getCell(`A${9 + offset}`)
+			const descRowNum = 9 + offset
+			const descCell = sheet2.getCell(`A${descRowNum}`)
 			descCell.value = item.description
 			descCell.alignment = { wrapText: true, vertical: 'top' }
+
+			// Auto-adjust row height so long descriptions are fully visible
+			const descRow = sheet2.getRow(descRowNum)
+			descRow.height = estimateRowHeight(item.description, 55, 11, 30)
 
 			// Role
 			const roleCell = sheet2.getCell(`E${9 + offset}`)
@@ -380,6 +512,15 @@ export const downloadCV = async cvData => {
 			certCell.font = rightRegularStyle.font
 		})
 	}
+
+	// Insert empty separator rows between sections on Sheet 2.
+	// Insert from bottom → top so that earlier insertions don't shift later targets.
+	// Gap 2: empty row before the certificates / ■資格など section
+	sheet2.insertRows(certificatesStartRow, [[]])
+	// Gap 1: empty row before ■活かせる経験・知識・技術 (skills header at template base row 22)
+	// +1 accounts for the gap-2 insertion above having shifted everything below it by 1
+	const skillsHeaderRow = 22 + extraRows
+	sheet2.insertRows(skillsHeaderRow, [[]])
 
 	// fileni yozib olish va saqlash
 	const buffer = await workbook.xlsx.writeBuffer()
