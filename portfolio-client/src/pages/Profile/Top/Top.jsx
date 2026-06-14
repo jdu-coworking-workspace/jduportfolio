@@ -34,6 +34,7 @@ import QA from '../../../pages/Profile/QA/QA'
 import axios from '../../../utils/axiosUtils'
 import Arubaito from '../Arubaito/Arubaito'
 import { Education } from '../Education/Education'
+import GuestPortfolioView from '../GuestPortfolioView/GuestPortfolioView'
 import { Licenses } from '../Licenses/Licenses'
 import WorkExperience from '../WorkExperience/WorkExperience'
 import styles from './Top.module.css'
@@ -1124,6 +1125,11 @@ const Top = () => {
 			)}
 		</Box>
 	)
+
+	// For public guest users, show modern portfolio view
+	if (isPublic && profileOutlet.student) {
+		return <GuestPortfolioView student={profileOutlet.student} language={profileOutlet.student.publicLanguage || profileOutlet.student.linkLanguage || 'ja'} />
+	}
 
 	return (
 		<>
