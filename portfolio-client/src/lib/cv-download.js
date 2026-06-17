@@ -22,7 +22,17 @@ function resolveThemeColor(color) {
 	if (!color || color.theme === undefined) return color
 	return { argb: THEME_COLORS[color.theme] || 'FF000000' }
 }
-
+function findRowByLabel(worksheet, label, column = 'A', searchFrom = 1, searchTo = null) {
+	const maxRow = searchTo || worksheet.rowCount
+	for (let r = searchFrom; r <= maxRow; r++) {
+		const cell = worksheet.getCell(`${column}${r}`)
+		const val = cell.value
+		if (typeof val === 'string' && val.trim().startsWith(label)) {
+			return r
+		}
+	}
+	return null
+}
 /**
  * Walk every cell on every worksheet and replace theme-indexed font/fill
  * colors with their resolved ARGB equivalents so that MS Excel can render
@@ -454,7 +464,11 @@ export const downloadCV = async cvData => {
 
 	// Dynamic row offsets — arubaito and certificates shift down when extra projects are inserted
 	const arubaitoStartRow = 20 + extraRows
-	const certificatesStartRow = 33 + extraRows
+	const certHeaderRow = findRowByLabel(sheet2, '■資格など', 'A', 19 + extraRows)
+	// Fallback to the historical offset only if the label can't be found (e.g. template changed unexpectedly)
+	const certHeaderInsertTarget = certHeaderRow ?? 33 + extraRows
+	const certificatesStartRow = certHeaderInsertTarget + 1
+	// const certificatesStartRow = 33 + extraRows
 
 	// arubaito
 	if (arubaito.length > 0) {
@@ -472,7 +486,7 @@ export const downloadCV = async cvData => {
 	// ■資格など
 	const rightRegularStyle = {
 		alignment: {
-			horizontal: 'right',
+			horizontal: 'left',
 			vertical: 'middle',
 			wrapText: true,
 		},
@@ -516,7 +530,7 @@ export const downloadCV = async cvData => {
 	// Insert empty separator rows between sections on Sheet 2.
 	// Insert from bottom → top so that earlier insertions don't shift later targets.
 	// Gap 2: empty row before the certificates / ■資格など section
-	sheet2.insertRows(certificatesStartRow, [[]])
+	sheet2.insertRows(certHeaderInsertTarget, [[]])
 	// Gap 1: empty row before ■活かせる経験・知識・技術 (skills header at template base row 22)
 	// +1 accounts for the gap-2 insertion above having shifted everything below it by 1
 	const skillsHeaderRow = 22 + extraRows
