@@ -89,25 +89,80 @@ const formatCertificationValue = (value, labels = PUBLIC_LABELS.ja) => {
 	return typeof value === 'string' ? value : JSON.stringify(parsed)
 }
 
+const isUrl = value => typeof value === 'string' && /^https?:\/\//i.test(value.trim())
+
+const isLikelyImageUrl = value => isUrl(value) && /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value.trim())
+
+const normalizeList = value => {
+	if (!value) return []
+	const stringifyItem = item => {
+		if (!item) return ''
+		if (typeof item === 'string') return item.trim()
+		if (typeof item === 'number') return String(item)
+		if (typeof item === 'object') return firstString([item.name, item.title, item.label, item.value, item.role, item.technology])
+		return ''
+	}
+	if (Array.isArray(value)) return value.map(stringifyItem).filter(Boolean)
+	if (typeof value === 'string') {
+		try {
+			const parsed = JSON.parse(value)
+			if (Array.isArray(parsed)) return parsed.map(stringifyItem).filter(Boolean)
+		} catch {
+			return value
+				.split(/[,;\n]/)
+				.map(item => item.trim())
+				.filter(Boolean)
+		}
+	}
+	return []
+}
+
+const firstString = values => values.find(v => typeof v === 'string' && v.trim())?.trim() || ''
+
+const normalizeProjectLinks = (item, imageUrls) => {
+	const imageUrlSet = new Set(imageUrls)
+	const candidates = [
+		{ type: 'demo', value: item.link || item.demoLink || item.liveLink || item.projectUrl || item.project_url || item.website || item.siteUrl },
+		{ type: 'github', value: item.github || item.githubLink || item.github_url || item.repoUrl || item.repository || item.sourceCode || item.codeLink },
+		{ type: 'link', value: item.url },
+	]
+
+	const seen = new Set()
+	return candidates
+		.filter(({ value }) => isUrl(value) && !imageUrlSet.has(value.trim()))
+		.map(({ type, value }) => ({ type, url: value.trim() }))
+		.filter(link => {
+			if (seen.has(link.url)) return false
+			seen.add(link.url)
+			return true
+		})
+}
+
 const normalizeProjectItem = item => {
 	if (!item || typeof item !== 'object') return null
 
-	const title = [item.title, item.name, item.project_name, item.projectTitle].find(v => typeof v === 'string' && v.trim()) || ''
-	const description = [item.description, item.text, item.summary, item.content].find(v => typeof v === 'string' && v.trim()) || ''
+	const title = firstString([item.title, item.name, item.project_name, item.projectTitle])
+	const description = firstString([item.description, item.text, item.summary, item.content])
 
 	// image_urls is an array; fall back to legacy single-url fields
-	const imageUrlsFirst = Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls[0] : null
-	const url = [imageUrlsFirst, item.url, item.image_url, item.imageUrl, item.file_url, item.fileUrl].find(v => typeof v === 'string' && v.trim()) || ''
+	const imageCandidates = [...normalizeList(item.image_urls), ...normalizeList(item.imageLinks), ...normalizeList(item.images), ...normalizeList(item.screenshots), item.imageLink, item.image_url, item.imageUrl, item.file_url, item.fileUrl, isLikelyImageUrl(item.url) ? item.url : null].filter(v => typeof v === 'string' && v.trim())
+	const allImages = [...new Set(imageCandidates.map(v => v.trim()))]
+	const url = allImages[0] || ''
+	const projectLinks = normalizeProjectLinks(item, allImages)
+	const roles = normalizeList(item.roles || item.role || item.responsibilities || item.responsibility)
+	const technologies = normalizeList(item.technologies || item.techStack || item.tech_stack || item.stack || item.tools)
 
-	if (!title && !description && !url) return null
+	if (!title && !description && !url && !projectLinks.length && !roles.length && !technologies.length) return null
 
 	return {
 		...item,
 		title,
 		description,
 		url,
-		// expose all images for modal if needed
-		allImages: Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls : url ? [url] : [],
+		allImages,
+		projectLinks,
+		roles,
+		technologies,
 	}
 }
 
@@ -231,19 +286,20 @@ AboutCard.propTypes = {
 
 /* ── IT Skills levels config ─────────────────────────────── */
 const LEVEL_CONFIG = {
-	上級: { label: '上級', sublabel: '3年以上', gradient: 'linear-gradient(135deg,#0f766e,#0d9488)', dot: '#0d9488', chipBg: '#F0FDFA', chipText: '#0f766e', chipBorder: '#99f6e4' },
-	中級: { label: '中級', sublabel: '3年未満', gradient: 'linear-gradient(135deg,#302b63,#6d28d9)', dot: '#6d28d9', chipBg: '#F5F3FF', chipText: '#5b21b6', chipBorder: '#ddd6fe' },
-	初級: { label: '初級', sublabel: '1年未満', gradient: 'linear-gradient(135deg,#374151,#6b7280)', dot: '#6b7280', chipBg: '#F9FAFB', chipText: '#374151', chipBorder: '#e5e7eb' },
+	上級: { key: 'advanced', gradient: 'linear-gradient(135deg,#0f766e,#0d9488)', dot: '#0d9488', chipBg: '#F0FDFA', chipText: '#0f766e', chipBorder: '#99f6e4' },
+	中級: { key: 'intermediate', gradient: 'linear-gradient(135deg,#302b63,#6d28d9)', dot: '#6d28d9', chipBg: '#F5F3FF', chipText: '#5b21b6', chipBorder: '#ddd6fe' },
+	初級: { key: 'beginner', gradient: 'linear-gradient(135deg,#374151,#6b7280)', dot: '#6b7280', chipBg: '#F9FAFB', chipText: '#374151', chipBorder: '#e5e7eb' },
 }
 const LEVEL_ORDER = ['上級', '中級', '初級']
 
-const ItSkillsGrouped = ({ skillsObj }) => {
+const ItSkillsGrouped = ({ skillsObj, labels }) => {
 	const levels = LEVEL_ORDER.filter(lv => Array.isArray(skillsObj[lv]) && skillsObj[lv].length > 0)
 	if (!levels.length) return null
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 			{levels.map(lv => {
 				const cfg = LEVEL_CONFIG[lv] || LEVEL_CONFIG['初級']
+				const levelLabel = labels.skillLevels?.[cfg.key] || { label: lv, sublabel: '' }
 				const skills = skillsObj[lv]
 				return (
 					<div
@@ -273,7 +329,7 @@ const ItSkillsGrouped = ({ skillsObj }) => {
 									letterSpacing: 0.5,
 								}}
 							>
-								{cfg.label}
+								{levelLabel.label}
 							</span>
 							<span
 								style={{
@@ -285,7 +341,7 @@ const ItSkillsGrouped = ({ skillsObj }) => {
 									fontWeight: 500,
 								}}
 							>
-								{cfg.sublabel}
+								{levelLabel.sublabel}
 							</span>
 							<span
 								style={{
@@ -295,7 +351,7 @@ const ItSkillsGrouped = ({ skillsObj }) => {
 									fontWeight: 500,
 								}}
 							>
-								{skills.length} skills
+								{skills.length} {labels.skillsCount}
 							</span>
 						</div>
 						{/* skills chips */}
@@ -341,6 +397,7 @@ const ItSkillsGrouped = ({ skillsObj }) => {
 
 ItSkillsGrouped.propTypes = {
 	skillsObj: PropTypes.object.isRequired,
+	labels: PropTypes.object.isRequired,
 }
 
 const ExpCard = ({ position, company, period, description }) => (
@@ -373,7 +430,86 @@ const projectItemPropType = PropTypes.shape({
 	title: PropTypes.string,
 	description: PropTypes.string,
 	url: PropTypes.string,
+	allImages: PropTypes.array,
+	projectLinks: PropTypes.array,
+	roles: PropTypes.array,
+	technologies: PropTypes.array,
 })
+
+const getProjectLinkLabel = (type, labels) => {
+	if (type === 'github') return labels.github
+	if (type === 'demo') return labels.liveDemo
+	return labels.openLink
+}
+
+const ProjectLinks = ({ links = [], labels }) => {
+	if (!links.length) return null
+	return (
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			{links.map((link, i) => (
+				<a
+					key={`${link.url}-${i}`}
+					href={link.url}
+					target='_blank'
+					rel='noreferrer'
+					onClick={e => e.stopPropagation()}
+					style={{
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: 6,
+						padding: '7px 10px',
+						borderRadius: 8,
+						border: '1px solid #e6e6ef',
+						background: '#fff',
+						color: '#302b63',
+						fontSize: '.75rem',
+						fontWeight: 700,
+						textDecoration: 'none',
+					}}
+				>
+					{link.type === 'github' ? 'GitHub' : '↗'} {getProjectLinkLabel(link.type, labels)}
+				</a>
+			))}
+		</div>
+	)
+}
+
+ProjectLinks.propTypes = {
+	links: PropTypes.array,
+	labels: PropTypes.object.isRequired,
+}
+
+const ProjectMeta = ({ label, values = [] }) => {
+	if (!values.length) return null
+	return (
+		<div>
+			<p style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 7 }}>{label}</p>
+			<div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+				{values.map((value, i) => (
+					<span
+						key={`${value}-${i}`}
+						style={{
+							padding: '5px 10px',
+							borderRadius: 100,
+							fontSize: '.74rem',
+							fontWeight: 600,
+							color: '#374151',
+							background: '#f9fafb',
+							border: '1px solid #e5e7eb',
+						}}
+					>
+						{value}
+					</span>
+				))}
+			</div>
+		</div>
+	)
+}
+
+ProjectMeta.propTypes = {
+	label: PropTypes.string.isRequired,
+	values: PropTypes.array,
+}
 
 const GalleryCard = ({ item, onClick, labels }) => (
 	<div
@@ -398,7 +534,8 @@ const GalleryCard = ({ item, onClick, labels }) => (
 		{item.url ? <img src={item.url} alt={item.title} style={{ width: '100%', height: 170, objectFit: 'cover', display: 'block' }} /> : <div style={{ height: 170, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 14 }}>{labels.noImage}</div>}
 		<div style={{ padding: 16 }}>
 			<p style={{ fontSize: '.9rem', fontWeight: 600, color: '#111', marginBottom: 4 }}>{item.title || labels.project}</p>
-			{item.description && <p style={{ fontSize: '.8rem', color: '#888', lineHeight: 1.5 }}>{item.description.length > 80 ? `${item.description.slice(0, 80)}…` : item.description}</p>}
+			{item.description && <p style={{ fontSize: '.8rem', color: '#888', lineHeight: 1.5, marginBottom: item.projectLinks?.length ? 12 : 0 }}>{item.description.length > 100 ? `${item.description.slice(0, 100)}…` : item.description}</p>}
+			<ProjectLinks links={item.projectLinks} labels={labels} />
 		</div>
 	</div>
 )
@@ -460,7 +597,22 @@ const Modal = ({ item, onClose, labels }) => {
 							✕
 						</button>
 					</div>
-					<p style={{ fontSize: '.9rem', color: '#555', lineHeight: 1.7 }}>{item.description || labels.noDescription}</p>
+					<p style={{ fontSize: '.9rem', color: '#555', lineHeight: 1.7, marginBottom: 18 }}>{item.description || labels.noDescription}</p>
+					<div style={{ display: 'grid', gap: 16 }}>
+						<ProjectLinks links={item.projectLinks} labels={labels} />
+						<ProjectMeta label={labels.role} values={item.roles} />
+						<ProjectMeta label={labels.technologies} values={item.technologies} />
+						{item.allImages?.length > 1 && (
+							<div>
+								<p style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#aaa', marginBottom: 8 }}>{labels.images}</p>
+								<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: 8 }}>
+									{item.allImages.map((image, i) => (
+										<img key={`${image}-${i}`} src={image} alt={`${item.title || labels.project} ${i + 1}`} style={{ width: '100%', height: 78, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee', background: '#f5f5f5' }} />
+									))}
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
@@ -510,7 +662,19 @@ const PUBLIC_LABELS = {
 		noImage: '画像なし',
 		project: 'プロジェクト',
 		position: '役職',
+		role: '担当',
 		company: '会社',
+		technologies: '技術',
+		images: '画像',
+		liveDemo: 'リンク',
+		github: 'GitHub',
+		openLink: 'リンクを開く',
+		skillsCount: 'スキル',
+		skillLevels: {
+			advanced: { label: '上級', sublabel: '3年以上' },
+			intermediate: { label: '中級', sublabel: '3年未満' },
+			beginner: { label: '初級', sublabel: '1年未満' },
+		},
 		noDescription: '説明はありません。',
 		highest: '最高',
 	},
@@ -549,7 +713,19 @@ const PUBLIC_LABELS = {
 		noImage: 'No image',
 		project: 'Project',
 		position: 'Position',
+		role: 'Role',
 		company: 'Company',
+		technologies: 'Technologies',
+		images: 'Images',
+		liveDemo: 'Live link',
+		github: 'GitHub',
+		openLink: 'Open link',
+		skillsCount: 'skills',
+		skillLevels: {
+			advanced: { label: 'Advanced', sublabel: '3+ years' },
+			intermediate: { label: 'Intermediate', sublabel: 'Under 3 years' },
+			beginner: { label: 'Beginner', sublabel: 'Under 1 year' },
+		},
 		noDescription: 'No description provided.',
 		highest: 'Highest',
 	},
@@ -588,7 +764,19 @@ const PUBLIC_LABELS = {
 		noImage: "Rasm yo'q",
 		project: 'Loyiha',
 		position: 'Lavozim',
+		role: 'Rol',
 		company: 'Kompaniya',
+		technologies: 'Texnologiyalar',
+		images: 'Rasmlar',
+		liveDemo: 'Loyiha linki',
+		github: 'GitHub',
+		openLink: 'Linkni ochish',
+		skillsCount: "ko'nikma",
+		skillLevels: {
+			advanced: { label: 'Yuqori', sublabel: '3+ yil' },
+			intermediate: { label: "O'rta", sublabel: '3 yildan kam' },
+			beginner: { label: "Boshlang'ich", sublabel: '1 yildan kam' },
+		},
 		noDescription: "Tavsif yo'q.",
 		highest: 'Eng yuqori',
 	},
@@ -627,7 +815,19 @@ const PUBLIC_LABELS = {
 		noImage: 'Нет изображения',
 		project: 'Проект',
 		position: 'Должность',
+		role: 'Роль',
 		company: 'Компания',
+		technologies: 'Технологии',
+		images: 'Изображения',
+		liveDemo: 'Ссылка на проект',
+		github: 'GitHub',
+		openLink: 'Открыть ссылку',
+		skillsCount: 'навыков',
+		skillLevels: {
+			advanced: { label: 'Продвинутый', sublabel: '3+ года' },
+			intermediate: { label: 'Средний', sublabel: 'Менее 3 лет' },
+			beginner: { label: 'Начальный', sublabel: 'Менее 1 года' },
+		},
 		noDescription: 'Описание не указано.',
 		highest: 'Лучший результат',
 	},
@@ -714,19 +914,19 @@ const GuestPortfolioView = ({ student, language = 'ja' }) => {
 				<div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', gap: 48, alignItems: 'center', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
 					{/* avatar */}
 					{student.photo ? (
-						<img src={student.photo} alt={name} style={{ width: 110, height: 110, borderRadius: '50%', border: '3px solid rgba(255,255,255,.25)', objectFit: 'cover', flexShrink: 0 }} />
+						<img src={student.photo} alt={name} style={{ width: 142, height: 142, borderRadius: '50%', border: '3px solid rgba(255,255,255,.25)', objectFit: 'cover', flexShrink: 0 }} />
 					) : ini ? (
 						<div
 							style={{
-								width: 110,
-								height: 110,
+								width: 142,
+								height: 142,
 								borderRadius: '50%',
 								border: '3px solid rgba(255,255,255,.25)',
 								background: 'linear-gradient(135deg,#6c63ff,#a78bfa)',
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
-								fontSize: 36,
+								fontSize: 42,
 								fontWeight: 600,
 								color: '#fff',
 								flexShrink: 0,
@@ -834,7 +1034,7 @@ const GuestPortfolioView = ({ student, language = 'ja' }) => {
 								<SectionLabel>{labels.technicalSkills}</SectionLabel>
 								{itSkillsObj ? (
 									/* Grouped by proficiency level */
-									<ItSkillsGrouped skillsObj={itSkillsObj} />
+									<ItSkillsGrouped skillsObj={itSkillsObj} labels={labels} />
 								) : (
 									/* Flat fallback */
 									<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

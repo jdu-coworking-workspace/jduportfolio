@@ -26,9 +26,13 @@ const SHARE_LINK_LANGUAGES = [
 ]
 
 const getShareLinkLoadingMessages = languageCode => {
-	const base = ['Link tayyorlanmoqda...', 'Profil maʼlumotlari yig‘ilmoqda...', 'Link saqlanmoqda...']
-	if (languageCode === 'ja') return base
-	return ['Tarjima boshlanmoqda...', 'Matnlar tarjima qilinmoqda...', 'Profil moslashtirilmoqda...', ...base]
+	const messages = {
+		ja: ['リンクを準備しています...', 'プロフィール情報を確認しています...', 'リンクを保存しています...'],
+		en: ['Starting translation...', 'Translating profile details...', 'Preparing the share page...', 'Saving the link...'],
+		uz: ['Tarjima boshlanmoqda...', 'Profil maʼlumotlari tarjima qilinmoqda...', 'Share sahifa tayyorlanmoqda...', 'Link saqlanmoqda...'],
+		ru: ['Начинаем перевод...', 'Переводим данные профиля...', 'Готовим страницу по ссылке...', 'Сохраняем ссылку...'],
+	}
+	return messages[languageCode] || messages.ja
 }
 
 const getShareLinkErrorMessage = error => {
