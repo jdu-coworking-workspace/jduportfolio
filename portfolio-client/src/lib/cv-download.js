@@ -164,6 +164,13 @@ export const downloadCV = async cvData => {
 	// Fix theme-indexed colors to prevent MS Excel rendering issues on sheets 3 & 4
 	fixThemeColors(workbook)
 
+	// Remove sample/見本 sheets — only keep 履歴書 (Sheet 1) and 職務経歴書 (Sheet 2).
+	// The template contains extra sample sheets that cause duplicate tabs in the
+	// exported file (visible in Google Docs and Windows Excel).
+	while (workbook.worksheets.length > 2) {
+		workbook.removeWorksheet(workbook.worksheets[workbook.worksheets.length - 1].id)
+	}
+
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
 
@@ -499,7 +506,10 @@ export const downloadCV = async cvData => {
 			monthCell.alignment = rightRegularStyle.alignment
 			monthCell.font = rightRegularStyle.font
 
-			// C–D MERGE
+			// Clear cell D before merging to prevent duplicate text rendering.
+			// ExcelJS does not always clear secondary cells during mergeCells,
+			// which causes the certificate name to appear in both C and D separately.
+			sheet2.getCell(`D${row}`).value = null
 			sheet2.mergeCells(`C${row}:D${row}`)
 
 			const certCell = sheet2.getCell(`C${row}`)
