@@ -505,6 +505,16 @@ export const downloadCV = async cvData => {
 	}
 
 	if (licenses.length > 0) {
+		// Use a single wide column C instead of merging C:D. ExcelJS merges are
+		// inconsistently honoured by Google Sheets, which makes the certificate
+		// name bleed into column D and look duplicated.
+		const certCol = sheet2.getColumn(3)
+		const detailCol = sheet2.getColumn(4)
+		const combinedCertWidth = (certCol.width || 14.86) + (detailCol.width || 22.57)
+		if (!certCol.width || certCol.width < combinedCertWidth) {
+			certCol.width = combinedCertWidth
+		}
+
 		licenses.map((item, index) => {
 			const row = certificatesStartRow + index
 
@@ -520,20 +530,26 @@ export const downloadCV = async cvData => {
 			monthCell.alignment = rightRegularStyle.alignment
 			monthCell.font = rightRegularStyle.font
 
-			// Clear cell D before merging to prevent duplicate text rendering.
-			// ExcelJS does not always clear secondary cells during mergeCells,
-			// which causes the certificate name to appear in both C and D separately.
+			// Certificate name — column C only; keep D empty (no merge).
+			try {
+				sheet2.unMergeCells(`C${row}:D${row}`)
+			} catch (_) {
+				/* range was not merged */
+			}
 			sheet2.getCell(`D${row}`).value = null
-			sheet2.mergeCells(`C${row}:D${row}`)
 
+			const certName = item.certifacateName || ''
 			const certCell = sheet2.getCell(`C${row}`)
-			certCell.value = item.certifacateName
+			certCell.value = certName
 			certCell.alignment = {
 				horizontal: 'left',
 				vertical: 'middle',
 				wrapText: true,
 			}
 			certCell.font = rightRegularStyle.font
+
+			const certRow = sheet2.getRow(row)
+			certRow.height = estimateRowHeight(certName, combinedCertWidth, 11, 30)
 		})
 	}
 
