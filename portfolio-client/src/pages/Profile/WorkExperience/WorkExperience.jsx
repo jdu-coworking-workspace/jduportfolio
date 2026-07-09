@@ -15,12 +15,14 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 		to: '',
 	})
 	const [anchorEl, setAnchorEl] = React.useState(null)
-	const open = Boolean(anchorEl)
-	const handleClick = event => {
+	const [currentMenuIndex, setCurrentMenuIndex] = React.useState(null)
+	const handleClick = (event, index) => {
 		setAnchorEl(event.currentTarget)
+		setCurrentMenuIndex(index)
 	}
 	const handleClose = () => {
 		setAnchorEl(null)
+		setCurrentMenuIndex(null)
 	}
 	const resetForm = () => {
 		setFormData({
@@ -39,11 +41,13 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 		setFormData({ ...item })
 		setEditingIndex(index)
 		setShowForm(true)
+		handleClose()
 	}
 
 	const handleDelete = index => {
 		const updated = workExperience.filter((_, i) => i !== index)
 		onUpdate('work_experience', updated)
+		handleClose()
 	}
 
 	const handleSubmit = () => {
@@ -58,8 +62,6 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 			// Add new
 			updated = [...workExperience, { ...formData }]
 		}
-		console.log(updated)
-
 		onUpdate('work_experience', updated)
 		resetForm()
 	}
@@ -156,10 +158,10 @@ const WorkExperience = ({ workExperience = [], editMode = false, onUpdate, t = k
 									</Typography>
 									{editMode && (
 										<>
-											<IconButton id='basic-button' aria-controls={open ? 'basic-menu' : undefined} aria-haspopup='true' aria-expanded={open ? 'true' : undefined} onClick={handleClick}>
+											<IconButton id={`work-experience-menu-button-${index}`} aria-controls={currentMenuIndex === index ? 'work-experience-menu' : undefined} aria-haspopup='true' aria-expanded={currentMenuIndex === index ? 'true' : undefined} onClick={e => handleClick(e, index)}>
 												<MoreVertIcon />
 											</IconButton>
-											<Menu id='basic-menu' anchorEl={anchorEl} open={open} onClose={handleClose}>
+											<Menu id='work-experience-menu' anchorEl={anchorEl} open={currentMenuIndex === index} onClose={handleClose}>
 												<MenuItem onClick={() => handleEdit(index)}>
 													<EditIcon sx={{ mr: 1 }} />
 													{t('edit')}
