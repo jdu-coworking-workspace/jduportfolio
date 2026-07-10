@@ -448,7 +448,7 @@ Please make sure that your profile does not fall under any of the prohibited act
 		// Missing keys for Setting.jsx
 		personal_info: 'Personal Information',
 		// Missing keys for general usage
-		search_placeholder: 'Search...',
+		search_placeholder: 'Search by name, furigana, or ID...',
 		search_filters: 'Search filters',
 		no_matches_found: 'No matches found',
 		start_typing: 'Start typing to see suggestions',
@@ -1253,7 +1253,7 @@ You must not leave this section as the auto-generated template. You need to rewr
 		statusUpdatedSuccessfully: 'ステータスが正常に更新されました',
 		errorUpdatingStatus: 'ステータスの更新中にエラーが発生しました',
 		// Missing keys for general usage
-		search_placeholder: '検索...',
+		search_placeholder: '名前、フリガナ、IDで検索...',
 		search_filters: '検索フィルター',
 		no_matches_found: '一致するものが見つかりません',
 		start_typing: '入力を開始して候補を表示',

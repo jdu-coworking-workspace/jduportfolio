@@ -185,6 +185,9 @@ class StudentService {
 								{ first_name: { [Op.iLike]: `%${escapedSearch}%` } },
 								// Search in last_name (substring match)
 								{ last_name: { [Op.iLike]: `%${escapedSearch}%` } },
+								// Search in furigana name fields (substring match)
+								{ first_name_furigana: { [Op.iLike]: `%${escapedSearch}%` } },
+								{ last_name_furigana: { [Op.iLike]: `%${escapedSearch}%` } },
 								// Search in student_id (prefix match)
 								{ student_id: { [Op.iLike]: `${escapedSearch}%` } },
 							]
@@ -956,10 +959,12 @@ class StudentService {
 				if (/^N[1-5]$/i.test(searchValue)) {
 					const normalizedSearch = searchValue.toUpperCase()
 					whereClause[Op.or] = [
-						// Search in student_id, first_name, last_name as before
+						// Search in student_id, name, and furigana fields
 						{ student_id: { [Op.iLike]: `%${searchValue}%` } },
 						{ first_name: { [Op.iLike]: `%${searchValue}%` } },
 						{ last_name: { [Op.iLike]: `%${searchValue}%` } },
+						{ first_name_furigana: { [Op.iLike]: `%${searchValue}%` } },
+						{ last_name_furigana: { [Op.iLike]: `%${searchValue}%` } },
 						// Also search in jlpt field for JLPT level matches
 						{
 							jlpt: {
@@ -968,8 +973,8 @@ class StudentService {
 						},
 					]
 				} else {
-					// Default search in student_id, first_name, last_name
-					whereClause[Op.or] = [{ student_id: { [Op.iLike]: `%${searchValue}%` } }, { first_name: { [Op.iLike]: `%${searchValue}%` } }, { last_name: { [Op.iLike]: `%${searchValue}%` } }]
+					// Default search in student_id, name, and furigana fields
+					whereClause[Op.or] = [{ student_id: { [Op.iLike]: `%${searchValue}%` } }, { first_name: { [Op.iLike]: `%${searchValue}%` } }, { last_name: { [Op.iLike]: `%${searchValue}%` } }, { first_name_furigana: { [Op.iLike]: `%${searchValue}%` } }, { last_name_furigana: { [Op.iLike]: `%${searchValue}%` } }]
 				}
 			}
 			if (normalizedRole === 'recruiter' || normalizedRole === 'guest') {
@@ -978,16 +983,20 @@ class StudentService {
 
 			const students = await Student.findAll({
 				where: whereClause,
-				attributes: ['student_id', 'first_name', 'last_name'],
+				attributes: ['student_id', 'first_name', 'last_name', 'first_name_furigana', 'last_name_furigana'],
 				order: [['student_id', 'ASC']],
 				limit: 10, // Limit to 10 suggestions
 			})
 
-			return students.map(student => ({
-				student_id: student.student_id,
-				name: `${student.first_name} ${student.last_name}`,
-				display: `${student.student_id} - ${student.first_name} ${student.last_name}`,
-			}))
+			return students.map(student => {
+				const furigana = [student.last_name_furigana, student.first_name_furigana].filter(Boolean).join(' ')
+				const name = `${student.first_name} ${student.last_name}`
+				return {
+					student_id: student.student_id,
+					name,
+					display: furigana ? `${student.student_id} - ${name} (${furigana})` : `${student.student_id} - ${name}`,
+				}
+			})
 		} catch (error) {
 			throw error
 		}
