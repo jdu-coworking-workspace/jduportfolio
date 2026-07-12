@@ -420,8 +420,8 @@ export const downloadCV = async cvData => {
 	// If more than 5 projects, we insert extra rows so arubaito/certificates don't overlap.
 	// If fewer than 5 projects, the leftover template slots (empty but styled/bordered
 	// rows) are removed so no blank gap is left below the projects.
-	const BASE_PROJECT_SLOTS = 0
-	const ROWS_PER_PROJECT = 0
+	const BASE_PROJECT_SLOTS = 5
+	const ROWS_PER_PROJECT = 2
 	const projectCount = deliverables.length
 	const extraProjects = Math.max(0, projectCount - BASE_PROJECT_SLOTS)
 	const extraRows = extraProjects * ROWS_PER_PROJECT
@@ -594,17 +594,23 @@ export const downloadCV = async cvData => {
 			const labelWidthPx = getMergedWidthPx(sheet2, `D${descRowNum}`)
 			const labelNeededHeight = estimateRowHeight(labelCell.value, labelWidthPx, labelFont.size || descFontSize)
 
-			const descRow = sheet2.getRow(descRowNum)
-			descRow.height = Math.max(20, descNeededHeight, labelNeededHeight)
-
 			// Role
-			const roleCell = sheet2.getCell(`E${9 + offset}`)
-			roleCell.value = `役割　${formatDeliverableRole(item.role)}`
+			const roleRowNum = descRowNum
+			const roleText = `役割　${formatDeliverableRole(item.role)}`
+			const roleCell = sheet2.getCell(`E${roleRowNum}`)
+			roleCell.value = roleText
 			roleCell.alignment = {
 				wrapText: true,
 				vertical: 'top',
 				horizontal: 'left',
 			}
+
+			const roleFont = roleCell.font || {}
+			const roleWidthPx = getMergedWidthPx(sheet2, `E${roleRowNum}`)
+			const roleNeededHeight = estimateRowHeight(roleText, roleWidthPx, roleFont.size || descFontSize)
+
+			const descRow = sheet2.getRow(descRowNum)
+			descRow.height = Math.max(20, descNeededHeight, labelNeededHeight, roleNeededHeight)
 		})
 	}
 
