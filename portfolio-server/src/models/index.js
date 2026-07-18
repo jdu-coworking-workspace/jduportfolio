@@ -22,6 +22,7 @@ const db = {}
 
 // Load models
 db.Admin = require('./Admin')(sequelize, Sequelize)
+db.Company = require('./Company')(sequelize, Sequelize)
 db.Recruiter = require('./Recruiter')(sequelize, Sequelize)
 db.Staff = require('./Staff')(sequelize, Sequelize)
 db.Student = require('./Student')(sequelize, Sequelize)
@@ -46,6 +47,16 @@ db.ShareableLink = require('./ShareableLink')(sequelize, Sequelize)
 
 // Apply associations here if needed
 // Example:
+
+// Company <-> Recruiter (Many-to-One: many recruiters belong to one company)
+db.Company.hasMany(db.Recruiter, {
+	foreignKey: 'companyId',
+	as: 'recruiters',
+})
+db.Recruiter.belongsTo(db.Company, {
+	foreignKey: 'companyId',
+	as: 'company',
+})
 
 db.Admin.hasMany(db.News, {
 	foreignKey: 'authorId',
@@ -159,6 +170,7 @@ module.exports = {
 	sequelize,
 	Sequelize,
 	Admin: db.Admin,
+	Company: db.Company,
 	Recruiter: db.Recruiter,
 	Staff: db.Staff,
 	Student: db.Student,

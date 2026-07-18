@@ -1,11 +1,18 @@
 const bcrypt = require('bcrypt')
 const { validationResult } = require('express-validator')
 const RecruiterService = require('../services/recruiterService')
-const { Recruiter } = require('../models')
 const { sendRecruiterWelcomeEmail } = require('../utils/emailToRecruiter')
 const generatePassword = require('generate-password')
+
 class RecruiterController {
-	// Webhook handler for Kintone events
+	/**
+	 * Webhook handler for Kintone events.
+	 *
+	 * The Kintone payload is a single flat record containing both personal
+	 * fields (recruiterEmail, recruiterFirstName...) and the company name
+	 * (recruiterCompany). The service layer resolves the company via
+	 * findOrCreate(company_name) and links Company.id to Recruiter.companyId.
+	 */
 	static async webhookHandler(req, res) {
 		try {
 			const { type, record, recordId } = req.body
@@ -18,24 +25,17 @@ class RecruiterController {
 						symbols: false,
 						uppercase: true,
 					})
-					// Parse isPartner from Kintone
-					let isPartner = false
-					const isPartnerRaw = record.isPartner?.value
-					if (Array.isArray(isPartnerRaw)) {
-						isPartner = isPartnerRaw.map(v => String(v).toLowerCase()).includes('true')
-					} else if (typeof isPartnerRaw === 'string') {
-						isPartner = isPartnerRaw.toLowerCase() === 'true'
-					}
 
 					const data = {
 						email: record.recruiterEmail?.value,
 						password: password,
 						first_name: record.recruiterFirstName?.value,
 						last_name: record.recruiterLastName?.value,
-						company_name: record.recruiterCompany?.value,
 						phone: record.recruiterPhone?.value,
 						kintone_id: record['$id']?.value,
-						isPartner,
+						// Company info — resolved to companyId inside the service
+						company_name: record.recruiterCompany?.value,
+						isPartner: RecruiterService.parseKintoneIsPartner(record),
 					}
 					const newRecruiter = await RecruiterService.createRecruiter(data)
 					if (newRecruiter) {
@@ -51,22 +51,16 @@ class RecruiterController {
 					return res.status(201).json(newRecruiter)
 				}
 				case 'UPDATE_RECORD': {
-					const isPartnerRaw = record.isPartner?.value
-					let isPartner = false
-					if (Array.isArray(isPartnerRaw)) {
-						isPartner = isPartnerRaw.map(v => String(v).toLowerCase()).includes('true')
-					} else if (typeof isPartnerRaw === 'string') {
-						isPartner = isPartnerRaw.toLowerCase() === 'true'
-					}
-
 					const recruiterData = {
-						email: record.recruiterEmail.value,
-						first_name: record.recruiterFirstName.value,
-						last_name: record.recruiterLastName.value,
-						company_name: record.recruiterCompany.value,
-						phone: record.recruiterPhone.value,
-						kintone_id: record['$id'].value,
-						isPartner,
+						email: record.recruiterEmail?.value,
+						first_name: record.recruiterFirstName?.value,
+						last_name: record.recruiterLastName?.value,
+						phone: record.recruiterPhone?.value,
+						kintone_id: record['$id']?.value,
+						// Company info — if the name changed, the service re-links
+						// the recruiter to the (found-or-created) company
+						company_name: record.recruiterCompany?.value,
+						isPartner: RecruiterService.parseKintoneIsPartner(record),
 					}
 					const updatedRecruiter = await RecruiterService.updateRecruiterByKintoneId(record['$id']?.value, recruiterData)
 					if (!updatedRecruiter) return res.status(404).json({ message: 'Recruiter not found' })
@@ -86,6 +80,7 @@ class RecruiterController {
 		}
 	}
 
+	// Admin only: create a recruiter account linked to a company
 	static async create(req, res, next) {
 		try {
 			const errors = validationResult(req)
@@ -153,16 +148,29 @@ class RecruiterController {
 		}
 	}
 
+	/**
+	 * Updates a recruiter's personal profile and, via the nested `company`
+	 * object, the shared company profile.
+	 *
+	 * Permissions:
+	 *  - Admin/Staff: any recruiter
+	 *  - Recruiter: only own profile (and thereby own company's profile)
+	 */
 	static async update(req, res, next) {
 		try {
 			const { id } = req.params
-			const recruiterData = req.body
+			const authenticatedUserId = req.user?.id
+			const authenticatedUserType = req.user?.userType
+			const isSelf = authenticatedUserType === 'Recruiter' && String(authenticatedUserId) === String(id)
+			const isPrivileged = authenticatedUserType === 'Admin' || authenticatedUserType === 'Staff'
+
+			if (!isSelf && !isPrivileged) {
+				return res.status(403).json({ error: 'You are not allowed to update this recruiter' })
+			}
+
 			const { currentPassword, password, ...updateData } = req.body
 
 			if (password) {
-				const authenticatedUserId = req.user?.id
-				const authenticatedUserType = req.user?.userType
-				const isSelf = authenticatedUserType === 'Recruiter' && String(authenticatedUserId) === String(id)
 				const recruiter = await RecruiterService.getRecruiterById(id, true, isSelf)
 				if (!recruiter || !(await bcrypt.compare(currentPassword, recruiter.password))) {
 					return res.status(400).json({ error: '現在のパスワードを入力してください' })
@@ -171,6 +179,7 @@ class RecruiterController {
 
 			const updatedRecruiter = await RecruiterService.updateRecruiter(id, {
 				...updateData,
+				currentPassword,
 				password: password || undefined,
 			})
 			res.status(200).json(updatedRecruiter)
