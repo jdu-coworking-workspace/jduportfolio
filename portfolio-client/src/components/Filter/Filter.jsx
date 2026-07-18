@@ -1220,7 +1220,7 @@ const Filter = ({ fields, filterState: initialFilterState, onFilterChange, onGri
 					<div className={style.inputWrapper}>
 						<div className={style.searchInputContainer}>
 							<img src={SearchIcon} alt='Search' className={style.inputSearchIcon} />
-							<input type='text' value={filterState.search || ''} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onFocus={handleInputFocus} onBlur={handleInputBlur} placeholder={t('search_placeholder') || '名前、ID、大学で学生を検索します...'} className={style.modernSearchInput} aria-label={t('search_filters')} autoComplete='off' />
+							<input type='text' value={filterState.search || ''} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onFocus={handleInputFocus} onBlur={handleInputBlur} placeholder={t('search_placeholder') || '名前、フリガナ、IDで検索...'} className={style.modernSearchInput} aria-label={t('search_filters')} autoComplete='off' />
 						</div>
 					</div>
 				</div>

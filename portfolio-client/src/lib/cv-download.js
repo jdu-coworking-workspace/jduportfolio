@@ -111,6 +111,108 @@ function toArray(value) {
 	return []
 }
 
+function colToNum(col) {
+	let num = 0
+	for (const ch of col) {
+		num = num * 26 + (ch.charCodeAt(0) - 64)
+	}
+	return num
+}
+
+// Excel's own column-width → pixel conversion (Calibri 11 / 96 DPI, MDW = max digit width = 7px).
+// Source: Microsoft's documented algorithm for translating the "characters" width unit to pixels.
+const MDW = 7
+function excelWidthToPixels(width) {
+	const w = width || 8.43 // Excel's built-in default column width
+	return Math.floor(((256 * w + Math.floor(128 / MDW)) / 256) * MDW)
+}
+
+/**
+ * Find the merge range (if any) that contains the given cell address and
+ * return the combined pixel width of its columns. If the cell isn't merged,
+ * falls back to that single column's own real width — never a blind guess.
+ */
+function getMergedWidthPx(worksheet, address) {
+	const target = address.match(/^([A-Z]+)(\d+)$/)
+	if (!target) return excelWidthToPixels()
+	const [, tCol, tRowStr] = target
+	const tRow = parseInt(tRowStr)
+	const tColNum = colToNum(tCol)
+
+	let startColNum = tColNum
+	let endColNum = tColNum
+
+	const merges = worksheet.model?.merges || []
+	for (const range of merges) {
+		const m = range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+		if (!m) continue
+		const [, c1, r1s, c2, r2s] = m
+		const r1 = parseInt(r1s)
+		const r2 = parseInt(r2s)
+		if (tRow < r1 || tRow > r2) continue
+		const cn1 = colToNum(c1)
+		const cn2 = colToNum(c2)
+		if (tColNum < cn1 || tColNum > cn2) continue
+		startColNum = cn1
+		endColNum = cn2
+		break
+	}
+
+	let totalPx = 0
+	for (let c = startColNum; c <= endColNum; c++) {
+		totalPx += excelWidthToPixels(worksheet.getColumn(c).width)
+	}
+	return totalPx
+}
+
+/**
+ * MS Gothic (and Japanese "Gothic" fixed-pitch typefaces generally) render
+ * every half-width character (Latin letters, digits, ASCII symbols) at
+ * exactly half an em, and every full-width character (Japanese) at exactly
+ * one em. This gives an EXACT wrap calculation for that font, without
+ * depending on canvas + whichever font the browser substitutes — MS Gothic
+ * itself is a Windows-only font and usually isn't installed in a browser,
+ * so canvas metrics for it can't be trusted anyway.
+ */
+function getFixedPitchCharWidths(fontSizePt) {
+	const emPx = fontSizePt * 1 // pt → px at 96 DPI
+	return { halfWidthPx: emPx / 2, fullWidthPx: emPx }
+}
+
+/**
+ * Count how many visual lines `text` wraps into inside a cell of `pixelWidth`,
+ * assuming a fixed-pitch font at `fontSizePt`. Explicit line breaks are
+ * respected; each segment wraps independently.
+ */
+function countFixedPitchLines(text, pixelWidth, fontSizePt) {
+	if (!text) return 1
+	const { halfWidthPx, fullWidthPx } = getFixedPitchCharWidths(fontSizePt)
+	// Small allowance for Excel's internal cell padding.
+	const usableWidth = Math.max(halfWidthPx, pixelWidth)
+	const segments = String(text).replace(/\r\n/g, '\n').split('\n')
+	let totalLines = 0
+
+	for (const seg of segments) {
+		if (seg.length === 0) {
+			totalLines += 1
+			continue
+		}
+		let lineWidth = 0
+		let lines = 1
+		for (const ch of seg) {
+			const chWidth = ch.charCodeAt(0) > 0x7f ? fullWidthPx : halfWidthPx
+			if (lineWidth + chWidth > usableWidth && lineWidth > 0) {
+				lines++
+				lineWidth = chWidth
+			} else {
+				lineWidth += chWidth
+			}
+		}
+		totalLines += lines
+	}
+	return totalLines
+}
+
 function formatDeliverableRole(role) {
 	if (Array.isArray(role)) return role.filter(Boolean).join(', ')
 	if (typeof role === 'string') return role.trim()
@@ -118,41 +220,24 @@ function formatDeliverableRole(role) {
 }
 
 /**
- * Estimate the row height needed for wrapped text.
- * ExcelJS does not auto-adjust row heights, so we calculate
- * the approximate number of visual lines the text will occupy.
+ * Estimate the row height (in points) needed for text to fully fit in a
+ * cell of the given pixel width, at the given font size, using the exact
+ * fixed-pitch line count above.
  *
- * Splits text by explicit line breaks first, then estimates
- * how many wrapped lines each segment occupies based on the
- * column width. This avoids over-counting short segments.
- *
- * @param {string} text  - cell text content
- * @param {number} colWidthHW - column width in half-width character units (merged A-D ≈ 60)
- * @param {number} fontSize - font size in points (default 11)
+ * @param {string} text - cell text content
+ * @param {number} pixelWidth - usable cell width in pixels (see getMergedWidthPx)
+ * @param {number} fontSizePt - font size in points (the template uses 9pt MS Gothic)
  * @param {number} minHeight - minimum row height in points
  * @returns {number} estimated row height in points
  */
-function estimateRowHeight(text, colWidthHW = 60, fontSize = 11, minHeight = 30) {
+function estimateRowHeight(text, pixelWidth, fontSizePt = 9, minHeight = 0) {
 	if (!text) return minHeight
-	const str = String(text).trim()
-
-	// Split by explicit line breaks and calculate each segment separately.
-	const segments = str.split('\n')
-	let totalLines = 0
-
-	for (const seg of segments) {
-		// Count segment width in half-width character units.
-		// Japanese / full-width characters count as ~2 half-width chars.
-		let charUnits = 0
-		for (const ch of seg) {
-			charUnits += ch.charCodeAt(0) > 0x7f ? 2 : 1
-		}
-		// Each segment occupies at least 1 line (even if empty)
-		totalLines += Math.max(1, Math.ceil(charUnits / colWidthHW))
-	}
-
-	const lineHeight = fontSize * 1.2 // ~13.2pt per line at size 11 (matches Calibri default)
-	return Math.max(minHeight, totalLines * lineHeight)
+	const lines = countFixedPitchLines(text, pixelWidth, fontSizePt)
+	const lineHeight = fontSizePt * 1.2
+	// Small vertical cushion (~Excel's internal cell padding) so the last line
+	// never touches/clips against the row border at an exact-fit boundary.
+	const verticalPadding = 3
+	return Math.max(minHeight, lines * lineHeight + verticalPadding)
 }
 
 export const downloadCV = async cvData => {
@@ -173,6 +258,13 @@ export const downloadCV = async cvData => {
 
 	// Fix theme-indexed colors to prevent MS Excel rendering issues on sheets 3 & 4
 	fixThemeColors(workbook)
+
+	// Remove sample/見本 sheets — only keep 履歴書 (Sheet 1) and 職務経歴書 (Sheet 2).
+	// The template contains extra sample sheets that cause duplicate tabs in the
+	// exported file (visible in Google Docs and Windows Excel).
+	while (workbook.worksheets.length > 2) {
+		workbook.removeWorksheet(workbook.worksheets[workbook.worksheets.length - 1].id)
+	}
 
 	const sheet = workbook.getWorksheet(1)
 	const sheet2 = workbook.getWorksheet(2)
@@ -326,6 +418,8 @@ export const downloadCV = async cvData => {
 	// projekt deliverables (A8) - Students table
 	// Template has 5 project slots (rows 8-17), each project uses 2 rows.
 	// If more than 5 projects, we insert extra rows so arubaito/certificates don't overlap.
+	// If fewer than 5 projects, the leftover template slots (empty but styled/bordered
+	// rows) are removed so no blank gap is left below the projects.
 	const BASE_PROJECT_SLOTS = 5
 	const ROWS_PER_PROJECT = 2
 	const projectCount = deliverables.length
@@ -431,12 +525,50 @@ export const downloadCV = async cvData => {
 		}
 	}
 
+	// Remove unused template slots when fewer than BASE_PROJECT_SLOTS projects exist,
+	// so no empty (but bordered/styled) rows are left below the last real project.
+	const unusedSlots = Math.max(0, BASE_PROJECT_SLOTS - projectCount)
+	const removedRows = unusedSlots * ROWS_PER_PROJECT
+	// Net shift applied to every section below the projects block:
+	// positive → sections moved down (extra projects inserted)
+	// negative → sections moved up (unused slots removed)
+	const rowShift = extraRows - removedRows
+
+	if (removedRows > 0) {
+		const firstUnusedRow = 8 + projectCount * ROWS_PER_PROJECT
+		const lastUnusedRow = firstUnusedRow + removedRows - 1
+
+		// Unmerge any merge ranges that fall inside the rows we're about to delete,
+		// so ExcelJS doesn't leave dangling merge references behind.
+		try {
+			const sheetMerges = [...(sheet2.model?.merges || [])]
+			sheetMerges.forEach(range => {
+				const m = range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+				if (!m) return
+				const r1 = parseInt(m[2])
+				const r2 = parseInt(m[4])
+				if (r1 >= firstUnusedRow && r2 <= lastUnusedRow) {
+					try {
+						sheet2.unMergeCells(range)
+					} catch (_) {
+						/* ignore */
+					}
+				}
+			})
+		} catch (_) {
+			/* merge cleanup failed — deletion still proceeds */
+		}
+
+		sheet2.spliceRows(firstUnusedRow, removedRows)
+	}
+
 	if (deliverables.length > 0) {
 		deliverables.map((item, index) => {
 			const offset = index * 2
 
 			// Title row
-			const titleCell = sheet2.getCell(`A${8 + offset}`)
+			const titleRowNum = 8 + offset
+			const titleCell = sheet2.getCell(`A${titleRowNum}`)
 			titleCell.value = `✖✖年✖月～✖✖年✖月 ／${item.title}`
 			titleCell.alignment = { wrapText: true, vertical: 'top' }
 			titleCell.font = { bold: true, size: 11 }
@@ -447,28 +579,49 @@ export const downloadCV = async cvData => {
 			descCell.value = item.description
 			descCell.alignment = { wrapText: true, vertical: 'top' }
 
-			// Auto-adjust row height so long descriptions are fully visible
-			const descRow = sheet2.getRow(descRowNum)
-			descRow.height = estimateRowHeight(item.description, 60, 11, 30)
+			// Auto-adjust row height so it hugs the description text — using the template's
+			// real font (9pt MS Gothic) and real merged width (A:C), not a guessed Calibri/11.
+			// Column D on this same row holds a static template label ("【OS/言語/DBなど】…")
+			// that we never overwrite; the row must stay tall enough for that label too, or a
+			// short description would shrink the row and clip it.
+			const descFont = descCell.font || {}
+			const descFontSize = descFont.size || 9
+			const descWidthPx = getMergedWidthPx(sheet2, `A${descRowNum}`)
+			const descNeededHeight = estimateRowHeight(item.description, descWidthPx, descFontSize)
+
+			const labelCell = sheet2.getCell(`D${descRowNum}`)
+			const labelFont = labelCell.font || {}
+			const labelWidthPx = getMergedWidthPx(sheet2, `D${descRowNum}`)
+			const labelNeededHeight = estimateRowHeight(labelCell.value, labelWidthPx, labelFont.size || descFontSize)
 
 			// Role
-			const roleCell = sheet2.getCell(`E${9 + offset}`)
-			roleCell.value = `役割　${formatDeliverableRole(item.role)}`
+			const roleRowNum = descRowNum
+			const roleText = `役割　${formatDeliverableRole(item.role)}`
+			const roleCell = sheet2.getCell(`E${roleRowNum}`)
+			roleCell.value = roleText
 			roleCell.alignment = {
 				wrapText: true,
 				vertical: 'top',
 				horizontal: 'left',
 			}
+
+			const roleFont = roleCell.font || {}
+			const roleWidthPx = getMergedWidthPx(sheet2, `E${roleRowNum}`)
+			const roleNeededHeight = estimateRowHeight(roleText, roleWidthPx, roleFont.size || descFontSize)
+
+			const descRow = sheet2.getRow(descRowNum)
+			descRow.height = Math.max(20, descNeededHeight, labelNeededHeight, roleNeededHeight)
 		})
 	}
 
-	// Dynamic row offsets — arubaito and certificates shift down when extra projects are inserted
-	const arubaitoStartRow = 20 + extraRows
-	const certHeaderRow = findRowByLabel(sheet2, '■資格など', 'A', 19 + extraRows)
+	// Dynamic row offsets — arubaito and certificates shift when the project count
+	// differs from the template's 5 built-in slots (rowShift can be positive or negative).
+	const arubaitoStartRow = 20 + rowShift
+	const certHeaderRow = findRowByLabel(sheet2, '■資格など', 'A', 19 + rowShift)
 	// Fallback to the historical offset only if the label can't be found (e.g. template changed unexpectedly)
-	const certHeaderInsertTarget = certHeaderRow ?? 33 + extraRows
+	const certHeaderInsertTarget = certHeaderRow ?? 33 + rowShift
 	const certificatesStartRow = certHeaderInsertTarget + 1
-	// const certificatesStartRow = 33 + extraRows
+	// const certificatesStartRow = 33 + rowShift
 
 	// arubaito
 	if (arubaito.length > 0) {
@@ -498,6 +651,16 @@ export const downloadCV = async cvData => {
 	}
 
 	if (licenses.length > 0) {
+		// Use a single wide column C instead of merging C:D. ExcelJS merges are
+		// inconsistently honoured by Google Sheets, which makes the certificate
+		// name bleed into column D and look duplicated.
+		const certCol = sheet2.getColumn(3)
+		const detailCol = sheet2.getColumn(4)
+		const combinedCertWidth = (certCol.width || 14.86) + (detailCol.width || 22.57)
+		if (!certCol.width || certCol.width < combinedCertWidth) {
+			certCol.width = combinedCertWidth
+		}
+
 		licenses.map((item, index) => {
 			const row = certificatesStartRow + index
 
@@ -513,17 +676,26 @@ export const downloadCV = async cvData => {
 			monthCell.alignment = rightRegularStyle.alignment
 			monthCell.font = rightRegularStyle.font
 
-			// C–D MERGE
-			sheet2.mergeCells(`C${row}:D${row}`)
+			// Certificate name — column C only; keep D empty (no merge).
+			try {
+				sheet2.unMergeCells(`C${row}:D${row}`)
+			} catch (_) {
+				/* range was not merged */
+			}
+			sheet2.getCell(`D${row}`).value = null
 
+			const certName = item.certifacateName || ''
 			const certCell = sheet2.getCell(`C${row}`)
-			certCell.value = item.certifacateName
+			certCell.value = certName
 			certCell.alignment = {
 				horizontal: 'left',
 				vertical: 'middle',
 				wrapText: true,
 			}
 			certCell.font = rightRegularStyle.font
+
+			const certRow = sheet2.getRow(row)
+			certRow.height = estimateRowHeight(certName, excelWidthToPixels(combinedCertWidth), 11, 30)
 		})
 	}
 
@@ -533,7 +705,7 @@ export const downloadCV = async cvData => {
 	sheet2.insertRows(certHeaderInsertTarget, [[]])
 	// Gap 1: empty row before ■活かせる経験・知識・技術 (skills header at template base row 22)
 	// +1 accounts for the gap-2 insertion above having shifted everything below it by 1
-	const skillsHeaderRow = 22 + extraRows
+	const skillsHeaderRow = 22 + rowShift
 	sheet2.insertRows(skillsHeaderRow, [[]])
 
 	// fileni yozib olish va saqlash

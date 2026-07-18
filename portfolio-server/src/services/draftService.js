@@ -306,9 +306,9 @@ class DraftService {
 									},
 								]
 							}
-							// Text: name fields and student_id prefix only
+							// Text: name, furigana, and student_id prefix only
 							else {
-								querySearch[Op.or] = [{ first_name: { [Op.iLike]: `%${escapedSearch}%` } }, { last_name: { [Op.iLike]: `%${escapedSearch}%` } }, { student_id: { [Op.iLike]: `${escapedSearch}%` } }]
+								querySearch[Op.or] = [{ first_name: { [Op.iLike]: `%${escapedSearch}%` } }, { last_name: { [Op.iLike]: `%${escapedSearch}%` } }, { first_name_furigana: { [Op.iLike]: `%${escapedSearch}%` } }, { last_name_furigana: { [Op.iLike]: `%${escapedSearch}%` } }, { student_id: { [Op.iLike]: `${escapedSearch}%` } }]
 							}
 						}
 					} else if (key === 'it_skills') {
