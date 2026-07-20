@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from '../../utils/axiosUtils'
 
@@ -15,14 +15,13 @@ import AwardIcon from '../../assets/icons/award-line.svg'
 import DeleteIcon from '../../assets/icons/delete-bin-3-line.svg'
 import GraduationCapIcon from '../../assets/icons/graduation-cap-line.svg'
 import SchoolIcon from '../../assets/icons/school-line.svg'
+import { tableScrollPositionAtom } from '../../atoms/store'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import { formatGraduationMonth } from '../../utils/formatGraduationMonth'
 import { formatPartnerUniversity } from '../../utils/formatPartnerUniversity'
 import ChangedFieldsModal from '../ChangedFieldsModal/ChangedFieldsModal'
 import UserAvatar from './Avatar/UserAvatar'
-import { getComparator, stableSort } from './TableUtils'
-import { tableScrollPositionAtom } from '../../atoms/store'
 // localStorage dan qiymat o'qish yoki default qiymat
 const getInitialRowsPerPage = () => {
 	try {
@@ -1320,7 +1319,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																	wordBreak: 'break-word',
 																}}
 															>
-																{row.company_name || ''}
+																{(header.id && header.subkey ? row[header.id]?.[header.subkey] : row[header.id]) || row.company?.company_name || ''}
 																<div
 																	style={{
 																		width: 'fit-content',
@@ -1332,7 +1331,7 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 																		wordBreak: 'break-word',
 																	}}
 																>
-																	{row.tagline || ''}
+																	{row.company?.tagline || row.tagline || ''}
 																</div>
 															</div>
 														</Box>
@@ -1412,9 +1411,9 @@ const EnhancedTable = ({ tableProps, updatedBookmark, viewMode = 'table' }) => {
 															}
 															return 'N/A'
 														})()
-													) : row[header.id] ? (
+													) : (header.subkey ? row[header.id]?.[header.subkey] : row[header.id]) ? (
 														<>
-															{header.subkey ? (row[header.id] ? row[header.id][header.subkey] : 'N/A') : header.id === 'partner_university' ? formatPartnerUniversity(row[header.id], t) : row[header.id] ? row[header.id] : 'N/A'}
+															{header.subkey ? row[header.id][header.subkey] : header.id === 'partner_university' ? formatPartnerUniversity(row[header.id], t) : row[header.id]}
 															{header.suffix ? header.suffix : ''}
 														</>
 													) : (

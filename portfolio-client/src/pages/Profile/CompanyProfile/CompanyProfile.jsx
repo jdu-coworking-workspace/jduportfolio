@@ -1,36 +1,32 @@
-import React, { useEffect, useState, useContext, useRef, useCallback } from 'react'
+import RestoreIcon from '@mui/icons-material/Restore'
+import SaveIcon from '@mui/icons-material/Save'
+import { Alert, Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Snackbar, Tab, Tabs, TextField, Typography } from '@mui/material'
+import { useAtom } from 'jotai'
 import PropTypes from 'prop-types'
-import { useNavigate, useLocation, useParams } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
-import axios from '../../../utils/axiosUtils'
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { editDataAtom, editModeAtom, saveStatusAtom } from '../../../atoms/profileEditAtoms'
 import { useAlert } from '../../../contexts/AlertContext'
 import { useLanguage } from '../../../contexts/LanguageContext'
-import { useAtom } from 'jotai'
-import { editModeAtom, saveStatusAtom, editDataAtom } from '../../../atoms/profileEditAtoms'
-import { Box, Typography, Chip, Avatar, Grid, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress, Switch, Tabs, Tab } from '@mui/material'
-import SaveIcon from '@mui/icons-material/Save'
-import RestoreIcon from '@mui/icons-material/Restore'
+import axios from '../../../utils/axiosUtils'
 // Swiper imports
-import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from 'swiper/modules'
+import { Swiper, SwiperSlide } from 'swiper/react'
 // Swiper CSS
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/pagination'
 // Icon imports from assets folder
-import BusinessIcon from '../../../assets/icons/buildingLine.svg'
 import WorkIcon from '../../../assets/icons/briefcase-3-line.svg'
-import PersonIcon from '../../../assets/icons/group-line.svg'
-import InfoIcon from '../../../assets/icons/file-text-line.svg'
-import EditIcon from '../../../assets/icons/edit.svg'
-import CheckboxBlankIcon from '../../../assets/icons/checkbox-blank.svg'
-import CheckboxBlankIcon2 from '../../../assets/icons/checkbox-blank2.svg'
+import BusinessIcon from '../../../assets/icons/buildingLine.svg'
 import DeleteIcon from '../../../assets/icons/delete-bin-3-line.svg'
+import EditIcon from '../../../assets/icons/edit.svg'
 
-import styles from './CompanyProfile.module.css'
-import translations from '../../../locales/translations'
-import { UserContext } from '../../../contexts/UserContext'
 import RecruiterFiles from '../../../components/RecruiterFiles'
+import { UserContext } from '../../../contexts/UserContext'
+import translations from '../../../locales/translations'
+import styles from './CompanyProfile.module.css'
 
 // Helper functions moved outside component
 const safeArrayRender = array => {
@@ -248,6 +244,13 @@ SectionHeader.propTypes = {
 	icon: PropTypes.string.isRequired,
 	title: PropTypes.string,
 }
+
+// Personal (recruiter-level) fields live at the top level of the /api/recruiters/:id
+// payload. Everything else belongs to the shared company profile and must be sent
+// nested under `company`. `company_name` and `isPartner` are Admin-only and are never
+// sent from this screen.
+const PERSONAL_FIELD_KEYS = ['first_name', 'last_name', 'first_name_furigana', 'last_name_furigana', 'phone', 'email', 'photo', 'date_of_birth']
+const ADMIN_ONLY_COMPANY_FIELD_KEYS = ['company_name', 'isPartner']
 
 const CompanyProfile = ({ userId = 0 }) => {
 	const role = sessionStorage.getItem('role')
@@ -508,13 +511,37 @@ const CompanyProfile = ({ userId = 0 }) => {
 		delete processedData.newRecommendedLicense
 		delete processedData.newRecommendedOther
 
+		// --- Split into { <personal top-level fields>, company: { ... } } ---
+		// The API now expects personal (recruiter) fields at the top level and every
+		// company-profile field nested under `company`. `company_name` and `isPartner`
+		// are Admin-only: including them here would trigger a 400 validation error, so
+		// they're stripped out before sending.
+		const personalPayload = {}
+		PERSONAL_FIELD_KEYS.forEach(key => {
+			if (Object.prototype.hasOwnProperty.call(processedData, key)) {
+				personalPayload[key] = processedData[key]
+			}
+		})
+
+		const companyPayload = { ...processedData }
+		PERSONAL_FIELD_KEYS.forEach(key => delete companyPayload[key])
+		ADMIN_ONLY_COMPANY_FIELD_KEYS.forEach(key => delete companyPayload[key])
+		delete companyPayload.companyId
+		delete companyPayload.recruiters
+		delete companyPayload.id
+
+		const requestBody = {
+			...personalPayload,
+			company: companyPayload,
+		}
+
 		// Simple implementation - just make API call
 		// If some video URLs were removed due to invalid format, inform user
 		if (Array.isArray(data.company_video_url) && processedData.company_video_url.length < data.company_video_url.length) {
 			showAlert(t.invalid_video_urls_removed, 'warning')
 		}
 
-		await axios.put(`/api/recruiters/${id}`, processedData)
+		await axios.put(`/api/recruiters/${id}`, requestBody)
 	}
 
 	// Simple save function
@@ -773,34 +800,52 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 		try {
 			const response = await axios.get(`/api/recruiters/${id}`)
-			const companyData = response.data
+			const recruiterData = response.data
 
-			const processedData = {
-				...companyData,
-				business_overview: Array.isArray(companyData.business_overview) ? companyData.business_overview.join('\n') : companyData.business_overview || '',
-				target_audience: Array.isArray(companyData.target_audience) ? companyData.target_audience.join('、') : companyData.target_audience || '',
-				required_skills: safeParse(companyData.required_skills),
-				welcome_skills: safeParse(companyData.welcome_skills),
-				company_video_url: Array.isArray(companyData.company_video_url) ? companyData.company_video_url : [],
+			// New API shape: personal (recruiter) fields live at the top level, company
+			// profile fields live nested under `company` (null if not yet assigned).
+			// We flatten them back into a single object here so the rest of this
+			// component (which was written against the old flat shape) keeps working
+			// unchanged.
+			const companyPart = recruiterData.company || {}
+
+			const companyData = {
+				...companyPart,
+				// Personal/recruiter-level fields
+				first_name: recruiterData.first_name || '',
+				last_name: recruiterData.last_name || '',
+				first_name_furigana: recruiterData.first_name_furigana || '',
+				last_name_furigana: recruiterData.last_name_furigana || '',
+				phone: recruiterData.phone || '',
+				email: recruiterData.email || '',
+				photo: recruiterData.photo || '',
+				date_of_birth: recruiterData.date_of_birth || '',
+				companyId: recruiterData.companyId ?? null,
+
+				business_overview: Array.isArray(companyPart.business_overview) ? companyPart.business_overview.join('\n') : companyPart.business_overview || '',
+				target_audience: Array.isArray(companyPart.target_audience) ? companyPart.target_audience.join('、') : companyPart.target_audience || '',
+				required_skills: safeParse(companyPart.required_skills),
+				welcome_skills: safeParse(companyPart.welcome_skills),
+				company_video_url: Array.isArray(companyPart.company_video_url) ? companyPart.company_video_url : [],
 				// New arrays-as-text: parse to arrays for UI
-				recommended_skills: safeParse(companyData.recommended_skills),
-				recommended_licenses: safeParse(companyData.recommended_licenses),
-				recommended_other: safeParse(companyData.recommended_other),
+				recommended_skills: safeParse(companyPart.recommended_skills),
+				recommended_licenses: safeParse(companyPart.recommended_licenses),
+				recommended_other: safeParse(companyPart.recommended_other),
 				// Ensure optional string fields are non-null for UI
-				japanese_level: companyData.japanese_level || '',
-				application_requirements_other: companyData.application_requirements_other || '',
-				retirement_benefit: companyData.retirement_benefit || '',
-				telework_availability: companyData.telework_availability || '',
-				housing_availability: companyData.housing_availability || '',
-				relocation_support: companyData.relocation_support || '',
-				airport_pickup: companyData.airport_pickup || '',
-				intro_page_thumbnail: companyData.intro_page_thumbnail || '',
-				intro_page_links: Array.isArray(companyData.intro_page_links) ? companyData.intro_page_links : companyData.intro_page_thumbnail ? [companyData.intro_page_thumbnail] : [],
+				japanese_level: companyPart.japanese_level || '',
+				application_requirements_other: companyPart.application_requirements_other || '',
+				retirement_benefit: companyPart.retirement_benefit || '',
+				telework_availability: companyPart.telework_availability || '',
+				housing_availability: companyPart.housing_availability || '',
+				relocation_support: companyPart.relocation_support || '',
+				airport_pickup: companyPart.airport_pickup || '',
+				intro_page_thumbnail: companyPart.intro_page_thumbnail || '',
+				intro_page_links: Array.isArray(companyPart.intro_page_links) ? companyPart.intro_page_links : companyPart.intro_page_thumbnail ? [companyPart.intro_page_thumbnail] : [],
 			}
 
-			setCompany(processedData)
+			setCompany(companyData)
 			const editDataWithNew = {
-				...processedData,
+				...companyData,
 				newRequiredSkill: '',
 				newWelcomeSkill: '',
 				newVideoUrl: '',
@@ -1041,13 +1086,15 @@ const CompanyProfile = ({ userId = 0 }) => {
 						// title={t.company_information || 'Company Information'}
 					/>
 					<Box className={`${styles.companyInfoContainer} ${editMode ? styles.companyInfoContainerEdit : ''}`}>
-						{/* company_name */}
+						{/* company_name — Admin-only field (PUT /api/companies/:id). Always read-only here. */}
 						{(role === 'Recruiter' || editMode || hasContent(company.company_name)) && (
 							<Box className={`${styles.infoRow} ${styles.infoRowOdd}`}>
 								<Typography variant='subtitle1' className={styles.label}>
 									{t.company_name}
 								</Typography>
-								<Box className={`${styles.value} ${styles.valueColumn}`}>{editMode && role === 'Recruiter' ? <CustomTextField value={safeStringValue(editData.company_name)} onChange={e => handleUpdateEditData('company_name', e.target.value)} placeholder={t.company_name} fieldKey='company_name' inputRef={createInputRef('company_name')} multiline={true} minRows={1} maxLength={100} /> : <DisplayText>{safeStringValue(company.company_name)}</DisplayText>}</Box>
+								<Box className={`${styles.value} ${styles.valueColumn}`}>
+									<DisplayText>{safeStringValue(company.company_name)}</DisplayText>
+								</Box>
 							</Box>
 						)}
 						{(role === 'Recruiter' || editMode || hasContent(company.company_Address)) && (

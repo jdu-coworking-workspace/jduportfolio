@@ -20,11 +20,24 @@ const Recruiter = () => {
 		})
 	}
 
+	// NOTE (API o'zgarishi): GET /api/recruiters endi har bir qatorni
+	// { id, email, first_name, ..., companyId, company: { company_name, ... } }
+	// ko'rinishida qaytaradi — company_name endi flat emas, `company` obyekti
+	// ichida keladi. Shaxsiy maydonlar (first_name/last_name/phone/email/photo)
+	// hamon top-level'da, shuning uchun ular o'zgarishsiz qoladi.
+	//
+	// EnhancedTable (Table.jsx) header.id'ni to'g'ridan-to'g'ri flat kalit
+	// sifatida o'qiydi: row[header.id]. 'company.company_name' kabi dot-path
+	// ishlamaydi (row['company.company_name'] mavjud emas — shuning uchun N/A
+	// chiqadi). Komponentda bitta bosqichli nested o'qish uchun tayyor mexanizm
+	// bor — `subkey`: row[header.id][header.subkey]. Shu sabab id: 'company',
+	// subkey: 'company_name' qilib beriladi.
 	const headers =
 		role === 'Student'
 			? [
 					{
-						id: 'company_summary',
+						id: 'company',
+						subkey: 'company_name',
 						numeric: false,
 						disablePadding: false,
 						label: t('company_name'),
@@ -44,7 +57,8 @@ const Recruiter = () => {
 						onClickAction: navigateToCompanyProfile,
 					},
 					{
-						id: 'company_name',
+						id: 'company',
+						subkey: 'company_name',
 						numeric: false,
 						disablePadding: false,
 						label: t('company_name'),
@@ -70,6 +84,9 @@ const Recruiter = () => {
 
 	const [filterState, setFilterState] = useState({})
 	// must match with db table col names
+	// Diqqat: filter kaliti hamon 'company_name' — backend filter[company_name]=...
+	// ni avtomatik kompaniya jadvalidan qidirishni o'zi bajaradi (hujjat 2.1-bo'lim),
+	// shuning uchun bu yerda nested path ('company.company_name') kerak emas.
 	const filterProps =
 		role === 'Student'
 			? [
