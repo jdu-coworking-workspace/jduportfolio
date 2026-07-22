@@ -20,20 +20,17 @@ const recruiterPersonalRules = ({ forCreation = false } = {}) => [
 
 /**
  * POST /api/recruiters (Admin only)
- * Creates a personal recruiter account. The company is referenced either by
- * `companyId` (existing company) or `company_name` (findOrCreate).
+ * Creates a personal recruiter account. The admin MUST pick an existing
+ * company from a drop-down (companyId). A recruiter cannot exist without a
+ * company — company_name/find-or-create is NOT accepted on this endpoint
+ * (that path is reserved for the Kintone webhook sync).
  */
 exports.validateRecruiterCreation = [
 	...recruiterPersonalRules({ forCreation: true }),
 	body('password').notEmpty().withMessage('Password is required'),
-	body('companyId').optional({ nullable: true }).isInt().withMessage('companyId must be an integer'),
-	body('company_name').optional({ nullable: true }).isString().isLength({ max: 100 }).withMessage('Company name must be a string up to 100 chars'),
-	body().custom(b => {
-		if (!b.companyId && !b.company_name) {
-			throw new Error('Either companyId or company_name is required')
-		}
-		return true
-	}),
+	body('companyId').exists({ checkNull: true }).withMessage('companyId is required — a recruiter must belong to a company').bail().isInt({ min: 1 }).withMessage('companyId must be a valid integer'),
+	// isPartner is admin-controlled at the company level, not here
+	body('isPartner').not().exists().withMessage('isPartner is managed on the company (PUT /api/companies/:id), not on recruiter creation'),
 	handleValidationErrors,
 ]
 

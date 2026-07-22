@@ -21,14 +21,19 @@ class RecruiterService {
 	/**
 	 * Finds an existing company or creates a new one.
 	 * Accepts either a companyId (must exist) or a company_name (findOrCreate).
-	 * `extraDefaults` (e.g. { isPartner }) are applied on creation; if the
-	 * company already exists and `syncPartner` is true, isPartner is updated.
+	 *
+	 * NOTE: isPartner is NOT set here. It is an admin-controlled, company-level
+	 * flag managed exclusively via CompanyService (PUT /api/companies/:id).
+	 * New companies default to isPartner=false (model default); the Kintone
+	 * webhook never overwrites an admin's isPartner decision.
 	 */
-	static async resolveCompany({ companyId, company_name, isPartner, syncPartner = false }, transaction = null) {
+	static async resolveCompany({ companyId, company_name }, transaction = null) {
 		if (companyId) {
 			const company = await Company.findByPk(companyId, { transaction })
 			if (!company) {
-				throw new Error(`Company with id ${companyId} not found`)
+				const error = new Error(`Company with id ${companyId} not found`)
+				error.status = 404
+				throw error
 			}
 			return company
 		}
@@ -38,33 +43,25 @@ class RecruiterService {
 		}
 
 		const name = String(company_name).trim()
-		const [company, created] = await Company.findOrCreate({
+		const [company] = await Company.findOrCreate({
 			where: { company_name: name },
-			defaults: {
-				company_name: name,
-				isPartner: isPartner === true,
-			},
+			defaults: { company_name: name }, // isPartner defaults to false
 			transaction,
 		})
-
-		// Keep partner status in sync with Kintone on webhook updates
-		if (!created && syncPartner && isPartner !== undefined && company.isPartner !== isPartner) {
-			await company.update({ isPartner: isPartner === true }, { transaction })
-		}
 
 		return company
 	}
 
 	/**
-	 * Creates a recruiter (personal account) and links it to a company.
-	 * `recruiterData` may contain companyId OR company_name (+ isPartner for
-	 * webhook-driven creation).
+	 * DB-ONLY create. Links to a company by companyId or company_name
+	 * (find-or-create). Used by the Kintone webhook / bulk-sync inbound path.
+	 * Does NOT push anything back to Kintone (that would create an echo loop).
 	 */
 	static async createRecruiter(recruiterData) {
 		const { companyId, company_name, isPartner, ...personal } = recruiterData
 
 		return await sequelize.transaction(async transaction => {
-			const company = await RecruiterService.resolveCompany({ companyId, company_name, isPartner, syncPartner: true }, transaction)
+			const company = await RecruiterService.resolveCompany({ companyId, company_name }, transaction)
 
 			const newRecruiter = await Recruiter.create(
 				{
@@ -77,6 +74,86 @@ class RecruiterService {
 			newRecruiter.setDataValue('company', company)
 			return newRecruiter
 		})
+	}
+
+	/**
+	 * WEB (admin) create — Kintone-first.
+	 *
+	 * Flow:
+	 *   1. Validate the chosen company exists (companyId required).
+	 *   2. Create the record in Kintone first and read back its id.
+	 *   3. Create the DB recruiter with kintone_id already set.
+	 *
+	 * The echo ADD_RECORD webhook that Kintone fires afterwards is absorbed by
+	 * the idempotency guard in the webhook handler (skips existing kintone_id).
+	 *
+	 * @param {object} recruiterData - personal fields + companyId
+	 * @returns {Promise<Recruiter>}
+	 */
+	static async createRecruiterViaWeb(recruiterData) {
+		const KintoneService = require('./kintoneService')
+		const { toKintoneRecord, extractKintoneId } = require('../utils/recruiterKintoneMapper')
+
+		const { companyId, ...personal } = recruiterData
+
+		// 1. Company must exist (drop-down selection)
+		const company = await RecruiterService.resolveCompany({ companyId })
+		if (!company) {
+			const error = new Error('A valid companyId is required to create a recruiter')
+			error.status = 400
+			throw error
+		}
+
+		// 2. Kintone-first
+		let kintoneId
+		try {
+			const kintonePayload = toKintoneRecord(personal, company)
+			const kintoneResp = await KintoneService.createRecord('recruiters', kintonePayload)
+			kintoneId = extractKintoneId(kintoneResp)
+			if (!kintoneId) {
+				throw new Error('Kintone did not return a record id')
+			}
+		} catch (error) {
+			console.error('[RECRUITER][createViaWeb] Kintone create failed:', error.message)
+			const wrapped = new Error('Failed to create recruiter in Kintone. Recruiter was not created.')
+			wrapped.status = 502
+			wrapped.cause = error
+			throw wrapped
+		}
+
+		// 3. DB create with kintone_id set
+		try {
+			const newRecruiter = await Recruiter.create({
+				...personal,
+				companyId: company.id,
+				kintone_id: String(kintoneId),
+			})
+			newRecruiter.setDataValue('company', company)
+			return newRecruiter
+		} catch (error) {
+			// Race: the ADD_RECORD echo webhook may have created the row first.
+			// If a recruiter with this kintone_id now exists, treat as success.
+			const raced = await RecruiterService.findByKintoneId(kintoneId)
+			if (raced) {
+				console.warn(`[RECRUITER][createViaWeb] DB row already created by webhook echo for kintone_id ${kintoneId}`)
+				raced.setDataValue('company', company)
+				return raced
+			}
+			// Genuine DB failure after Kintone succeeded → the orphaned Kintone
+			// record will be reconciled into our DB by the next scheduled sync.
+			console.error(`[RECRUITER][createViaWeb] DB create failed after Kintone id ${kintoneId}:`, error.message)
+			throw error
+		}
+	}
+
+	/**
+	 * Idempotency guard for the inbound ADD_RECORD webhook: returns the
+	 * existing recruiter if one already has this kintone_id (e.g. the echo of
+	 * a web-initiated create), otherwise null.
+	 */
+	static async findByKintoneId(kintoneId) {
+		if (!kintoneId) return null
+		return await Recruiter.findOne({ where: { kintone_id: String(kintoneId) } })
 	}
 
 	// Service method to retrieve all recruiters (with their company)
@@ -230,6 +307,10 @@ class RecruiterService {
 			delete companyData.company_name // admin-only, via CompanyService
 			delete companyData.isPartner
 
+			// Did any Kintone-mirrored personal field change?
+			const kintoneRelevant = ['email', 'first_name', 'last_name', 'phone']
+			const personalChanged = kintoneRelevant.some(f => personalData[f] !== undefined)
+
 			await sequelize.transaction(async transaction => {
 				await recruiter.update(personalData, { transaction })
 
@@ -245,11 +326,66 @@ class RecruiterService {
 			})
 
 			// Return fresh state with company included
-			return await RecruiterService.getRecruiterById(id, false, true)
+			const fresh = await RecruiterService.getRecruiterById(id, false, true)
+
+			// Best-effort mirror of personal changes to Kintone (web path only).
+			// The webhook path (updateRecruiterByKintoneId) never calls this, so
+			// the Kintone echo cannot loop back into another push.
+			if (personalChanged && recruiter.kintone_id) {
+				await RecruiterService.pushUpdateToKintone(fresh)
+			}
+
+			return fresh
 		} catch (error) {
 			console.error('Update recruiter error:', error)
 			throw error
 		}
+	}
+
+	/**
+	 * Best-effort push of a recruiter's personal fields to Kintone.
+	 * Never throws — a Kintone outage must not block a DB update. The next
+	 * scheduled sync reconciles any drift.
+	 */
+	static async pushUpdateToKintone(recruiter) {
+		try {
+			const KintoneService = require('./kintoneService')
+			const { toKintoneRecord } = require('../utils/recruiterKintoneMapper')
+			const company = recruiter.company || (recruiter.companyId ? await Company.findByPk(recruiter.companyId) : null)
+			const payload = toKintoneRecord(recruiter, company)
+			await KintoneService.updateRecord('recruiters', recruiter.kintone_id, payload)
+		} catch (error) {
+			console.error(`[RECRUITER][pushUpdateToKintone] failed for kintone_id ${recruiter.kintone_id}:`, error.message)
+		}
+	}
+
+	/**
+	 * WEB (admin) delete — Kintone-first.
+	 * Removes the Kintone record (best-effort: proceeds even if it is already
+	 * gone), then deletes the DB row. The echo DELETE_RECORD webhook is a
+	 * harmless no-op (row already deleted).
+	 */
+	static async deleteRecruiterViaWeb(id) {
+		const recruiter = await Recruiter.findByPk(id)
+		if (!recruiter) {
+			const error = new Error('Recruiter not found')
+			error.status = 404
+			throw error
+		}
+
+		if (recruiter.kintone_id) {
+			try {
+				const KintoneService = require('./kintoneService')
+				await KintoneService.deleteRecord('recruiters', recruiter.kintone_id)
+			} catch (error) {
+				// Already deleted in Kintone, or Kintone unreachable — log and
+				// still remove locally so the admin's intent is honored.
+				console.error(`[RECRUITER][deleteViaWeb] Kintone delete failed for kintone_id ${recruiter.kintone_id}:`, error.message)
+			}
+		}
+
+		await recruiter.destroy()
+		return true
 	}
 
 	static async deleteRecruiter(recruiterId) {
@@ -264,6 +400,7 @@ class RecruiterService {
 	/**
 	 * Webhook (UPDATE_RECORD): updates personal fields by kintone_id and
 	 * re-links the company if the company name changed in Kintone.
+	 * DB-only — never pushes back to Kintone (prevents an update echo loop).
 	 */
 	static async updateRecruiterByKintoneId(kintoneId, data) {
 		const { company_name, isPartner, ...personal } = data
@@ -273,7 +410,7 @@ class RecruiterService {
 
 		return await sequelize.transaction(async transaction => {
 			if (company_name) {
-				const company = await RecruiterService.resolveCompany({ company_name, isPartner, syncPartner: true }, transaction)
+				const company = await RecruiterService.resolveCompany({ company_name }, transaction)
 				personal.companyId = company ? company.id : recruiter.companyId
 			}
 
@@ -320,7 +457,8 @@ class RecruiterService {
 					phone: record.recruiterPhone?.value || null,
 					kintone_id: kintoneId,
 					active: true,
-					isPartner: RecruiterService.parseKintoneIsPartner(record),
+					// isPartner is intentionally NOT synced from Kintone — it is
+					// admin-controlled at the company level (via CompanyService).
 				}
 
 				const newRecruiter = await this.createRecruiter(recruiterData)
@@ -333,21 +471,6 @@ class RecruiterService {
 		}
 		console.log('Rekruter sinxronizatsiyasi yakunlandi.')
 		return emailTasks
-	}
-
-	/**
-	 * Parses the isPartner flag from a Kintone record (checkbox array or
-	 * 'true'/'false' string).
-	 */
-	static parseKintoneIsPartner(record) {
-		const raw = record?.isPartner?.value
-		if (Array.isArray(raw)) {
-			return raw.map(v => String(v).toLowerCase()).includes('true')
-		}
-		if (typeof raw === 'string') {
-			return raw.toLowerCase() === 'true'
-		}
-		return false
 	}
 }
 

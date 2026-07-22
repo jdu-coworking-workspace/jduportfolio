@@ -2,14 +2,7 @@ const express = require('express')
 const router = express.Router()
 const CompanyController = require('../controllers/companyController')
 const { validateCompanyCreation, validateCompanyUpdate } = require('../middlewares/company-validation')
-
-// Admin-only guard (same pattern as maintenance-admin-route)
-const adminOnly = (req, res, next) => {
-	if (req.user?.userType !== 'Admin') {
-		return res.status(403).json({ error: 'Admin access required' })
-	}
-	next()
-}
+const { adminOnly } = require('../middlewares/admin-middleware')
 
 /**
  * @swagger

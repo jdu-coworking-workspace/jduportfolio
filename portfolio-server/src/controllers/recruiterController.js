@@ -19,6 +19,17 @@ class RecruiterController {
 
 			switch (type) {
 				case 'ADD_RECORD': {
+					const kintoneId = record['$id']?.value
+
+					// Idempotency: absorb the echo of a web-initiated create.
+					// If a recruiter with this kintone_id already exists, do
+					// nothing (no duplicate, no second welcome email).
+					const existing = await RecruiterService.findByKintoneId(kintoneId)
+					if (existing) {
+						console.log(`[WEBHOOK] ADD_RECORD echo ignored — recruiter with kintone_id ${kintoneId} already exists`)
+						return res.status(200).json({ message: 'Already exists', recruiter: existing })
+					}
+
 					const password = generatePassword.generate({
 						length: 12,
 						numbers: true,
@@ -32,10 +43,9 @@ class RecruiterController {
 						first_name: record.recruiterFirstName?.value,
 						last_name: record.recruiterLastName?.value,
 						phone: record.recruiterPhone?.value,
-						kintone_id: record['$id']?.value,
+						kintone_id: kintoneId,
 						// Company info — resolved to companyId inside the service
 						company_name: record.recruiterCompany?.value,
-						isPartner: RecruiterService.parseKintoneIsPartner(record),
 					}
 					const newRecruiter = await RecruiterService.createRecruiter(data)
 					if (newRecruiter) {
@@ -60,15 +70,16 @@ class RecruiterController {
 						// Company info — if the name changed, the service re-links
 						// the recruiter to the (found-or-created) company
 						company_name: record.recruiterCompany?.value,
-						isPartner: RecruiterService.parseKintoneIsPartner(record),
 					}
 					const updatedRecruiter = await RecruiterService.updateRecruiterByKintoneId(record['$id']?.value, recruiterData)
 					if (!updatedRecruiter) return res.status(404).json({ message: 'Recruiter not found' })
 					return res.status(200).json({ message: 'Updated', recruiter: updatedRecruiter })
 				}
 				case 'DELETE_RECORD': {
-					const deletedCount = await RecruiterService.deleteRecruiterByKintoneId(recordId)
-					if (deletedCount === 0) return res.status(404).json({ message: 'Recruiter not found' })
+					// Idempotent: a 0-count delete means the row is already gone
+					// (e.g. the echo of a web-initiated delete). Treat as success
+					// so Kintone doesn't retry the webhook.
+					await RecruiterService.deleteRecruiterByKintoneId(recordId)
 					return res.status(204).send()
 				}
 				default:
@@ -80,7 +91,8 @@ class RecruiterController {
 		}
 	}
 
-	// Admin only: create a recruiter account linked to a company
+	// Admin only: create a recruiter account linked to an existing company.
+	// Kintone-first — the recruiter is created in Kintone, then in our DB.
 	static async create(req, res, next) {
 		try {
 			const errors = validationResult(req)
@@ -88,9 +100,12 @@ class RecruiterController {
 				return res.status(400).json({ errors: errors.array() })
 			}
 
-			const newRecruiter = await RecruiterService.createRecruiter(req.body)
+			const newRecruiter = await RecruiterService.createRecruiterViaWeb(req.body)
 			res.status(201).json(newRecruiter)
 		} catch (error) {
+			if (error.status) {
+				return res.status(error.status).json({ error: error.message })
+			}
 			next(error)
 		}
 	}
@@ -184,6 +199,22 @@ class RecruiterController {
 			})
 			res.status(200).json(updatedRecruiter)
 		} catch (error) {
+			next(error)
+		}
+	}
+
+	/**
+	 * DELETE /api/recruiters/:id (Admin only)
+	 * Kintone-first: removes the record from Kintone, then from our DB.
+	 */
+	static async delete(req, res, next) {
+		try {
+			await RecruiterService.deleteRecruiterViaWeb(req.params.id)
+			res.status(204).send()
+		} catch (error) {
+			if (error.status) {
+				return res.status(error.status).json({ error: error.message })
+			}
 			next(error)
 		}
 	}

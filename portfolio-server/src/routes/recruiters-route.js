@@ -2,14 +2,7 @@ const express = require('express')
 const router = express.Router()
 const RecruiterController = require('../controllers/recruiterController')
 const { validateRecruiterCreation, validateRecruiterUpdate } = require('../middlewares/recruiter-validation')
-
-// Admin-only guard
-const adminOnly = (req, res, next) => {
-	if (req.user?.userType !== 'Admin') {
-		return res.status(403).json({ error: 'Admin access required' })
-	}
-	next()
-}
+const { adminOnly } = require('../middlewares/admin-middleware')
 
 /**
  * @swagger
@@ -154,5 +147,28 @@ router.get('/:id', RecruiterController.getById)
  *         description: Not allowed
  */
 router.put('/:id', validateRecruiterUpdate, RecruiterController.update)
+
+/**
+ * @swagger
+ * /api/recruiters/{id}:
+ *   delete:
+ *     tags: [Recruiters]
+ *     summary: Delete a recruiter (Admin only). Also removes the record from Kintone.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Recruiter ID
+ *     responses:
+ *       204:
+ *         description: Recruiter deleted
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: Recruiter not found
+ */
+router.delete('/:id', adminOnly, RecruiterController.delete)
 
 module.exports = router
