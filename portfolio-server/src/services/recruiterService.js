@@ -304,8 +304,37 @@ class RecruiterService {
 
 			// Company profile update (nested `company` object)
 			const companyData = pickFields(data.company, COMPANY_UPDATABLE_FIELDS)
-			delete companyData.company_name // admin-only, via CompanyService
 			delete companyData.isPartner
+
+			if (companyData.company_name !== undefined) {
+				if (!recruiter.companyId) {
+					throw new Error('Recruiter has no company assigned — cannot update company profile')
+				}
+
+				const currentCompany = await Company.findByPk(recruiter.companyId)
+				if (!currentCompany) {
+					const error = new Error('Company not found')
+					error.status = 404
+					throw error
+				}
+
+				const nextCompanyName = String(companyData.company_name).trim()
+				companyData.company_name = nextCompanyName
+
+				if (nextCompanyName !== currentCompany.company_name) {
+					const duplicate = await Company.findOne({
+						where: {
+							company_name: nextCompanyName,
+							id: { [Op.ne]: currentCompany.id },
+						},
+					})
+					if (duplicate) {
+						const error = new Error('Company with this name already exists')
+						error.status = 409
+						throw error
+					}
+				}
+			}
 
 			// Did any Kintone-mirrored personal field change?
 			const kintoneRelevant = ['email', 'first_name', 'last_name', 'phone']

@@ -47,8 +47,7 @@ exports.validateRecruiterCreation = [
 exports.validateRecruiterUpdate = [
 	...recruiterPersonalRules({ forCreation: false }),
 	body('company').optional({ nullable: true }).isObject().withMessage('company must be an object'),
-	// Recruiters may NOT rename the company or change partner status via this endpoint
-	body('company.company_name').not().exists().withMessage('company_name cannot be changed here — use PUT /api/companies/:id (Admin only)'),
+	// Recruiters may not change partner status via this endpoint
 	body('company.isPartner').not().exists().withMessage('isPartner cannot be changed here — use PUT /api/companies/:id (Admin only)'),
 	...companyFieldRules('company.'),
 	handleValidationErrors,
