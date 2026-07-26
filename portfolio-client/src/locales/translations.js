@@ -779,6 +779,7 @@ If both addresses are the same, simply write "同上" (Same as above) in the bot
 3) "自己PR" (Self PR):
 You must not leave this section as the auto-generated template. You need to rewrite it yourself every time, adapting it to the company or situation you are applying for. Please check that it has been properly customized in your own words.
 💡 If you have any questions or problems editing your CV, please do not hesitate to ask your senpais or university staff for help.`,
+		companies: 'Companies',
 	},
 	ja: {
 		age: '歳',
@@ -1563,6 +1564,8 @@ You must not leave this section as the auto-generated template. You need to rewr
 「連絡先」: あなたの保護者（ご両親など）が住んでいる住所を書きます。 もし両方が同じ場所の場合は、下の部分（連絡先）には*「同上」*とだけ書いてください。 正しく入力されているか確認してください。
 3) 「自己PR」: この部分は、自動で作られたテンプレートのままにしてはいけません。提出する会社や状況に合わせて、毎回自分で書き直す必要があります。自分の言葉で正しく修正されているか確認してください。
 💡 もし履歴書の修正で分からないことや問題があれば、遠慮なく先輩や大学のスタッフ（職員）に相談してください。`,
+
+		companies: '企業',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2342,6 +2345,7 @@ Agar ikkala manzil ham bir xil bo'lsa, pastki qismiga (連絡先'ga) shunchaki �
 Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni qayerga (qaysi kompaniyaga yoki vaziyatga) topshirayotganiga qarab, moslab qaytadan yozishi talab etiladi. O'zingizga moslab tahrirlanganini tekshirib oling.
 💡 Agar rezyumeni tahrirlashda tushunmovchiliklar yoki qandaydir muammolar paydo bo'lsa, iltimos, senpaylar yoki universitet xodimlariga (staff) murojaat qiling.
 `,
+		companies: 'Kompaniyalar',
 	},
 	ru: {
 		age: 'Возраст',
@@ -3089,6 +3093,7 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 3) Раздел "自己PR" (О себе):
 Этот раздел нельзя оставлять в виде автоматически сгенерированного шаблона. Вам нужно каждый раз переписывать его самостоятельно, адаптируя под конкретную компанию или ситуацию. Убедитесь, что текст исправлен и написан вашими собственными словами.
 💡 Если у вас возникнут вопросы или трудности при редактировании резюме, не стесняйтесь обращаться за помощью к семпаям или сотрудникам (staff) университета.`,
+		companies: 'Компании',
 	},
 }
 
