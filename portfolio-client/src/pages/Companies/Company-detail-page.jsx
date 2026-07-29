@@ -6,7 +6,6 @@ import { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../../contexts/UserContext'
 import { assignRecruiter, getCompany, unassignRecruiter, updateCompany } from '../../lib/api/companies-api'
-import CompanyProfileForm from './Company-profile-form'
 import RecruiterAssignDialog from './Recruiter-assign-dialog'
 
 const CompanyDetailPage = () => {
@@ -130,12 +129,12 @@ const CompanyDetailPage = () => {
 				</Paper>
 			)}
 
-			<Paper variant='outlined' sx={{ p: 2.5, mb: 3 }}>
+			{/* <Paper variant='outlined' sx={{ p: 2.5, mb: 3 }}>
 				<Typography variant='subtitle1' fontWeight={600} sx={{ mb: 2 }}>
 					Kompaniya profili
 				</Typography>
 				<CompanyProfileForm defaultValues={company} onSubmit={saveProfile} saving={saving} />
-			</Paper>
+			</Paper> */}
 
 			<Paper variant='outlined' sx={{ p: 2.5 }}>
 				<Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 1 }}>
