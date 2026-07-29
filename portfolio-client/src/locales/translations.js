@@ -780,6 +780,10 @@ If both addresses are the same, simply write "同上" (Same as above) in the bot
 You must not leave this section as the auto-generated template. You need to rewrite it yourself every time, adapting it to the company or situation you are applying for. Please check that it has been properly customized in your own words.
 💡 If you have any questions or problems editing your CV, please do not hesitate to ask your senpais or university staff for help.`,
 		companies: 'Companies',
+		add_recruiter: 'Add Recruiter',
+		choose_existing_company: 'Choose Existing Company',
+		create_new_company: 'Create New Company',
+		confirm_delete_recruiter: 'Are you sure you want to delete this recruiter?',
 	},
 	ja: {
 		age: '歳',
@@ -1566,6 +1570,10 @@ You must not leave this section as the auto-generated template. You need to rewr
 💡 もし履歴書の修正で分からないことや問題があれば、遠慮なく先輩や大学のスタッフ（職員）に相談してください。`,
 
 		companies: '企業',
+		add_recruiter: '採用担当者を追加',
+		choose_existing_company: '既存の企業を選択',
+		create_new_company: '新しい企業を作成',
+		confirm_delete_recruiter: 'この採用担当者を削除してもよろしいですか？',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2346,6 +2354,10 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 💡 Agar rezyumeni tahrirlashda tushunmovchiliklar yoki qandaydir muammolar paydo bo'lsa, iltimos, senpaylar yoki universitet xodimlariga (staff) murojaat qiling.
 `,
 		companies: 'Kompaniyalar',
+		add_recruiter: 'Rekruter qoʻshish',
+		choose_existing_company: 'Mavjud kompaniyani tanlang',
+		create_new_company: 'Yangi kompaniya yaratish',
+		confirm_delete_recruiter: "Bu rekruterni o'chirishni xohlaysizmi?",
 	},
 	ru: {
 		age: 'Возраст',
@@ -3094,6 +3106,10 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 Этот раздел нельзя оставлять в виде автоматически сгенерированного шаблона. Вам нужно каждый раз переписывать его самостоятельно, адаптируя под конкретную компанию или ситуацию. Убедитесь, что текст исправлен и написан вашими собственными словами.
 💡 Если у вас возникнут вопросы или трудности при редактировании резюме, не стесняйтесь обращаться за помощью к семпаям или сотрудникам (staff) университета.`,
 		companies: 'Компании',
+		add_recruiter: 'Добавить рекрутера',
+		choose_existing_company: 'Выбрать существующую компанию',
+		create_new_company: 'Создать новую компанию',
+		confirm_delete_recruiter: 'Вы уверены, что хотите удалить этого рекрутера?',
 	},
 }
 
