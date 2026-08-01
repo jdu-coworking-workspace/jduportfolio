@@ -4,6 +4,7 @@ const authRoute = require('./routes/auth-route')
 
 const adminRoute = require('./routes/admins-route')
 const recruiterRoute = require('./routes/recruiters-route')
+const companyRoute = require('./routes/companies-route')
 const staffRoute = require('./routes/staff-route')
 const studentRoute = require('./routes/students-route')
 const bookmarkRoute = require('./routes/bookmarks-route')
@@ -81,6 +82,7 @@ const configureRoutes = app => {
 	// Protected routes
 	app.use('/api/admin', adminRoute)
 	app.use('/api/recruiters', authMiddleware, recruiterRoute)
+	app.use('/api/companies', authMiddleware, companyRoute)
 	app.use('/api/staff', authMiddleware, staffRoute)
 	app.use('/api/students', authMiddleware, studentRoute)
 	app.use('/api/bookmarks', authMiddleware, bookmarkRoute)

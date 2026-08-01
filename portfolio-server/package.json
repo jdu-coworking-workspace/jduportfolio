@@ -5,6 +5,7 @@
 	"scripts": {
 		"start": "node src/app.js",
 		"dev": "nodemon src/app.js",
+		"test": "jest --runInBand",
 		"migrate": "npx sequelize-cli db:migrate --config src/config/config.js",
 		"migratedown": "npx sequelize-cli db:migrate:undo:all --config src/config/config.js",
 		"seed": "npx sequelize-cli db:seed:all --config src/config/config.js",
@@ -52,6 +53,7 @@
 	},
 	"devDependencies": {
 		"husky": "^9.1.7",
+		"jest": "^29.7.0",
 		"nodemon": "^3.1.14",
 		"prettier": "3.3.3"
 	}

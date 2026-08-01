@@ -2,59 +2,67 @@ const express = require('express')
 const router = express.Router()
 const RecruiterController = require('../controllers/recruiterController')
 const { validateRecruiterCreation, validateRecruiterUpdate } = require('../middlewares/recruiter-validation')
+const { adminOnly } = require('../middlewares/admin-middleware')
 
 /**
  * @swagger
  * /api/recruiters:
  *   post:
  *     tags: [Recruiters]
- *     summary: Create a new recruiter
+ *     summary: Create a new recruiter (Admin only). Company is referenced by companyId or company_name (findOrCreate).
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [email, password, first_name, last_name]
  *             properties:
  *               email:
  *                 type: string
  *               password:
  *                 type: string
- *               company_name:
- *                 type: string
- *               phone_number:
- *                 type: string
  *               first_name:
  *                 type: string
  *               last_name:
  *                 type: string
+ *               phone:
+ *                 type: string
  *               date_of_birth:
  *                 type: string
  *                 format: date
+ *               companyId:
+ *                 type: integer
+ *                 description: ID of an existing company
+ *               company_name:
+ *                 type: string
+ *                 description: Alternative to companyId — company is found or created by name
  *     responses:
  *       201:
  *         description: Recruiter created
  *       400:
  *         description: Validation error
+ *       403:
+ *         description: Admin access required
  */
-router.post('/', validateRecruiterCreation, RecruiterController.create)
+router.post('/', adminOnly, validateRecruiterCreation, RecruiterController.create)
 
 /**
  * @swagger
  * /api/recruiters:
  *   get:
  *     tags: [Recruiters]
- *     summary: Get all recruiters
+ *     summary: Get all recruiters (each with nested company object)
  *     parameters:
  *       - in: query
  *         name: filter
  *         schema:
  *           type: string
  *         required: false
- *         description: Optional filter criteria
+ *         description: Optional filter criteria (search matches personal and company fields)
  *     responses:
  *       200:
- *         description: A list of recruiters
+ *         description: A list of recruiters with nested company
  *       400:
  *         description: Bad request
  */
@@ -65,7 +73,7 @@ router.get('/', RecruiterController.getAll)
  * /api/recruiters/{id}:
  *   get:
  *     tags: [Recruiters]
- *     summary: Get recruiter by ID
+ *     summary: Get recruiter by ID (with nested company object)
  *     parameters:
  *       - in: path
  *         name: id
@@ -75,7 +83,7 @@ router.get('/', RecruiterController.getAll)
  *         description: Recruiter ID
  *     responses:
  *       200:
- *         description: Recruiter data
+ *         description: Recruiter data with nested company
  *       400:
  *         description: Bad request
  */
@@ -86,7 +94,12 @@ router.get('/:id', RecruiterController.getById)
  * /api/recruiters/{id}:
  *   put:
  *     tags: [Recruiters]
- *     summary: Update a recruiter
+ *     summary: Update a recruiter (personal fields flat, company profile via nested `company` object)
+ *     description: |
+ *       Personal fields (first_name, phone, email, photo, ...) go at the top level.
+ *       Company profile fields go inside the nested `company` object and update the
+ *       shared Company record (visible to all recruiters of the same company).
+ *       company_name and isPartner cannot be changed here (Admin only, via /api/companies).
  *     parameters:
  *       - in: path
  *         name: id
@@ -105,61 +118,57 @@ router.get('/:id', RecruiterController.getById)
  *                 type: string
  *               password:
  *                 type: string
- *               phone:
- *                 type: string
  *               email:
  *                 type: string
- *               company_name:
- *                 type: string
- *               company_description:
- *                 type: string
- *               gallery:
- *                 type: array
- *                 items:
- *                   type: string
- *               photo:
+ *               phone:
  *                 type: string
  *               first_name:
  *                 type: string
  *               last_name:
  *                 type: string
+ *               first_name_furigana:
+ *                 type: string
+ *               last_name_furigana:
+ *                 type: string
+ *               photo:
+ *                 type: string
  *               date_of_birth:
  *                 type: string
  *                 format: date
- *               active:
- *                 type: boolean
- *               kintone_id:
- *                 type: string
- *               company_Address:
- *                 type: string
- *               established_Date:
- *                 type: string
- *               employee_Count:
- *                 type: string
- *               business_overview:
- *                 type: string
- *               target_audience:
- *                 type: string
- *               required_skills:
- *                 type: string
- *               welcome_skills:
- *                 type: string
- *               work_location:
- *                 type: string
- *               work_hours:
- *                 type: string
- *               salary:
- *                 type: string
- *               benefits:
- *                 type: string
- *               selection_process:
- *                 type: string
+ *               company:
+ *                 type: object
+ *                 description: Company profile fields (company_description, benefits, salary, gallery, ...)
  *     responses:
  *       200:
- *         description: Recruiter updated
+ *         description: Recruiter updated (returns recruiter with nested company)
  *       400:
  *         description: Bad request
+ *       403:
+ *         description: Not allowed
  */
 router.put('/:id', validateRecruiterUpdate, RecruiterController.update)
+
+/**
+ * @swagger
+ * /api/recruiters/{id}:
+ *   delete:
+ *     tags: [Recruiters]
+ *     summary: Delete a recruiter (Admin only). Also removes the record from Kintone.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Recruiter ID
+ *     responses:
+ *       204:
+ *         description: Recruiter deleted
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: Recruiter not found
+ */
+router.delete('/:id', adminOnly, RecruiterController.delete)
 
 module.exports = router

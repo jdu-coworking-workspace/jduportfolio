@@ -44,3 +44,13 @@ axios.interceptors.response.use(
 )
 
 export default axios
+
+// API cookie orqali autentifikatsiya qiladi (doc: "auth talab qiladi (cookie token)")
+// Loyihada allaqachon umumiy axios instance bo'lsa, shu faylni o'chirib
+// companiesApi.js ichidagi importni o'sha instance'ga almashtiring.
+const axiosInstance = axios.create({
+	baseURL: import.meta.env.VITE_API_URL + '/api',
+	withCredentials: true,
+})
+
+export { axiosInstance }

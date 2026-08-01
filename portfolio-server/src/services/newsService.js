@@ -1,4 +1,4 @@
-const { News, Staff, Recruiter, Admin } = require('../models')
+const { News, Staff, Recruiter, Admin, Company } = require('../models')
 const NewsViewsService = require('./newsViewsService')
 const { Op } = require('sequelize')
 const { uploadFile, deleteFile } = require('../utils/storageService')
@@ -130,7 +130,7 @@ class NewsService {
 			const searchOrConditions = [{ title: searchQuery }, { hashtags: { [Op.contains]: [search] } }]
 			if (user.userType !== 'Student') {
 				searchOrConditions.push({
-					'$authorRecruiter.company_name$': searchQuery,
+					'$authorRecruiter.company.company_name$': searchQuery,
 				})
 			}
 			finalConditions.push({ [Op.or]: searchOrConditions })
@@ -157,8 +157,16 @@ class NewsService {
 				{
 					model: Recruiter,
 					as: 'authorRecruiter',
-					attributes: ['id', 'company_name'],
+					attributes: ['id'],
 					required: false,
+					include: [
+						{
+							model: Company,
+							as: 'company',
+							attributes: ['id', 'company_name'],
+							required: false,
+						},
+					],
 				},
 				{
 					model: Admin,
@@ -180,7 +188,13 @@ class NewsService {
 			let author = null
 			if (newsJson.authorType === 'Admin' && newsJson.authorAdmin) author = newsJson.authorAdmin
 			else if (newsJson.authorType === 'Staff' && newsJson.authorStaff) author = newsJson.authorStaff
-			else if (newsJson.authorType === 'Recruiter' && newsJson.authorRecruiter) author = newsJson.authorRecruiter
+			else if (newsJson.authorType === 'Recruiter' && newsJson.authorRecruiter) {
+				// Keep the old flat shape: { id, company_name }
+				author = {
+					id: newsJson.authorRecruiter.id,
+					company_name: newsJson.authorRecruiter.company?.company_name || null,
+				}
+			}
 			let moderator = null
 			if (newsJson.moderatorType === 'Admin' && newsJson.moderatorAdmin) moderator = newsJson.moderatorAdmin
 			else if (newsJson.moderatorType === 'Staff' && newsJson.moderatorStaff) moderator = newsJson.moderatorStaff
@@ -255,7 +269,7 @@ class NewsService {
 	}
 
 	static async getById(id, user) {
-		const { News, Staff, Recruiter, Admin } = require('../models')
+		const { News, Staff, Recruiter, Admin, Company } = require('../models')
 		const { Op } = require('sequelize')
 		const finalConditions = [{ id: id }]
 		if (user.userType === 'Admin' || user.userType === 'Staff') {
@@ -288,8 +302,16 @@ class NewsService {
 				{
 					model: Recruiter,
 					as: 'authorRecruiter',
-					attributes: ['id', 'company_name'],
+					attributes: ['id'],
 					required: false,
+					include: [
+						{
+							model: Company,
+							as: 'company',
+							attributes: ['id', 'company_name'],
+							required: false,
+						},
+					],
 				},
 				{
 					model: Admin,
@@ -310,7 +332,13 @@ class NewsService {
 		let author = null
 		if (newsJson.authorType === 'Admin' && newsJson.authorAdmin) author = newsJson.authorAdmin
 		else if (newsJson.authorType === 'Staff' && newsJson.authorStaff) author = newsJson.authorStaff
-		else if (newsJson.authorType === 'Recruiter' && newsJson.authorRecruiter) author = newsJson.authorRecruiter
+		else if (newsJson.authorType === 'Recruiter' && newsJson.authorRecruiter) {
+			// Keep the old flat shape: { id, company_name }
+			author = {
+				id: newsJson.authorRecruiter.id,
+				company_name: newsJson.authorRecruiter.company?.company_name || null,
+			}
+		}
 		let moderator = null
 		if (newsJson.moderatorType === 'Admin' && newsJson.moderatorAdmin) moderator = newsJson.moderatorAdmin
 		else if (newsJson.moderatorType === 'Staff' && newsJson.moderatorStaff) moderator = newsJson.moderatorStaff

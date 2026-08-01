@@ -1,36 +1,38 @@
 import { useContext } from 'react'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 
-import Layout from './components/Layout/Layout'
 import GuestLayout from './components/GuestLayout/GuestLayout'
+import Layout from './components/Layout/Layout'
 import ProtectedLayout from './components/ProtectedLayout'
 import { UserContext } from './contexts/UserContext'
 
-import Login from './pages/Login/Login'
-import FirstLoginPage from './pages/FirstLoginPage/FirstLoginPage'
-import Home from './pages/Home/Home'
-import Student from './pages/Student/Student'
-import ChekProfile from './pages/ChekProfile/ChekProfile'
-import Recruiter from './pages/Recruiter/Recruiter'
-import Staff from './pages/Staff/Staff'
-import CompanyProfile from './pages/Profile/CompanyProfile/CompanyProfile'
-import StudentProfile from './pages/Profile/StudentProfile/StudentProfile'
-import Top from './pages/Profile/Top/Top'
-import QA from './pages/Profile/QA/QA'
-import Stats from './pages/Profile/Stats/Stats'
-import CreditDetails from './pages/CreditDetails/CreditDetails'
-import Setting from './pages/Setting/Setting'
-import FAQ from './pages/FAQ/FAQ'
-import NotFound from './pages/NotFound/NotFound'
-import Unauthorized from './pages/Unauthorized/Unauthorized'
-import LinkExpired from './pages/LinkExpired/LinkExpired'
 import LogOut from './components/LogOut'
-import GoogleAuthCallback from './pages/GoogleAuthCallback.jsx'
+import ChekProfile from './pages/ChekProfile/ChekProfile'
+import { Companies } from './pages/Companies/Companies.jsx'
+import CompanyDetailPage from './pages/Companies/Company-detail-page.jsx'
 import { CreateSkill } from './pages/CreateSkill/CreateSkill.jsx'
+import CreditDetails from './pages/CreditDetails/CreditDetails'
+import FAQ from './pages/FAQ/FAQ'
+import FirstLoginPage from './pages/FirstLoginPage/FirstLoginPage'
+import GoogleAuthCallback from './pages/GoogleAuthCallback.jsx'
+import Home from './pages/Home/Home'
+import LinkExpired from './pages/LinkExpired/LinkExpired'
+import Login from './pages/Login/Login'
+import MailService from './pages/MailService/MailService.jsx'
+import Maintenance from './pages/Maintenance/Maintenance.jsx'
 import { News } from './pages/news/News.jsx'
 import NewsDetail from './pages/news/NewsDetail.jsx'
-import Maintenance from './pages/Maintenance/Maintenance.jsx'
-import MailService from './pages/MailService/MailService.jsx'
+import NotFound from './pages/NotFound/NotFound'
+import CompanyProfile from './pages/Profile/CompanyProfile/CompanyProfile'
+import QA from './pages/Profile/QA/QA'
+import Stats from './pages/Profile/Stats/Stats'
+import StudentProfile from './pages/Profile/StudentProfile/StudentProfile'
+import Top from './pages/Profile/Top/Top'
+import Recruiter from './pages/Recruiter/Recruiter'
+import Setting from './pages/Setting/Setting'
+import Staff from './pages/Staff/Staff'
+import Student from './pages/Student/Student'
+import Unauthorized from './pages/Unauthorized/Unauthorized'
 
 const AppRoutes = () => {
 	const { role, userId, updateUser, language } = useContext(UserContext)
@@ -67,6 +69,10 @@ const AppRoutes = () => {
 
 						<Route path='/recruiter' element={<ProtectedLayout allowedRoles={['Admin', 'Staff', 'Student']} />}>
 							<Route index element={<Recruiter />} />
+						</Route>
+						<Route path='/companies' element={<ProtectedLayout allowedRoles={['Admin']} />}>
+							<Route index element={<Companies />} />
+							<Route path=':id' element={<CompanyDetailPage />} />
 						</Route>
 
 						<Route path='/create-skill' element={<ProtectedLayout allowedRoles={['Admin', 'Staff']} />}>
