@@ -4,8 +4,10 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
 import { Alert, Avatar, Box, Button, Chip, CircularProgress, Divider, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemSecondaryAction, ListItemText, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material'
 import { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { UserContext } from '../../contexts/UserContext'
 import { assignRecruiter, getCompany, unassignRecruiter, updateCompany } from '../../lib/api/companies-api'
+import translations from '../../locales/translations'
 import RecruiterAssignDialog from './recruiter-assign-dialog'
 
 const CompanyDetailPage = () => {
@@ -15,7 +17,8 @@ const CompanyDetailPage = () => {
 	const isRecruiter = role === 'Staff' && activeUser?.companyId
 	const canManageCompanies = role === 'Admin'
 	const canEditCompanyIdentity = role === 'Admin'
-
+	const { language } = useLanguage() // Get current language from context
+	const t = key => translations[language][key] || key
 	const [company, setCompany] = useState(null)
 	const [loading, setLoading] = useState(true)
 	const [saving, setSaving] = useState(false)
@@ -117,13 +120,13 @@ const CompanyDetailPage = () => {
 			{canEditCompanyIdentity && (
 				<Paper variant='outlined' sx={{ p: 2.5, mb: 3 }}>
 					<Typography variant='subtitle1' fontWeight={600} sx={{ mb: 2 }}>
-						Kompaniya nomi va holati
+						{t('company_identity')}
 					</Typography>
 					<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems='center'>
-						<TextField label='Kompaniya nomi' value={name} onChange={e => setName(e.target.value)} fullWidth size='small' />
-						<FormControlLabel control={<Switch checked={isPartner} onChange={e => setIsPartner(e.target.checked)} />} label='Hamkor (isPartner)' />
+						<TextField label={t('company_name')} value={name} onChange={e => setName(e.target.value)} fullWidth size='small' />
+						<FormControlLabel control={<Switch checked={isPartner} onChange={e => setIsPartner(e.target.checked)} />} label={t('is_partner')} />
 						<Button variant='contained' onClick={saveIdentity} disabled={saving || !name.trim()} sx={{ whiteSpace: 'nowrap' }}>
-							Saqlash
+							{t('save')}
 						</Button>
 					</Stack>
 				</Paper>
@@ -139,11 +142,11 @@ const CompanyDetailPage = () => {
 			<Paper variant='outlined' sx={{ p: 2.5 }}>
 				<Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 1 }}>
 					<Typography variant='subtitle1' fontWeight={600}>
-						Recruiterlar ({company.recruiters?.length || 0})
+						{t('recruiters')} ({company.recruiters?.length || 0})
 					</Typography>
 					{canManageCompanies && (
 						<Button startIcon={<PersonAddAlt1Icon />} onClick={() => setAssignOpen(true)} size='small'>
-							Biriktirish
+							{t('assign_recruiter')}
 						</Button>
 					)}
 				</Stack>
@@ -166,7 +169,7 @@ const CompanyDetailPage = () => {
 					))}
 					{(!company.recruiters || company.recruiters.length === 0) && (
 						<Typography color='text.secondary' fontSize={14} sx={{ py: 1 }}>
-							Hozircha recruiter biriktirilmagan
+							{t('no_recruiters_found')}
 						</Typography>
 					)}
 				</List>

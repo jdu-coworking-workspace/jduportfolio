@@ -2,13 +2,16 @@ import { Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent,
 import { debounce } from 'lodash'
 import PropTypes from 'prop-types'
 import { useMemo, useState } from 'react'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { searchRecruiters } from '../../lib/api/companies-api'
+import translations from '../../locales/translations'
 
 const RecruiterAssignDialog = ({ open, onClose, onAssign, assigning, currentCompanyId }) => {
 	const [query, setQuery] = useState('')
 	const [results, setResults] = useState([])
 	const [loading, setLoading] = useState(false)
-
+	const { language } = useLanguage() // Get current language from context
+	const t = key => translations[language][key] || key
 	const runSearch = useMemo(
 		() =>
 			debounce(async value => {
@@ -46,13 +49,13 @@ const RecruiterAssignDialog = ({ open, onClose, onAssign, assigning, currentComp
 
 	return (
 		<Dialog open={open} onClose={close} fullWidth maxWidth='sm'>
-			<DialogTitle>Recruiter biriktirish</DialogTitle>
+			<DialogTitle>{t('assign_recruiter')}</DialogTitle>
 			<DialogContent>
-				<TextField autoFocus fullWidth placeholder="Ism, email yoki telefon bo'yicha qidirish..." value={query} onChange={handleChange} sx={{ mb: 2 }} />
+				<TextField autoFocus fullWidth placeholder={t('search_recruiters')} value={query} onChange={handleChange} sx={{ mb: 2 }} />
 				{loading && <CircularProgress size={20} />}
 				{!loading && query && results.length === 0 && (
 					<Typography color='text.secondary' fontSize={14}>
-						Hech narsa topilmadi
+						{t('no_recruiters_found')}
 					</Typography>
 				)}
 				<List dense>
@@ -69,7 +72,7 @@ const RecruiterAssignDialog = ({ open, onClose, onAssign, assigning, currentComp
 				</List>
 			</DialogContent>
 			<DialogActions>
-				<Button onClick={close}>Yopish</Button>
+				<Button onClick={close}>{t('close')}</Button>
 			</DialogActions>
 		</Dialog>
 	)

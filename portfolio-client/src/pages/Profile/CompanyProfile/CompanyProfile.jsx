@@ -271,7 +271,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	const [editMode, setEditMode] = useAtom(editModeAtom)
 	const [activeTab, setActiveTab] = useState('company')
 	const [saveStatus, setSaveStatus] = useAtom(saveStatusAtom)
-
+	const [companyAssigned, setCompanyAssigned] = useState(true)
 	// Initial editData state
 	const initialEditData = {
 		newRequiredSkill: '',
@@ -801,7 +801,12 @@ const CompanyProfile = ({ userId = 0 }) => {
 		try {
 			const response = await axios.get(`/api/recruiters/${id}`)
 			const recruiterData = response.data
-
+			if (recruiterData.company === null) {
+				setCompanyAssigned(false)
+				setCompany(null)
+				return
+			}
+			setCompanyAssigned(true)
 			// New API shape: personal (recruiter) fields live at the top level, company
 			// profile fields live nested under `company` (null if not yet assigned).
 			// We flatten them back into a single object here so the rest of this
@@ -994,7 +999,22 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}, [])
 
 	// Business overview now a single multiline field (matches Company Description behavior)
-
+	if (!companyAssigned) {
+		return (
+			<Box
+				sx={{
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					minHeight: '60vh',
+				}}
+			>
+				<Typography variant='h5' color='text.secondary'>
+					{t.not_assign_company}
+				</Typography>
+			</Box>
+		)
+	}
 	if (!company) {
 		return (
 			<Box className={styles.loadingContainer}>

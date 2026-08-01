@@ -5,17 +5,20 @@ import { Alert, Avatar, AvatarGroup, Box, Button, Chip, CircularProgress, IconBu
 import { debounce } from 'lodash'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { UserContext } from '../../contexts/UserContext'
 import { createCompany, deleteCompany, getCompanies } from '../../lib/api/companies-api'
+import translations from '../../locales/translations'
 import CompanyCreateDialog from './Company-create-dialog'
-
 const PARTNER_FILTERS = [
-	{ value: 'all', label: 'Barchasi' },
-	{ value: 'false', label: 'Faqat oddiy' },
-	{ value: 'true', label: 'Faqat hamkor' },
+	{ value: 'all', label: 'all' },
+	{ value: 'false', label: 'is_partner_false' },
+	{ value: 'true', label: 'is_partner_true' },
 ]
 
 export const Companies = () => {
+	const { language } = useLanguage() // Get current language from context
+	const t = key => translations[language][key] || key // Translation function
 	const navigate = useNavigate()
 	const { activeUser, role } = useContext(UserContext)
 	const isRecruiter = role === 'Staff' && activeUser?.companyId
@@ -105,18 +108,18 @@ export const Companies = () => {
 		>
 			<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent='space-between' alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
 				<Typography variant='h5' fontWeight={700}>
-					Kompaniyalar
+					{t('companies')}
 				</Typography>
 				{canManageCompanies && (
 					<Button variant='contained' startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-						Yangi kompaniya
+						{t('new_company')}
 					</Button>
 				)}
 			</Stack>
 
 			<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
 				<TextField
-					placeholder="Nomi, manzili, vakili bo'yicha qidirish..."
+					placeholder={t('company_name_placeholder')}
 					value={search}
 					onChange={e => setSearch(e.target.value)}
 					fullWidth
@@ -132,7 +135,7 @@ export const Companies = () => {
 				<TextField select size='small' value={isPartner} onChange={e => setIsPartner(e.target.value)} sx={{ minWidth: 180 }}>
 					{PARTNER_FILTERS.map(opt => (
 						<MenuItem key={opt.value} value={opt.value}>
-							{opt.label}
+							{t(opt.label)}
 						</MenuItem>
 					))}
 				</TextField>
@@ -143,11 +146,11 @@ export const Companies = () => {
 					<Table>
 						<TableHead>
 							<TableRow>
-								<TableCell>Nomi</TableCell>
-								<TableCell>Vakil</TableCell>
-								<TableCell>Manzil</TableCell>
-								<TableCell>Holati</TableCell>
-								<TableCell>Recruiterlar</TableCell>
+								<TableCell>{t('company_name')}</TableCell>
+								<TableCell>{t('company_representative')}</TableCell>
+								<TableCell>{t('company_address')}</TableCell>
+								<TableCell>{t('status')}</TableCell>
+								<TableCell>{t('recruiters')}</TableCell>
 								{canManageCompanies && <TableCell align='right' />}
 							</TableRow>
 						</TableHead>
@@ -162,7 +165,7 @@ export const Companies = () => {
 							{!loading && companies.length === 0 && (
 								<TableRow>
 									<TableCell colSpan={6} align='center' sx={{ py: 4 }}>
-										<Typography color='text.secondary'>Hech qanday kompaniya topilmadi</Typography>
+										<Typography color='text.secondary'>{t('no_companies_found')}</Typography>
 									</TableCell>
 								</TableRow>
 							)}
@@ -172,7 +175,7 @@ export const Companies = () => {
 										<TableCell sx={{ fontWeight: 600 }}>{company.company_name}</TableCell>
 										<TableCell>{company.company_representative || '\u2014'}</TableCell>
 										<TableCell>{company.company_Address || '\u2014'}</TableCell>
-										<TableCell>{company.isPartner ? <Chip label='Hamkor' color='secondary' size='small' /> : <Chip label='Oddiy' size='small' variant='outlined' />}</TableCell>
+										<TableCell>{company.isPartner ? <Chip label='Partner' color='secondary' size='small' /> : <Chip label='Non-Partner' size='small' variant='outlined' />}</TableCell>
 										<TableCell>
 											<AvatarGroup max={3}>
 												{(company.recruiters || []).map(r => (
