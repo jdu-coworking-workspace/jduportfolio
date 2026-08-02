@@ -107,7 +107,7 @@ const Recruiter = () => {
 						label: t('recruiter'),
 						type: 'avatar',
 						minWidth: '160px',
-						onClickAction: navigateToCompanyProfile,
+						// onClickAction: navigateToCompanyProfile,
 					},
 					{
 						id: 'company',

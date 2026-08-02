@@ -801,17 +801,12 @@ const CompanyProfile = ({ userId = 0 }) => {
 		try {
 			const response = await axios.get(`/api/recruiters/${id}`)
 			const recruiterData = response.data
-			if (recruiterData.company === null) {
-				setCompanyAssigned(false)
-				setCompany(null)
-				return
-			}
-			setCompanyAssigned(true)
-			// New API shape: personal (recruiter) fields live at the top level, company
-			// profile fields live nested under `company` (null if not yet assigned).
-			// We flatten them back into a single object here so the rest of this
-			// component (which was written against the old flat shape) keeps working
-			// unchanged.
+			const isCompanyAssigned = recruiterData.company !== null
+			setCompanyAssigned(isCompanyAssigned)
+			// companyPart'ni biriktirilmagan holatda ham quramiz — shunda Admin
+			// company biriktirilmagan bo'lsa ham recruiterning shaxsiy ma'lumotlarini
+			// ko'ra oladi. Faqat Recruiter uchun "not assigned" ekrani render
+			// qismida erta return orqali ko'rsatiladi.
 			const companyPart = recruiterData.company || {}
 
 			const companyData = {
@@ -999,7 +994,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}, [])
 
 	// Business overview now a single multiline field (matches Company Description behavior)
-	if (!companyAssigned) {
+	if (!companyAssigned && role !== 'Admin') {
 		return (
 			<Box
 				sx={{
