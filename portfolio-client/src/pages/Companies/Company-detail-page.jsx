@@ -124,6 +124,7 @@ const CompanyDetailPage = () => {
 					</Typography>
 					<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems='center'>
 						<TextField label={t('company_name')} value={name} onChange={e => setName(e.target.value)} fullWidth size='small' />
+						<TextField label={t('company_representative')} value={company.company_representative || ''} onChange={e => setCompany({ ...company, company_representative: e.target.value })} fullWidth size='small' />
 						<FormControlLabel control={<Switch checked={isPartner} onChange={e => setIsPartner(e.target.checked)} />} label={t('is_partner')} />
 						<Button variant='contained' onClick={saveIdentity} disabled={saving || !name.trim()} sx={{ whiteSpace: 'nowrap' }}>
 							{t('save')}

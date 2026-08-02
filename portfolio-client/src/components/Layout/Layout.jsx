@@ -198,11 +198,11 @@ const Layout = () => {
 		},
 	]
 
-	const { activeUser } = useContext(UserContext)
+	const { activeUser, role } = useContext(UserContext)
 	const [isMenuOpen, setIsMenuOpen] = useState(false)
 	const [smallScreen, setSmallScreen] = useState(false)
 	// Read role from sessionStorage; if missing (e.g., new tab), fall back to cookie set by server
-	const [role] = useState(sessionStorage.getItem('role') || Cookies.get('userType') || null)
+	// const [role] = useState(sessionStorage.getItem('role') || Cookies.get('userType') || null)
 
 	const [japanTime, setJapanTime] = useState('')
 	const [uzbekistanTime, setUzbekistanTime] = useState('')

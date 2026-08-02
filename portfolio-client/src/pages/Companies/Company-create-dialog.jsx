@@ -27,6 +27,7 @@ const CompanyCreateDialog = ({ open, onClose, onCreate, saving, serverError }) =
 				<DialogContent>
 					<Stack spacing={2}>
 						<TextField autoFocus label={t('company_name')} fullWidth {...register('company_name', { required: t('company_name_required') })} error={!!errors.company_name} helperText={errors.company_name?.message} />
+						<TextField label={t('company_representative')} fullWidth {...register('company_representative', { required: t('company_representative_required') })} error={!!errors.company_representative} helperText={errors.company_representative?.message} />
 						<FormControlLabel control={<Switch {...register('isPartner')} />} label={t('is_partner')} />
 						{serverError && <Box sx={{ color: 'error.main', fontSize: 14 }}>{serverError}</Box>}
 					</Stack>
