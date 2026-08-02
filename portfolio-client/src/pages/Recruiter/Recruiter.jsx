@@ -21,12 +21,6 @@ const Recruiter = () => {
 	const [formDialogOpen, setFormDialogOpen] = useState(false)
 	const [editingRecruiter, setEditingRecruiter] = useState(null)
 
-	const navigateToCompanyProfile = recruiter => {
-		navigate(`/companyprofile`, {
-			state: { recruiterId: recruiter.id }, // passing state
-		})
-	}
-
 	const handleAddClick = () => {
 		setEditingRecruiter(null)
 		setFormDialogOpen(true)
@@ -96,7 +90,6 @@ const Recruiter = () => {
 						label: t('company_name'),
 						type: 'company_summary',
 						minWidth: 'auto',
-						onClickAction: navigateToCompanyProfile,
 					},
 				]
 			: [
@@ -107,7 +100,6 @@ const Recruiter = () => {
 						label: t('recruiter'),
 						type: 'avatar',
 						minWidth: '160px',
-						// onClickAction: navigateToCompanyProfile,
 					},
 					{
 						id: 'company',
