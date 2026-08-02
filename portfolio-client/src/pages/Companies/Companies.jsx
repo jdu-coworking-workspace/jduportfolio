@@ -42,6 +42,13 @@ export const Companies = () => {
 		}
 	}, [isRecruiter, activeUser, navigate])
 
+	const navigateToCompanyProfile = company => {
+		console.log('jonatiglan:', company.id)
+
+		navigate(`/companyprofile`, {
+			state: { companyId: company.id }, // passing state
+		})
+	}
 	const fetchCompanies = useCallback(async params => {
 		setLoading(true)
 		try {
@@ -171,7 +178,7 @@ export const Companies = () => {
 							)}
 							{!loading &&
 								companies.map(company => (
-									<TableRow key={company.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/companies/${company.id}`)}>
+									<TableRow key={company.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigateToCompanyProfile(company)}>
 										<TableCell sx={{ fontWeight: 600 }}>{company.company_name}</TableCell>
 										<TableCell>{company.company_representative || '\u2014'}</TableCell>
 										<TableCell>{company.company_Address || '\u2014'}</TableCell>

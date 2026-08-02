@@ -256,7 +256,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	const role = sessionStorage.getItem('role')
 	const navigate = useNavigate()
 	const location = useLocation()
-	const { recruiterId } = location.state || {}
+	const { companyId } = location.state || {}
 	const { id: routeId } = useParams()
 	const { language } = useContext(UserContext)
 	const { language: langContext, changeLanguage } = useLanguage()
@@ -264,75 +264,13 @@ const CompanyProfile = ({ userId = 0 }) => {
 	const currentLanguage = language || langContext || 'en'
 	const t = translations[currentLanguage] || translations.en
 
-	const id = userId !== 0 ? userId : recruiterId || routeId
+	const id = userId !== 0 ? userId : companyId || routeId
 
 	const [company, setCompany] = useState(null)
 	const [loading, setLoading] = useState(false)
 	const [editMode, setEditMode] = useAtom(editModeAtom)
 	const [activeTab, setActiveTab] = useState('company')
 	const [saveStatus, setSaveStatus] = useAtom(saveStatusAtom)
-	const [companyAssigned, setCompanyAssigned] = useState(true)
-	// Initial editData state
-	const initialEditData = {
-		newRequiredSkill: '',
-		newWelcomeSkill: '',
-		business_overview: '',
-		target_audience: [],
-		required_skills: [],
-		welcome_skills: [],
-		company_description: '',
-		company_Address: '',
-		established_Date: '',
-		employee_Count: '',
-		work_location: '',
-		work_hours: '',
-		salary: '',
-		benefits: '',
-		selection_process: '',
-		company_video_url: [],
-		newVideoUrl: '',
-		first_name: '',
-		last_name: '',
-		company_name: '',
-		photo: '',
-		// New fields
-		tagline: '',
-		company_website: '',
-		company_capital: '',
-		company_revenue: '',
-		company_representative: '',
-		job_title: '',
-		job_description: '',
-		number_of_openings: '',
-		employment_type: '',
-		probation_period: '',
-		employment_period: '',
-		recommended_skills: [],
-		recommended_licenses: [],
-		recommended_other: [],
-		newRecommendedSkill: '',
-		newRecommendedLicense: '',
-		newRecommendedOther: '',
-		salary_increase: '',
-		bonus: '',
-		allowances: '',
-		holidays_vacation: '',
-		other_notes: '',
-		interview_method: '',
-		// New fields
-		japanese_level: '',
-		application_requirements_other: '',
-		retirement_benefit: '',
-		telework_availability: '',
-		housing_availability: '',
-		relocation_support: '',
-		airport_pickup: '',
-		intro_page_thumbnail: '',
-		// New multi links
-		intro_page_links: [],
-		newIntroLinkTitle: '',
-		newIntroLinkUrl: '',
-	}
 
 	const [editData, setEditData] = useAtom(editDataAtom)
 
@@ -794,53 +732,39 @@ const CompanyProfile = ({ userId = 0 }) => {
 		}
 	}, [role, id])
 
-	// Fetch company data function
-	const fetchCompany = async () => {
+	const fetchCompany = async id => {
 		if (!id) return
 
 		try {
-			const response = await axios.get(`/api/recruiters/${id}`)
-			const recruiterData = response.data
-			const isCompanyAssigned = recruiterData.company !== null
-			setCompanyAssigned(isCompanyAssigned)
-			// companyPart'ni biriktirilmagan holatda ham quramiz — shunda Admin
-			// company biriktirilmagan bo'lsa ham recruiterning shaxsiy ma'lumotlarini
-			// ko'ra oladi. Faqat Recruiter uchun "not assigned" ekrani render
-			// qismida erta return orqali ko'rsatiladi.
-			const companyPart = recruiterData.company || {}
+			const companyResponse = await axios.get(`/api/companies/${id}`)
+
+			if (companyResponse === null) {
+				setCompany(null)
+				return
+			}
+			// setCompanyAssigned(true)  <-- OLIB TASHLANDI: bu state endi mavjud emas,
+			// uni chaqirish ReferenceError beradi va pastdagi catch uni yutib yuboradi,
+			// natijada company hech qachon to'g'ri o'rnatilmaydi.
 
 			const companyData = {
-				...companyPart,
-				// Personal/recruiter-level fields
-				first_name: recruiterData.first_name || '',
-				last_name: recruiterData.last_name || '',
-				first_name_furigana: recruiterData.first_name_furigana || '',
-				last_name_furigana: recruiterData.last_name_furigana || '',
-				phone: recruiterData.phone || '',
-				email: recruiterData.email || '',
-				photo: recruiterData.photo || '',
-				date_of_birth: recruiterData.date_of_birth || '',
-				companyId: recruiterData.companyId ?? null,
-
-				business_overview: Array.isArray(companyPart.business_overview) ? companyPart.business_overview.join('\n') : companyPart.business_overview || '',
-				target_audience: Array.isArray(companyPart.target_audience) ? companyPart.target_audience.join('、') : companyPart.target_audience || '',
-				required_skills: safeParse(companyPart.required_skills),
-				welcome_skills: safeParse(companyPart.welcome_skills),
-				company_video_url: Array.isArray(companyPart.company_video_url) ? companyPart.company_video_url : [],
-				// New arrays-as-text: parse to arrays for UI
-				recommended_skills: safeParse(companyPart.recommended_skills),
-				recommended_licenses: safeParse(companyPart.recommended_licenses),
-				recommended_other: safeParse(companyPart.recommended_other),
-				// Ensure optional string fields are non-null for UI
-				japanese_level: companyPart.japanese_level || '',
-				application_requirements_other: companyPart.application_requirements_other || '',
-				retirement_benefit: companyPart.retirement_benefit || '',
-				telework_availability: companyPart.telework_availability || '',
-				housing_availability: companyPart.housing_availability || '',
-				relocation_support: companyPart.relocation_support || '',
-				airport_pickup: companyPart.airport_pickup || '',
-				intro_page_thumbnail: companyPart.intro_page_thumbnail || '',
-				intro_page_links: Array.isArray(companyPart.intro_page_links) ? companyPart.intro_page_links : companyPart.intro_page_thumbnail ? [companyPart.intro_page_thumbnail] : [],
+				...companyResponse.data,
+				business_overview: Array.isArray(companyResponse.business_overview) ? companyResponse.business_overview.join('\n') : companyResponse.business_overview || '',
+				target_audience: Array.isArray(companyResponse.target_audience) ? companyResponse.target_audience.join('、') : companyResponse.target_audience || '',
+				required_skills: safeParse(companyResponse.required_skills),
+				welcome_skills: safeParse(companyResponse.welcome_skills),
+				company_video_url: Array.isArray(companyResponse.company_video_url) ? companyResponse.company_video_url : [],
+				recommended_skills: safeParse(companyResponse.recommended_skills),
+				recommended_licenses: safeParse(companyResponse.recommended_licenses),
+				recommended_other: safeParse(companyResponse.recommended_other),
+				japanese_level: companyResponse.japanese_level || '',
+				application_requirements_other: companyResponse.application_requirements_other || '',
+				retirement_benefit: companyResponse.retirement_benefit || '',
+				telework_availability: companyResponse.telework_availability || '',
+				housing_availability: companyResponse.housing_availability || '',
+				relocation_support: companyResponse.relocation_support || '',
+				airport_pickup: companyResponse.airport_pickup || '',
+				intro_page_thumbnail: companyResponse.intro_page_thumbnail || '',
+				intro_page_links: Array.isArray(companyResponse.intro_page_links) ? companyResponse.intro_page_links : companyResponse.intro_page_thumbnail ? [companyResponse.intro_page_thumbnail] : [],
 			}
 
 			setCompany(companyData)
@@ -854,26 +778,23 @@ const CompanyProfile = ({ userId = 0 }) => {
 				newRecommendedOther: '',
 			}
 			setEditData(editDataWithNew)
-
-			// Update the original data reference for change detection
 			updateOriginalData(editDataWithNew)
-
-			// Clear any stale localStorage data that might exist
 			clearStorage()
 
-			// Additional manual cleanup for any persisted data
 			try {
 				const storageKey = `profileEditDraft_company_profile_edit_${id || 'unknown'}_${role}`
 				localStorage.removeItem(storageKey)
 			} catch (error) {}
 		} catch (error) {
+			console.error('fetchCompany error:', error) // debug uchun qo'shildi
 			setCompany(null)
 		}
+		console.log('after axios')
 	}
 
 	// Fetch company data with proper error handling
 	useEffect(() => {
-		fetchCompany()
+		fetchCompany(id)
 	}, [id])
 
 	// Check for persisted data when entering edit mode
@@ -994,22 +915,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}, [])
 
 	// Business overview now a single multiline field (matches Company Description behavior)
-	if (!companyAssigned && role !== 'Admin') {
-		return (
-			<Box
-				sx={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					minHeight: '60vh',
-				}}
-			>
-				<Typography variant='h5' color='text.secondary'>
-					{t.not_assign_company}
-				</Typography>
-			</Box>
-		)
-	}
+
 	if (!company) {
 		return (
 			<Box className={styles.loadingContainer}>
@@ -1019,7 +925,12 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}
 
 	return (
-		<Box className={styles.pageContainer}>
+		<Box
+			className={styles.pageContainer}
+			onClick={() => {
+				console.log(company)
+			}}
+		>
 			{/* Header Section */}
 			<HeaderContentBox>
 				<Box className={styles.headerContainer}>
