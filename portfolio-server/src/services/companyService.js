@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Company, Recruiter } = require('../models')
+const { Company, Recruiter, UserFile } = require('../models')
 const { COMPANY_UPDATABLE_FIELDS, pickFields } = require('../utils/recruiterCompanyFields')
 
 const recruitersInclude = {
@@ -59,6 +59,66 @@ class CompanyService {
 			throw error
 		}
 		return company
+	}
+
+	static async resolveCompanyIdForDetails({ companyId, user }) {
+		if (companyId) return companyId
+
+		if (user?.userType === 'Recruiter') {
+			const recruiter = await Recruiter.findByPk(user.id, {
+				attributes: ['id', 'companyId'],
+			})
+			if (!recruiter?.companyId) {
+				const error = new Error('Recruiter is not assigned to a company')
+				error.status = 404
+				throw error
+			}
+			return recruiter.companyId
+		}
+
+		const error = new Error('companyId query parameter is required')
+		error.status = 400
+		throw error
+	}
+
+	static async getCompanyDetails({ companyId, user }) {
+		const resolvedCompanyId = await CompanyService.resolveCompanyIdForDetails({ companyId, user })
+		const company = await CompanyService.getCompanyById(resolvedCompanyId)
+		const plainCompany = company.toJSON()
+		delete plainCompany.isPartner
+
+		const recruiters = (plainCompany.recruiters || []).map(recruiter => {
+			const { password, ...safeRecruiter } = recruiter
+			return safeRecruiter
+		})
+		const recruiterIds = recruiters.map(recruiter => recruiter.id).filter(Boolean)
+
+		const files = recruiterIds.length
+			? await UserFile.findAll({
+					where: {
+						owner_id: { [Op.in]: recruiterIds },
+						owner_type: 'Recruiter',
+					},
+					order: [['createdAt', 'DESC']],
+				})
+			: []
+
+		const fileRows = files.map(file => file.toJSON())
+		const totalSize = fileRows.reduce((sum, file) => sum + (file.file_size || 0), 0)
+		const companyPayload = {
+			...plainCompany,
+			recruiters,
+		}
+
+		return {
+			...companyPayload,
+			company: companyPayload,
+			primaryRecruiter: recruiters[0] || null,
+			recruiter: recruiters[0] || null,
+			files: fileRows,
+			totalSize,
+			maxSize: 20 * 1024 * 1024,
+		}
 	}
 
 	/**

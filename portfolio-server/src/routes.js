@@ -81,6 +81,7 @@ const configureRoutes = app => {
 
 	// Protected routes
 	app.use('/api/admin', adminRoute)
+	app.get('/api/company/details', authMiddleware, require('./controllers/companyController').getDetails)
 	app.use('/api/recruiters', authMiddleware, recruiterRoute)
 	app.use('/api/companies', authMiddleware, companyRoute)
 	app.use('/api/staff', authMiddleware, staffRoute)
