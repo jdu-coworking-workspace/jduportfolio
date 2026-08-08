@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Typography, Paper } from '@mui/material'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import { Box, Paper, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
-import RecruiterFileUpload from './RecruiterFileUpload'
 import RecruiterFileList from './RecruiterFileList'
+import RecruiterFileUpload from './RecruiterFileUpload'
 
 const RecruiterFiles = ({ editMode = false, recruiterId, currentRole }) => {
 	const { language } = useLanguage()
