@@ -154,6 +154,7 @@ module.exports = (sequelize, DataTypes) => {
 				defaultValue: false,
 			},
 			kintone_id: { type: DataTypes.INTEGER, allowNull: false },
+			last_login: { type: DataTypes.DATE, allowNull: true },
 			// Virtual field for age calculation
 
 			// === NEW  FIELDLS ===
