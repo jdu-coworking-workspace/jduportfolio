@@ -48,6 +48,19 @@ class CompanyController {
 		}
 	}
 
+	// GET /api/company/details?companyId=:id
+	static async getDetails(req, res, next) {
+		try {
+			const details = await CompanyService.getCompanyDetails({
+				companyId: req.query.companyId || req.query.id,
+				user: req.user,
+			})
+			res.status(200).json(details)
+		} catch (error) {
+			handleServiceError(res, error, next)
+		}
+	}
+
 	/**
 	 * PUT /api/companies/:id
 	 * Admin: full update (incl. company_name, isPartner).

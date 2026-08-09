@@ -29,6 +29,25 @@ router.get('/', CompanyController.getAll)
 
 /**
  * @swagger
+ * /api/companies/details:
+ *   get:
+ *     tags: [Companies]
+ *     summary: Get company profile details without a recruiter id
+ *     parameters:
+ *       - in: query
+ *         name: companyId
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Optional for Recruiter users; required for Admin/Staff/Student.
+ *     responses:
+ *       200:
+ *         description: Company data with recruiters and files
+ */
+router.get('/details', CompanyController.getDetails)
+
+/**
+ * @swagger
  * /api/companies/{id}:
  *   get:
  *     tags: [Companies]

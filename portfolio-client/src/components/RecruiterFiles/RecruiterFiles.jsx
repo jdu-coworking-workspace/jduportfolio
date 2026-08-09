@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Typography, Paper } from '@mui/material'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import { Box, Paper, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import translations from '../../locales/translations'
 import axios from '../../utils/axiosUtils'
-import RecruiterFileUpload from './RecruiterFileUpload'
 import RecruiterFileList from './RecruiterFileList'
+import RecruiterFileUpload from './RecruiterFileUpload'
 
-const RecruiterFiles = ({ editMode = false, recruiterId, currentRole }) => {
+const RecruiterFiles = ({ editMode = false, companyId, currentRole }) => {
 	const { language } = useLanguage()
 	const t = key => translations[language][key] || key
 
@@ -17,16 +17,19 @@ const RecruiterFiles = ({ editMode = false, recruiterId, currentRole }) => {
 
 	useEffect(() => {
 		fetchFiles()
-	}, [recruiterId])
+	}, [companyId])
 
 	const fetchFiles = async () => {
 		try {
 			setLoading(true)
-			// For non-recruiters, send recruiterId as query param
-			const url = currentRole === 'Recruiter' ? '/api/recruiter-files' : `/api/recruiter-files?recruiterId=${recruiterId}`
+			// For non-recruiters, send companyId as query param
+			const url = `/api/company/details?companyId=${companyId}`
 			const response = await axios.get(url)
-			setFiles(response.data.files || response.data) // Handle both old and new response format
+			setFiles(response.data.files) // Handle both old and new response format
 			setTotalSize(response.data.totalSize || 0)
+			console.log('files:', files)
+			console.log('response.data:', response.data)
+			console.log('response.files:', response.files)
 		} catch (error) {
 			console.error('Error fetching files:', error)
 		} finally {

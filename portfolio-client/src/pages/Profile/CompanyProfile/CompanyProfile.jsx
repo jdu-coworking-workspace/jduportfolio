@@ -469,8 +469,9 @@ const CompanyProfile = ({ userId = 0 }) => {
 		delete companyPayload.id
 
 		const requestBody = {
-			...personalPayload,
-			company: companyPayload,
+			// ...personalPayload,
+			// company: companyPayload,
+			...companyPayload,
 		}
 
 		// Simple implementation - just make API call
@@ -733,10 +734,12 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}, [role, id])
 
 	const fetchCompany = async id => {
-		if (!id) return
-
 		try {
-			const companyResponse = await axios.get(`/api/companies/${id}`)
+			const isAdmin = role === 'Admin' || role === 'Staff'
+			if (isAdmin && !id) return
+			const url = isAdmin ? `/api/company/details?companyId=${id}` : '/api/company/details'
+
+			const companyResponse = await axios.get(url)
 
 			if (companyResponse === null) {
 				setCompany(null)
@@ -745,26 +748,26 @@ const CompanyProfile = ({ userId = 0 }) => {
 			// setCompanyAssigned(true)  <-- OLIB TASHLANDI: bu state endi mavjud emas,
 			// uni chaqirish ReferenceError beradi va pastdagi catch uni yutib yuboradi,
 			// natijada company hech qachon to'g'ri o'rnatilmaydi.
-
+			const raw = companyResponse.data
 			const companyData = {
-				...companyResponse.data,
-				business_overview: Array.isArray(companyResponse.business_overview) ? companyResponse.business_overview.join('\n') : companyResponse.business_overview || '',
-				target_audience: Array.isArray(companyResponse.target_audience) ? companyResponse.target_audience.join('、') : companyResponse.target_audience || '',
-				required_skills: safeParse(companyResponse.required_skills),
-				welcome_skills: safeParse(companyResponse.welcome_skills),
-				company_video_url: Array.isArray(companyResponse.company_video_url) ? companyResponse.company_video_url : [],
-				recommended_skills: safeParse(companyResponse.recommended_skills),
-				recommended_licenses: safeParse(companyResponse.recommended_licenses),
-				recommended_other: safeParse(companyResponse.recommended_other),
-				japanese_level: companyResponse.japanese_level || '',
-				application_requirements_other: companyResponse.application_requirements_other || '',
-				retirement_benefit: companyResponse.retirement_benefit || '',
-				telework_availability: companyResponse.telework_availability || '',
-				housing_availability: companyResponse.housing_availability || '',
-				relocation_support: companyResponse.relocation_support || '',
-				airport_pickup: companyResponse.airport_pickup || '',
-				intro_page_thumbnail: companyResponse.intro_page_thumbnail || '',
-				intro_page_links: Array.isArray(companyResponse.intro_page_links) ? companyResponse.intro_page_links : companyResponse.intro_page_thumbnail ? [companyResponse.intro_page_thumbnail] : [],
+				...raw,
+				business_overview: Array.isArray(raw.business_overview) ? raw.business_overview.join('\n') : raw.business_overview || '',
+				target_audience: Array.isArray(raw.target_audience) ? raw.target_audience.join('、') : raw.target_audience || '',
+				required_skills: safeParse(raw.required_skills),
+				welcome_skills: safeParse(raw.welcome_skills),
+				company_video_url: Array.isArray(raw.company_video_url) ? raw.company_video_url : [],
+				recommended_skills: safeParse(raw.recommended_skills),
+				recommended_licenses: safeParse(raw.recommended_licenses),
+				recommended_other: safeParse(raw.recommended_other),
+				japanese_level: raw.japanese_level || '',
+				application_requirements_other: raw.application_requirements_other || '',
+				retirement_benefit: raw.retirement_benefit || '',
+				telework_availability: raw.telework_availability || '',
+				housing_availability: raw.housing_availability || '',
+				relocation_support: raw.relocation_support || '',
+				airport_pickup: raw.airport_pickup || '',
+				intro_page_thumbnail: raw.intro_page_thumbnail || '',
+				// intro_page_links: Array.isArray(companyResponse.intro_page_links) ? companyResponse.intro_page_links : companyResponse.intro_page_thumbnail ? [companyResponse.intro_page_thumbnail] : [],
 			}
 
 			setCompany(companyData)
@@ -786,10 +789,9 @@ const CompanyProfile = ({ userId = 0 }) => {
 				localStorage.removeItem(storageKey)
 			} catch (error) {}
 		} catch (error) {
-			console.error('fetchCompany error:', error) // debug uchun qo'shildi
+			console.error('fetchCompany error1:', error) // debug uchun qo'shildi
 			setCompany(null)
 		}
-		console.log('after axios')
 	}
 
 	// Fetch company data with proper error handling
@@ -1375,7 +1377,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 					)}
 
 					{/* Company Documents (資料) — moved after Intro Page Links */}
-					{(role === 'Recruiter' || role === 'Admin' || role === 'Staff' || role === 'Student') && <RecruiterFiles editMode={editMode} recruiterId={id} currentRole={role} />}
+					{(role === 'Recruiter' || role === 'Admin' || role === 'Staff' || role === 'Student') && <RecruiterFiles editMode={editMode} companyId={company.id} currentRole={role} />}
 				</>
 			)}
 
