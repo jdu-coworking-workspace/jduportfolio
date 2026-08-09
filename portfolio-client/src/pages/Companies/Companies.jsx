@@ -15,7 +15,6 @@ const PARTNER_FILTERS = [
 	{ value: 'false', label: 'is_partner_false' },
 	{ value: 'true', label: 'is_partner_true' },
 ]
-
 export const Companies = () => {
 	const { language } = useLanguage() // Get current language from context
 	const t = key => translations[language][key] || key // Translation function
@@ -193,6 +192,16 @@ export const Companies = () => {
 													</Tooltip>
 												))}
 											</AvatarGroup>
+										</TableCell>
+										<TableCell align='right'>
+											<Button
+												onClick={e => {
+													e.stopPropagation()
+													navigate(`/companies/${company.id}`)
+												}}
+											>
+												{t('view')}
+											</Button>
 										</TableCell>
 										{canManageCompanies && (
 											<TableCell align='right'>
