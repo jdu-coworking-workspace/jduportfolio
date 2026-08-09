@@ -70,10 +70,10 @@
 
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const { Admin, Staff, Recruiter, Student } = require('../models')
+const { Admin, Staff, Recruiter, Student, LoginLog } = require('../models')
 
 class AuthService {
-	static async login(email, password, res) {
+	static async login(email, password, res, ip, userAgent) {
 		const userTypes = [Admin, Staff, Recruiter, Student]
 
 		for (const UserType of userTypes) {
@@ -81,6 +81,17 @@ class AuthService {
 			if (user) {
 				const isMatch = await bcrypt.compare(password, user.password)
 				if (isMatch) {
+					user.last_login = new Date()
+					await user.save()
+
+					await LoginLog.create({
+						userId: String(user.id),
+						userType: UserType.name,
+						ip_address: ip || 'unknown',
+						user_agent: userAgent || 'unknown',
+						status: 'success',
+					})
+
 					const expiresIn = process.env.JWT_EXPIRATION || '1d'
 					const token = jwt.sign({ id: user.id, userType: UserType.name }, process.env.JWT_SECRET, { expiresIn })
 					AuthService.setAuthCookies(res, token, UserType.name)
@@ -93,19 +104,49 @@ class AuthService {
 							photo: user.photo,
 						},
 					}
+				} else {
+					await LoginLog.create({
+						userId: String(user.id),
+						userType: UserType.name,
+						ip_address: ip || 'unknown',
+						user_agent: userAgent || 'unknown',
+						status: 'failed',
+						reason: 'Invalid password',
+					})
+					throw new Error('Invalid credentials')
 				}
 			}
 		}
+
+		await LoginLog.create({
+			userId: email,
+			userType: 'Unknown',
+			ip_address: ip || 'unknown',
+			user_agent: userAgent || 'unknown',
+			status: 'failed',
+			reason: 'User not found',
+		})
 		throw new Error('Invalid credentials')
 	}
 
-	static async loginWithGoogle(profile) {
+	static async loginWithGoogle(profile, ip, userAgent) {
 		const email = profile.emails[0].value
 		const userTypes = [Admin, Staff, Recruiter, Student]
 
 		for (const UserType of userTypes) {
 			const user = await UserType.findOne({ where: { email } })
 			if (user) {
+				user.last_login = new Date()
+				await user.save()
+
+				await LoginLog.create({
+					userId: String(user.id),
+					userType: UserType.name,
+					ip_address: ip || 'unknown',
+					user_agent: userAgent || 'unknown',
+					status: 'success',
+				})
+
 				const expiresIn = process.env.JWT_EXPIRATION || '1d'
 				const token = jwt.sign({ id: user.id, userType: UserType.name }, process.env.JWT_SECRET, { expiresIn })
 				return {
@@ -120,6 +161,15 @@ class AuthService {
 				}
 			}
 		}
+
+		await LoginLog.create({
+			userId: email,
+			userType: 'Unknown',
+			ip_address: ip || 'unknown',
+			user_agent: userAgent || 'unknown',
+			status: 'failed',
+			reason: 'Google account not found',
+		})
 		throw new Error('Bu Google email bilan hisob topilmadi')
 	}
 

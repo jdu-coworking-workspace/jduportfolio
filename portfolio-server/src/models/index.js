@@ -41,6 +41,7 @@ db.NewsViews = require('./NewsViews')(sequelize, Sequelize)
 db.Maintenance = require('./Maintenance')(sequelize, Sequelize)
 db.MailServiceSetting = require('./MailServiceSetting')(sequelize, Sequelize)
 db.ShareableLink = require('./ShareableLink')(sequelize, Sequelize)
+db.LoginLog = require('./LoginLog')(sequelize, Sequelize)
 
 // Load other models here if needed
 // db.User = require('./User')(sequelize, Sequelize);
@@ -189,4 +190,5 @@ module.exports = {
 	Maintenance: db.Maintenance,
 	MailServiceSetting: db.MailServiceSetting,
 	ShareableLink: db.ShareableLink,
+	LoginLog: db.LoginLog,
 }

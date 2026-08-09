@@ -15,7 +15,6 @@ const PARTNER_FILTERS = [
 	{ value: 'false', label: 'is_partner_false' },
 	{ value: 'true', label: 'is_partner_true' },
 ]
-
 export const Companies = () => {
 	const { language } = useLanguage() // Get current language from context
 	const t = key => translations[language][key] || key // Translation function
@@ -182,7 +181,7 @@ export const Companies = () => {
 										<TableCell sx={{ fontWeight: 600 }}>{company.company_name}</TableCell>
 										<TableCell>{company.company_representative || '\u2014'}</TableCell>
 										<TableCell>{company.company_Address || '\u2014'}</TableCell>
-										<TableCell>{company.isPartner ? <Chip label='Partner' color='secondary' size='small' /> : <Chip label='Non-Partner' size='small' variant='outlined' />}</TableCell>
+										<TableCell>{company.isPartner ? <Chip label={t('is_partner_false')} size='small' variant='outlined' /> : <Chip label={t('is_partner_true')} size='small' color='secondary' />}</TableCell>
 										<TableCell>
 											<AvatarGroup max={3}>
 												{(company.recruiters || []).map(r => (
@@ -193,6 +192,16 @@ export const Companies = () => {
 													</Tooltip>
 												))}
 											</AvatarGroup>
+										</TableCell>
+										<TableCell align='right'>
+											<Button
+												onClick={e => {
+													e.stopPropagation()
+													navigate(`/companies/${company.id}`)
+												}}
+											>
+												{t('view')}
+											</Button>
 										</TableCell>
 										{canManageCompanies && (
 											<TableCell align='right'>

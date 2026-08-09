@@ -8,10 +8,13 @@ passport.use(
 			clientID: process.env.GOOGLE_CLIENT_ID,
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
 			callbackURL: process.env.GOOGLE_CALLBACK_URL,
+			passReqToCallback: true,
 		},
-		async (accessToken, refreshToken, profile, done) => {
+		async (req, accessToken, refreshToken, profile, done) => {
 			try {
-				const result = await AuthService.loginWithGoogle(profile)
+				const ip = req.ip || req.connection?.remoteAddress
+				const userAgent = req.headers['user-agent']
+				const result = await AuthService.loginWithGoogle(profile, ip, userAgent)
 				done(null, result)
 			} catch (err) {
 				done(err)

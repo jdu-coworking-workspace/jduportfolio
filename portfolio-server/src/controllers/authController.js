@@ -3,8 +3,10 @@ const AuthService = require('../services/authService')
 class AuthController {
 	static async login(req, res) {
 		const { email, password } = req.body
+		const ip = req.ip || req.connection?.remoteAddress
+		const userAgent = req.headers['user-agent']
 		try {
-			const { userType, userData } = await AuthService.login(email, password, res)
+			const { userType, userData } = await AuthService.login(email, password, res, ip, userAgent)
 			res.json({ userType, userData })
 		} catch (error) {
 			res.status(400).json({ error: error.message })
