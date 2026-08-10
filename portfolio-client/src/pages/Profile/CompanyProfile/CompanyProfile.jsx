@@ -267,7 +267,8 @@ const CompanyProfile = ({ userId = 0 }) => {
 	const id = userId !== 0 ? userId : companyId || routeId
 
 	const [company, setCompany] = useState(null)
-	const [loading, setLoading] = useState(false)
+	const [loading, setLoading] = useState(true)
+	const [fetchError, setFetchError] = useState(null)
 	const [editMode, setEditMode] = useAtom(editModeAtom)
 	const [activeTab, setActiveTab] = useState('company')
 	const [saveStatus, setSaveStatus] = useAtom(saveStatusAtom)
@@ -469,9 +470,8 @@ const CompanyProfile = ({ userId = 0 }) => {
 		delete companyPayload.id
 
 		const requestBody = {
-			// ...personalPayload,
-			// company: companyPayload,
-			...companyPayload,
+			...personalPayload,
+			company: companyPayload,
 		}
 
 		// Simple implementation - just make API call
@@ -735,19 +735,23 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 	const fetchCompany = async id => {
 		try {
+			setLoading(true)
+			setFetchError(null)
 			const isAdmin = role === 'Admin' || role === 'Staff'
-			if (isAdmin && !id) return
+			if (isAdmin && !id) {
+				setLoading(false)
+				return
+			}
 			const url = isAdmin ? `/api/company/details?companyId=${id}` : '/api/company/details'
 
 			const companyResponse = await axios.get(url)
 
 			if (companyResponse === null) {
 				setCompany(null)
+				setFetchError(t.company_not_found || '会社情報が見つかりませんでした')
+				setLoading(false)
 				return
 			}
-			// setCompanyAssigned(true)  <-- OLIB TASHLANDI: bu state endi mavjud emas,
-			// uni chaqirish ReferenceError beradi va pastdagi catch uni yutib yuboradi,
-			// natijada company hech qachon to'g'ri o'rnatilmaydi.
 			const raw = companyResponse.data
 			const companyData = {
 				...raw,
@@ -767,7 +771,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 				relocation_support: raw.relocation_support || '',
 				airport_pickup: raw.airport_pickup || '',
 				intro_page_thumbnail: raw.intro_page_thumbnail || '',
-				// intro_page_links: Array.isArray(companyResponse.intro_page_links) ? companyResponse.intro_page_links : companyResponse.intro_page_thumbnail ? [companyResponse.intro_page_thumbnail] : [],
 			}
 
 			setCompany(companyData)
@@ -789,8 +792,17 @@ const CompanyProfile = ({ userId = 0 }) => {
 				localStorage.removeItem(storageKey)
 			} catch (error) {}
 		} catch (error) {
-			console.error('fetchCompany error1:', error) // debug uchun qo'shildi
+			console.error('fetchCompany error:', error)
 			setCompany(null)
+			// 404 = recruiter has no company assigned
+			const status = error?.response?.status
+			if (status === 404) {
+				setFetchError(t.company_not_found || '会社情報が見つかりませんでした')
+			} else {
+				setFetchError(t.errorFetchingData || 'データの取得に失敗しました')
+			}
+		} finally {
+			setLoading(false)
 		}
 	}
 
@@ -918,10 +930,36 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 	// Business overview now a single multiline field (matches Company Description behavior)
 
-	if (!company) {
+	if (loading) {
 		return (
 			<Box className={styles.loadingContainer}>
 				<Typography>{t.loading}</Typography>
+			</Box>
+		)
+	}
+
+	if (!company) {
+		return (
+			<Box
+				className={styles.loadingContainer}
+				sx={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					gap: 2,
+					py: 8,
+				}}
+			>
+				<Typography variant='h5' sx={{ mb: 1 }}>
+					🏢
+				</Typography>
+				<Typography variant='h6' fontWeight={600} color='text.primary'>
+					{t.company_not_assigned_title || '会社情報が見つかりません'}
+				</Typography>
+				<Typography variant='body2' color='text.secondary' sx={{ textAlign: 'center', maxWidth: 400 }}>
+					{fetchError || t.company_not_assigned_desc || 'あなたはまだどの会社にも割り当てられていません。管理者にお問い合わせください。'}
+				</Typography>
 			</Box>
 		)
 	}
