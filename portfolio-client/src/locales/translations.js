@@ -801,6 +801,9 @@ You must not leave this section as the auto-generated template. You need to rewr
 		no_recruiters_found: 'No recruiters found',
 		search_recruiters: 'Search by recruiter name, email, or company name...',
 		select_company: 'Select Company',
+		company_not_assigned_title: 'No Company Assigned',
+		company_not_assigned_desc: 'You have not been assigned to any company yet. Please contact the administrator.',
+		errorFetchingData: 'Failed to load data. Please try again.',
 	},
 	ja: {
 		age: '歳',
@@ -1326,6 +1329,9 @@ You must not leave this section as the auto-generated template. You need to rewr
 		location_placeholder: '所在地',
 		company_description_placeholder: '企業の説明を',
 		saving: '保存中...',
+		company_not_assigned_title: '会社情報が見つかりません',
+		company_not_assigned_desc: 'まだどの会社にも割り当てられていません。管理者にお問い合わせください。',
+		errorFetchingData: 'データの読み込みに失敗しました。もう一度お試しください。',
 		// Language settings translations
 		unsaved_changes_title: '未保存の変更',
 		language_change_unsaved_message: '未保存の変更があります。言語を変更する前に保存しますか？',
@@ -2111,6 +2117,9 @@ Iltimos, profilingiz mazmuni va boshqa maʼlumotlar quyidagi taqiqlangan harakat
 		location_placeholder: 'Manzilni kiriting',
 		company_description_placeholder: 'Kompaniya tavsifini kiriting',
 		saving: 'Saqlanmoqda...',
+		company_not_assigned_title: 'Kompaniya topilmadi',
+		company_not_assigned_desc: "Siz hali hech qaysi kompaniyaga bog'liq emassiz. Iltimos, administrator bilan bog'laning.",
+		errorFetchingData: "Ma'lumotlarni yuklab bo'lmadi. Iltimos, qayta urinib ko'ring.",
 		// Language settings translations
 		unsaved_changes_title: "Saqlanmagan o'zgarishlar",
 		language_change_unsaved_message: "Saqlanmagan o'zgarishlaringiz bor. Tilni o'zgartirishdan oldin ularni saqlashni xohlaysizmi?",
