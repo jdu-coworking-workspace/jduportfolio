@@ -12,8 +12,8 @@ import translations from '../../locales/translations'
 import CompanyCreateDialog from './Company-create-dialog'
 const PARTNER_FILTERS = [
 	{ value: 'all', label: 'all' },
-	{ value: 'false', label: 'is_partner_false' },
-	{ value: 'true', label: 'is_partner_true' },
+	{ value: 'false', label: 'is_partner_true' },
+	{ value: 'true', label: 'is_partner_false' },
 ]
 export const Companies = () => {
 	const { language } = useLanguage() // Get current language from context

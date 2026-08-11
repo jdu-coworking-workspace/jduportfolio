@@ -804,6 +804,10 @@ You must not leave this section as the auto-generated template. You need to rewr
 		company_not_assigned_title: 'No Company Assigned',
 		company_not_assigned_desc: 'You have not been assigned to any company yet. Please contact the administrator.',
 		errorFetchingData: 'Failed to load data. Please try again.',
+		assigned_recruiter_to_company: 'Recruiter assigned to company successfully',
+		unassigned_recruiter_from_company: 'Recruiter unassigned from company successfully',
+		updated_company_identity: 'Company identity updated successfully',
+		updated_company_profile: 'Company profile updated successfully',
 	},
 	ja: {
 		age: '歳',
@@ -1615,6 +1619,10 @@ You must not leave this section as the auto-generated template. You need to rewr
 		company_identity: '企業識別情報',
 		no_recruiters_found: '採用担当者が見つかりません',
 		select_company: '企業を選択',
+		assigned_recruiter_to_company: '採用担当者を企業に割り当てました',
+		unassigned_recruiter_from_company: '採用担当者を企業から削除しました',
+		updated_company_identity: '企業識別情報を更新されました',
+		updated_company_profile: '企業プロフィールを更新されました',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2419,6 +2427,10 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 		no_recruiters_found: "Topilgan rekruterlar yo'q",
 		search_recruiters: 'Rekruterlarni qidirish...',
 		select_company: 'Kompaniyani tanlang',
+		assigned_recruiter_to_company: 'Rekruter kompaniyaga biriktirildi',
+		unassigned_recruiter_from_company: 'Rekruter kompaniyadan olib tashlandi',
+		updated_company_identity: 'Kompaniya identifikatori yangilandi',
+		updated_company_profile: 'Kompaniya profili yangilandi',
 	},
 	ru: {
 		age: 'Возраст',
@@ -3188,6 +3200,10 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 		no_recruiters_found: 'Рекрутеры не найдены',
 		search_recruiters: 'Поиск рекрутеров...',
 		select_company: 'Выберите компанию',
+		assigned_recruiter_to_company: 'Рекрутер успешно назначен компании',
+		unassigned_recruiter_from_company: 'Рекрутер успешно удален из компании',
+		updated_company_identity: 'Идентификация компании успешно обновлена',
+		updated_company_profile: 'Профиль компании успешно обновлен',
 	},
 }
 

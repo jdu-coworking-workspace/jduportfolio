@@ -53,7 +53,7 @@ const CompanyDetailPage = () => {
 		try {
 			const data = await updateCompany(id, { company_name: name, isPartner })
 			setCompany(data)
-			setToast({ severity: 'success', message: 'Kompaniya ma\u02bclumotlari yangilandi' })
+			setToast({ severity: 'success', message: t('updated_company_identity') })
 		} catch (err) {
 			setToast({ severity: 'error', message: err.message })
 		} finally {
@@ -66,7 +66,7 @@ const CompanyDetailPage = () => {
 		try {
 			const data = await updateCompany(id, profileValues)
 			setCompany(data)
-			setToast({ severity: 'success', message: 'Profil saqlandi' })
+			setToast({ severity: 'success', message: t('updated_company_profile') })
 		} catch (err) {
 			setToast({ severity: 'error', message: err.message })
 		} finally {
@@ -79,7 +79,7 @@ const CompanyDetailPage = () => {
 			const data = await assignRecruiter(id, recruiterId)
 			setCompany(data)
 			setAssignOpen(false)
-			setToast({ severity: 'success', message: 'Recruiter biriktirildi' })
+			setToast({ severity: 'success', message: t('assigned_recruiter_to_company') })
 		} catch (err) {
 			setToast({ severity: 'error', message: err.message })
 		}
@@ -89,7 +89,7 @@ const CompanyDetailPage = () => {
 		try {
 			const data = await unassignRecruiter(id, recruiterId)
 			setCompany(data)
-			setToast({ severity: 'success', message: 'Biriktiruv olib tashlandi' })
+			setToast({ severity: 'success', message: t('unassigned_recruiter_from_company') })
 		} catch (err) {
 			setToast({ severity: 'error', message: err.message })
 		}

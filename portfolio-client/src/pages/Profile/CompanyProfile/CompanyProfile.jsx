@@ -938,7 +938,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 		)
 	}
 
-	if (!company) {
+	if (!company && typeof fetchError === 'string') {
 		return (
 			<Box
 				className={styles.loadingContainer}
@@ -958,7 +958,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 					{t.company_not_assigned_title || '会社情報が見つかりません'}
 				</Typography>
 				<Typography variant='body2' color='text.secondary' sx={{ textAlign: 'center', maxWidth: 400 }}>
-					{fetchError || t.company_not_assigned_desc || 'あなたはまだどの会社にも割り当てられていません。管理者にお問い合わせください。'}
+					{t.company_not_assigned_desc}
 				</Typography>
 			</Box>
 		)
