@@ -808,6 +808,9 @@ You must not leave this section as the auto-generated template. You need to rewr
 		unassigned_recruiter_from_company: 'Recruiter unassigned from company successfully',
 		updated_company_identity: 'Company identity updated successfully',
 		updated_company_profile: 'Company profile updated successfully',
+		details: 'Details',
+		edit_recruiter: 'Edit Recruiter',
+		company_change_hint: 'Company can only be changed from the company page',
 	},
 	ja: {
 		age: '歳',
@@ -1623,6 +1626,9 @@ You must not leave this section as the auto-generated template. You need to rewr
 		unassigned_recruiter_from_company: '採用担当者を企業から削除しました',
 		updated_company_identity: '企業識別情報を更新されました',
 		updated_company_profile: '企業プロフィールを更新されました',
+		details: '詳細',
+		edit_recruiter: '採用担当者を編集',
+		company_change_hint: '会社は会社ページからのみ変更できます。',
 	},
 	uz: {
 		age: 'Yosh',
@@ -2431,6 +2437,9 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 		unassigned_recruiter_from_company: 'Rekruter kompaniyadan olib tashlandi',
 		updated_company_identity: 'Kompaniya identifikatori yangilandi',
 		updated_company_profile: 'Kompaniya profili yangilandi',
+		details: 'Tafsilotlar',
+		edit_recruiter: 'Rekruterni tahrirlash',
+		company_change_hint: 'Kompaniyani faqat kompaniya sahifasidan o‘zgartirish mumkin.',
 	},
 	ru: {
 		age: 'Возраст',
@@ -3204,6 +3213,9 @@ Ushbu qismni tayyor andoza bilan qoldirib bo'lmaydi. Talaba har doim bu qismni q
 		unassigned_recruiter_from_company: 'Рекрутер успешно удален из компании',
 		updated_company_identity: 'Идентификация компании успешно обновлена',
 		updated_company_profile: 'Профиль компании успешно обновлен',
+		details: 'Детали',
+		edit_recruiter: 'Редактировать рекрутера',
+		company_change_hint: 'Компания может быть изменена только со страницы компании.',
 	},
 }
 

@@ -51,7 +51,7 @@ const CompanyDetailPage = () => {
 	const saveIdentity = async () => {
 		setSaving(true)
 		try {
-			const data = await updateCompany(id, { company_name: name, isPartner })
+			const data = await updateCompany(id, { company_name: name, isPartner, company_representative: company.company_representative })
 			setCompany(data)
 			setToast({ severity: 'success', message: t('updated_company_identity') })
 		} catch (err) {

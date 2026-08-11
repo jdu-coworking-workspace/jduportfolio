@@ -200,7 +200,7 @@ export const Companies = () => {
 													navigate(`/companies/${company.id}`)
 												}}
 											>
-												{t('view')}
+												{t('details')}
 											</Button>
 										</TableCell>
 										{canManageCompanies && (

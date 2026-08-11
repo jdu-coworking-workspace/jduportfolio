@@ -250,7 +250,7 @@ SectionHeader.propTypes = {
 // nested under `company`. `company_name` and `isPartner` are Admin-only and are never
 // sent from this screen.
 const PERSONAL_FIELD_KEYS = ['first_name', 'last_name', 'first_name_furigana', 'last_name_furigana', 'phone', 'email', 'photo', 'date_of_birth']
-const ADMIN_ONLY_COMPANY_FIELD_KEYS = ['company_name', 'isPartner']
+const ADMIN_ONLY_COMPANY_FIELD_KEYS = ['isPartner']
 
 const CompanyProfile = ({ userId = 0 }) => {
 	const role = sessionStorage.getItem('role')
@@ -965,12 +965,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	}
 
 	return (
-		<Box
-			className={styles.pageContainer}
-			onClick={() => {
-				console.log(company)
-			}}
-		>
+		<Box className={styles.pageContainer}>
 			{/* Header Section */}
 			<HeaderContentBox>
 				<Box className={styles.headerContainer}>
@@ -978,11 +973,19 @@ const CompanyProfile = ({ userId = 0 }) => {
 						<Avatar src={company.photo} alt={`${safeStringValue(company.first_name)} ${safeStringValue(company.last_name)}`} className={styles.avatar} />
 					</Box>
 					<Box className={styles.infoContainer}>
-						<Box className={styles.nameEmailContainer}>
-							<Typography variant='h2' component='div' className={styles.mainTitle}>
-								{safeStringValue(company.company_name)}
-							</Typography>
-						</Box>
+						{(role === 'Recruiter' || editMode || hasContent(company.company_name)) && (
+							<Box>
+								<Box>
+									{editMode && role === 'Recruiter' ? (
+										<>
+											<CustomTextField value={safeStringValue(editData.company_name)} onChange={e => handleUpdateEditData('company_name', e.target.value)} placeholder={t.company_name} fieldKey='company_name' inputRef={createInputRef('company_name')} maxLength={200} />{' '}
+										</>
+									) : (
+										<div style={{ fontSize: 28, fontWeight: 600 }}>{safeStringValue(company.company_name)}</div>
+									)}
+								</Box>
+							</Box>
+						)}
 						<Box className={styles.chipContainer}>
 							{editMode && role === 'Recruiter' ? (
 								<Box className={styles.taglineRow}>
