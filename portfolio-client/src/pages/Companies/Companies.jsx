@@ -20,7 +20,7 @@ export const Companies = () => {
 	const t = key => translations[language][key] || key // Translation function
 	const navigate = useNavigate()
 	const { activeUser, role } = useContext(UserContext)
-	const isRecruiter = role === 'Staff' && activeUser?.companyId
+	const isRecruiter = (role === 'Staff' || role === 'Student') && activeUser?.companyId
 	const canManageCompanies = role === 'Admin'
 	// const { canManageCompanies, isRecruiter, user } = useAuth()
 
@@ -42,8 +42,6 @@ export const Companies = () => {
 	}, [isRecruiter, activeUser, navigate])
 
 	const navigateToCompanyProfile = company => {
-		console.log('jonatiglan:', company.id)
-
 		navigate(`/companyprofile`, {
 			state: { companyId: company.id }, // passing state
 		})

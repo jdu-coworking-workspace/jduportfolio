@@ -737,7 +737,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 		try {
 			setLoading(true)
 			setFetchError(null)
-			const isAdmin = role === 'Admin' || role === 'Staff'
+			const isAdmin = role === 'Admin' || role === 'Staff' || role === 'Student'
 			if (isAdmin && !id) {
 				setLoading(false)
 				return
