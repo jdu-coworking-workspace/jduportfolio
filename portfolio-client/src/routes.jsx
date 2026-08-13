@@ -70,7 +70,7 @@ const AppRoutes = () => {
 						<Route path='/recruiter' element={<ProtectedLayout allowedRoles={['Admin', 'Staff', 'Student']} />}>
 							<Route index element={<Recruiter />} />
 						</Route>
-						<Route path='/companies' element={<ProtectedLayout allowedRoles={['Admin', 'Student']} />}>
+						<Route path='/companies' element={<ProtectedLayout allowedRoles={['Admin', 'Student', 'Staff']} />}>
 							<Route index element={<Companies />} />
 							<Route path=':id' element={<CompanyDetailPage />} />
 						</Route>

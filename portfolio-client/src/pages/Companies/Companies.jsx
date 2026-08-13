@@ -191,16 +191,19 @@ export const Companies = () => {
 												))}
 											</AvatarGroup>
 										</TableCell>
-										<TableCell align='right'>
-											<Button
-												onClick={e => {
-													e.stopPropagation()
-													navigate(`/companies/${company.id}`)
-												}}
-											>
-												{t('details')}
-											</Button>
-										</TableCell>
+										{canManageCompanies && (
+											<TableCell align='right'>
+												<Button
+													onClick={e => {
+														e.stopPropagation()
+														navigate(`/companies/${company.id}`)
+													}}
+												>
+													{t('details')}
+												</Button>
+											</TableCell>
+										)}
+
 										{canManageCompanies && (
 											<TableCell align='right'>
 												<IconButton size='small' aria-label="Kompaniyani o'chirish" onClick={e => handleDelete(e, company)}>

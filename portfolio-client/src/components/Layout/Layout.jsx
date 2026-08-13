@@ -156,7 +156,7 @@ const Layout = () => {
 					to: '/companies',
 					icon: <BusinessIcon style={{ width: '24px', height: '24px' }} />,
 					label: t('companies'),
-					roles: ['Admin', 'Student'],
+					roles: ['Admin', 'Student', 'Staff'],
 				},
 				{
 					to: '/bookmarked',
