@@ -12,15 +12,15 @@ import translations from '../../locales/translations'
 import CompanyCreateDialog from './Company-create-dialog'
 const PARTNER_FILTERS = [
 	{ value: 'all', label: 'all' },
-	{ value: 'false', label: 'is_partner_false' },
-	{ value: 'true', label: 'is_partner_true' },
+	{ value: 'false', label: 'is_partner_true' },
+	{ value: 'true', label: 'is_partner_false' },
 ]
 export const Companies = () => {
 	const { language } = useLanguage() // Get current language from context
 	const t = key => translations[language][key] || key // Translation function
 	const navigate = useNavigate()
 	const { activeUser, role } = useContext(UserContext)
-	const isRecruiter = role === 'Staff' && activeUser?.companyId
+	const isRecruiter = (role === 'Staff' || role === 'Student') && activeUser?.companyId
 	const canManageCompanies = role === 'Admin'
 	// const { canManageCompanies, isRecruiter, user } = useAuth()
 
@@ -42,8 +42,6 @@ export const Companies = () => {
 	}, [isRecruiter, activeUser, navigate])
 
 	const navigateToCompanyProfile = company => {
-		console.log('jonatiglan:', company.id)
-
 		navigate(`/companyprofile`, {
 			state: { companyId: company.id }, // passing state
 		})
@@ -193,16 +191,19 @@ export const Companies = () => {
 												))}
 											</AvatarGroup>
 										</TableCell>
-										<TableCell align='right'>
-											<Button
-												onClick={e => {
-													e.stopPropagation()
-													navigate(`/companies/${company.id}`)
-												}}
-											>
-												{t('view')}
-											</Button>
-										</TableCell>
+										{canManageCompanies && (
+											<TableCell align='right'>
+												<Button
+													onClick={e => {
+														e.stopPropagation()
+														navigate(`/companies/${company.id}`)
+													}}
+												>
+													{t('details')}
+												</Button>
+											</TableCell>
+										)}
+
 										{canManageCompanies && (
 											<TableCell align='right'>
 												<IconButton size='small' aria-label="Kompaniyani o'chirish" onClick={e => handleDelete(e, company)}>
