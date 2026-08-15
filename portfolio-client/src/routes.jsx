@@ -67,7 +67,7 @@ const AppRoutes = () => {
 							</Route>
 						</Route>
 
-						<Route path='/recruiter' element={<ProtectedLayout allowedRoles={['Admin', 'Staff', 'Student']} />}>
+						<Route path='/recruiter' element={<ProtectedLayout allowedRoles={['Admin', 'Staff']} />}>
 							<Route index element={<Recruiter />} />
 						</Route>
 						<Route path='/companies' element={<ProtectedLayout allowedRoles={['Admin', 'Student', 'Staff']} />}>
