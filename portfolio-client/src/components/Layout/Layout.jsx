@@ -150,7 +150,7 @@ const Layout = () => {
 					to: '/recruiter',
 					icon: <UserPlusIcon style={{ width: '24px', height: '24px' }} />,
 					label: t('recruiter'),
-					roles: ['Admin', 'Staff', 'Student'],
+					roles: ['Admin', 'Staff'],
 				},
 				{
 					to: '/companies',
