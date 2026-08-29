@@ -100,10 +100,10 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 				setError(t('fill_required_fields') || 'Please fill in all required fields')
 				return
 			}
-			if (!isNewCompany && !companyId) {
-				setError(t('select_company') || 'Please select a company')
-				return
-			}
+			// if (!isNewCompany && !companyId) {
+			// 	setError(t('select_company') || 'Please select a company')
+			// 	return
+			// }
 			if (isNewCompany && !newCompanyName.trim()) {
 				setError(t('company_name_required') || 'Company name is required')
 				return
@@ -194,7 +194,7 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 							<Divider textAlign='left'>{t('company') || 'Company'}</Divider>
 							{!isNewCompany ? (
 								<Stack spacing={1}>
-									<Autocomplete options={companies} getOptionLabel={option => option.company_name || ''} isOptionEqualToValue={(option, value) => option.id === value.id} value={companies.find(c => c.id === companyId) || null} onChange={(_, value) => setCompanyId(value ? value.id : null)} renderInput={params => <TextField {...params} label={t('select_company') || 'Select company'} required />} />
+									<Autocomplete options={companies} getOptionLabel={option => option.company_name || ''} isOptionEqualToValue={(option, value) => option.id === value.id} value={companies.find(c => c.id === companyId) || null} onChange={(_, value) => setCompanyId(value ? value.id : null)} renderInput={params => <TextField {...params} label={t('select_company') || 'Select company'} />} />
 									<Button size='small' onClick={() => setIsNewCompany(true)} sx={{ alignSelf: 'flex-start' }}>
 										{t('create_new_company') || '+ Create new company'}
 									</Button>
