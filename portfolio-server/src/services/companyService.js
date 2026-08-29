@@ -110,11 +110,13 @@ class CompanyService {
 			recruiters,
 		}
 
+		const primaryRecruiter = recruiters.find(r => r.id === plainCompany.parent_recruiter_id) || recruiters[0] || null
+
 		return {
 			...companyPayload,
 			company: companyPayload,
-			primaryRecruiter: recruiters[0] || null,
-			recruiter: recruiters[0] || null,
+			primaryRecruiter,
+			recruiter: primaryRecruiter,
 			files: fileRows,
 			totalSize,
 			maxSize: 20 * 1024 * 1024,
@@ -123,7 +125,7 @@ class CompanyService {
 
 	/**
 	 * Updates a company profile.
-	 * `isAdmin` unlocks admin-only fields (company_name, isPartner).
+	 * `isAdmin` unlocks admin-only fields (company_name, isPartner, parent_recruiter_id).
 	 */
 	static async updateCompany(id, data, { isAdmin = false } = {}) {
 		const company = await Company.findByPk(id)
@@ -137,6 +139,8 @@ class CompanyService {
 
 		if (!isAdmin) {
 			delete companyData.company_name
+			delete companyData.isPartner
+			delete companyData.parent_recruiter_id
 		} else {
 			if (companyData.company_name && companyData.company_name !== company.company_name) {
 				const duplicate = await Company.findOne({
@@ -151,6 +155,22 @@ class CompanyService {
 			if (data.isPartner !== undefined) {
 				companyData.isPartner = data.isPartner === true
 			}
+			if (data.parent_recruiter_id !== undefined) {
+				if (data.parent_recruiter_id === null || data.parent_recruiter_id === '') {
+					companyData.parent_recruiter_id = null
+				} else {
+					const targetRecruiterId = Number(data.parent_recruiter_id)
+					const cand = await Recruiter.findOne({
+						where: { id: targetRecruiterId, companyId: id },
+					})
+					if (!cand) {
+						const error = new Error('The specified parent recruiter does not belong to this company')
+						error.status = 400
+						throw error
+					}
+					companyData.parent_recruiter_id = targetRecruiterId
+				}
+			}
 		}
 
 		await company.update(companyData)
@@ -162,6 +182,7 @@ class CompanyService {
 	 * (companyId becomes NULL via FK ON DELETE SET NULL).
 	 */
 	static async deleteCompany(id) {
+		await Company.update({ parent_recruiter_id: null }, { where: { id } })
 		const deleted = await Company.destroy({ where: { id } })
 		if (!deleted) {
 			const error = new Error('Company not found')
@@ -173,6 +194,7 @@ class CompanyService {
 
 	/**
 	 * Assigns an existing recruiter to a company (Admin only).
+	 * If the company has no parent_recruiter_id, sets the newly assigned recruiter as parent.
 	 */
 	static async assignRecruiter(companyId, recruiterId) {
 		const company = await Company.findByPk(companyId)
@@ -190,11 +212,18 @@ class CompanyService {
 		}
 
 		await recruiter.update({ companyId: company.id })
+
+		if (!company.parent_recruiter_id) {
+			await company.update({ parent_recruiter_id: recruiter.id })
+		}
+
 		return await CompanyService.getCompanyById(companyId)
 	}
 
 	/**
 	 * Unassigns a recruiter from a company (Admin only).
+	 * If the unassigned recruiter was the parent_recruiter, reassigns parent to the earliest
+	 * remaining recruiter in the company, or null if none remain.
 	 */
 	static async unassignRecruiter(companyId, recruiterId) {
 		const recruiter = await Recruiter.findOne({
@@ -207,6 +236,16 @@ class CompanyService {
 		}
 
 		await recruiter.update({ companyId: null })
+
+		const company = await Company.findByPk(companyId)
+		if (company && company.parent_recruiter_id === Number(recruiterId)) {
+			const remaining = await Recruiter.findOne({
+				where: { companyId },
+				order: [['createdAt', 'ASC']],
+			})
+			await company.update({ parent_recruiter_id: remaining ? remaining.id : null })
+		}
+
 		return await CompanyService.getCompanyById(companyId)
 	}
 }

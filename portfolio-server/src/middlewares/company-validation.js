@@ -136,6 +136,7 @@ const companyFieldRules = (prefix = '') => {
 			.custom(arr => arr.every(u => /(youtube\.com|youtu\.be)/i.test(u)))
 			.withMessage('Video URLs must be YouTube links'),
 		body(f('isPartner')).optional({ nullable: true }).isBoolean().withMessage('isPartner must be a boolean'),
+		body(f('parent_recruiter_id')).optional({ nullable: true }).isInt({ min: 1 }).withMessage('parent_recruiter_id must be a valid integer'),
 	]
 }
 

@@ -92,8 +92,100 @@ describe('Recruiter/Company/Kintone main flows', () => {
 			expect.objectContaining({
 				companyId: 10,
 				kintone_id: '501',
+			}),
+			expect.any(Object)
+		)
+	})
+
+	test('Admin can create Recruiter without company (companyId: null)', async () => {
+		const createdRecruiter = { id: 101, setDataValue: jest.fn() }
+		toKintoneRecord.mockReturnValue({ recruiterEmail: { value: 'solo@example.com' } })
+		extractKintoneId.mockReturnValue('502')
+		KintoneService.createRecord.mockResolvedValue({ id: '502' })
+		Recruiter.create.mockResolvedValue(createdRecruiter)
+
+		const result = await RecruiterService.createRecruiterViaWeb({
+			email: 'solo@example.com',
+			first_name: 'Solo',
+			last_name: 'Recruiter',
+		})
+
+		expect(KintoneService.createRecord).toHaveBeenCalledWith('recruiters', { recruiterEmail: { value: 'solo@example.com' } })
+		expect(Recruiter.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				companyId: null,
+				kintone_id: '502',
+			}),
+			expect.any(Object)
+		)
+		expect(result).toBe(createdRecruiter)
+	})
+
+	test('Admin can create Recruiter with inline new Company and become parent recruiter', async () => {
+		const newCompany = { id: 35, company_name: 'BrandNew Co', parent_recruiter_id: null }
+		const createdRecruiter = { id: 102, setDataValue: jest.fn() }
+		Company.findOrCreate.mockResolvedValueOnce([newCompany, true])
+		Company.findByPk.mockResolvedValueOnce(newCompany)
+		Company.update.mockResolvedValue([1])
+		toKintoneRecord.mockReturnValue({ recruiterEmail: { value: 'founder@brandnew.jp' } })
+		extractKintoneId.mockReturnValue('503')
+		KintoneService.createRecord.mockResolvedValue({ id: '503' })
+		Recruiter.create.mockResolvedValue(createdRecruiter)
+
+		await RecruiterService.createRecruiterViaWeb({
+			email: 'founder@brandnew.jp',
+			first_name: 'Founder',
+			last_name: 'San',
+			company_name: 'BrandNew Co',
+			company_representative: 'President San',
+			isPartner: true,
+		})
+
+		expect(Company.findOrCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { company_name: 'BrandNew Co' },
+				defaults: expect.objectContaining({
+					company_name: 'BrandNew Co',
+					company_representative: 'President San',
+					isPartner: true,
+				}),
 			})
 		)
+		expect(Recruiter.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				companyId: 35,
+				kintone_id: '503',
+			}),
+			expect.any(Object)
+		)
+	})
+
+	test('Assigning recruiter to company sets parent_recruiter_id if none exists', async () => {
+		const company = { id: 50, parent_recruiter_id: null, update: jest.fn().mockResolvedValue(true) }
+		const recruiter = { id: 205, update: jest.fn().mockResolvedValue(true) }
+		Company.findByPk.mockResolvedValue(company)
+		Recruiter.findByPk.mockResolvedValue(recruiter)
+
+		await CompanyService.assignRecruiter(50, 205)
+
+		expect(recruiter.update).toHaveBeenCalledWith({ companyId: 50 })
+		expect(company.update).toHaveBeenCalledWith({ parent_recruiter_id: 205 })
+	})
+
+	test('Unassigning parent recruiter promotes next recruiter in company', async () => {
+		const recruiterToUnassign = { id: 205, companyId: 50, update: jest.fn().mockResolvedValue(true) }
+		const nextRecruiter = { id: 206, companyId: 50 }
+		const company = { id: 50, parent_recruiter_id: 205, update: jest.fn().mockResolvedValue(true) }
+
+		Recruiter.findOne
+			.mockResolvedValueOnce(recruiterToUnassign) // for finding recruiter to unassign
+			.mockResolvedValueOnce(nextRecruiter) // for finding next remaining recruiter
+		Company.findByPk.mockResolvedValue(company)
+
+		await CompanyService.unassignRecruiter(50, 205)
+
+		expect(recruiterToUnassign.update).toHaveBeenCalledWith({ companyId: null })
+		expect(company.update).toHaveBeenCalledWith({ parent_recruiter_id: 206 })
 	})
 
 	test('Webhook ADD_RECORD flow can create recruiter with company resolved via findOrCreate', async () => {

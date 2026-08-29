@@ -7,10 +7,10 @@
 const RECRUITER_UPDATABLE_FIELDS = ['first_name', 'last_name', 'first_name_furigana', 'last_name_furigana', 'phone', 'email', 'photo', 'date_of_birth', 'active', 'kintone_id']
 
 // Company profile fields that can be updated via API
-const COMPANY_UPDATABLE_FIELDS = ['company_name', 'company_description', 'gallery', 'company_Address', 'established_Date', 'employee_Count', 'business_overview', 'target_audience', 'required_skills', 'welcome_skills', 'work_location', 'work_hours', 'salary', 'benefits', 'selection_process', 'company_video_url', 'tagline', 'company_website', 'company_capital', 'company_revenue', 'company_representative', 'job_title', 'job_description', 'number_of_openings', 'employment_type', 'probation_period', 'employment_period', 'recommended_skills', 'recommended_licenses', 'recommended_other', 'salary_increase', 'bonus', 'allowances', 'holidays_vacation', 'other_notes', 'interview_method', 'japanese_level', 'application_requirements_other', 'retirement_benefit', 'telework_availability', 'housing_availability', 'relocation_support', 'airport_pickup', 'intro_page_thumbnail', 'intro_page_links']
+const COMPANY_UPDATABLE_FIELDS = ['company_name', 'company_description', 'gallery', 'company_Address', 'established_Date', 'employee_Count', 'business_overview', 'target_audience', 'required_skills', 'welcome_skills', 'work_location', 'work_hours', 'salary', 'benefits', 'selection_process', 'company_video_url', 'tagline', 'company_website', 'company_capital', 'company_revenue', 'company_representative', 'job_title', 'job_description', 'number_of_openings', 'employment_type', 'probation_period', 'employment_period', 'recommended_skills', 'recommended_licenses', 'recommended_other', 'salary_increase', 'bonus', 'allowances', 'holidays_vacation', 'other_notes', 'interview_method', 'japanese_level', 'application_requirements_other', 'retirement_benefit', 'telework_availability', 'housing_availability', 'relocation_support', 'airport_pickup', 'intro_page_thumbnail', 'intro_page_links', 'parent_recruiter_id']
 
 // Company fields only Admin may change
-const COMPANY_ADMIN_ONLY_FIELDS = ['company_name', 'isPartner']
+const COMPANY_ADMIN_ONLY_FIELDS = ['company_name', 'isPartner', 'parent_recruiter_id']
 
 /**
  * Picks only the allowed keys (and only ones actually present) from a body.
