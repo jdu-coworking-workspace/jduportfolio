@@ -6,8 +6,6 @@ const RecruiterService = require('../src/services/recruiterService')
 const CompanyService = require('../src/services/companyService')
 const KintoneService = require('../src/services/kintoneService')
 const { toKintoneRecord, extractKintoneId } = require('../src/utils/recruiterKintoneMapper')
-const { validateRecruiterCreation } = require('../src/middlewares/recruiter-validation')
-const { validateCompanyUpdate } = require('../src/middlewares/company-validation')
 
 test('1. Mapper: toKintoneRecord with and without company', () => {
 	const withCompany = toKintoneRecord({ email: 'a@b.com', first_name: 'John', last_name: 'Doe', phone: '123456789' }, { company_name: 'Test Corp' })
@@ -16,10 +14,64 @@ test('1. Mapper: toKintoneRecord with and without company', () => {
 
 	const withoutCompany = toKintoneRecord({ email: 'solo@b.com', first_name: 'Solo', last_name: 'User' }, null)
 	assert.equal(withoutCompany.recruiterEmail.value, 'solo@b.com')
-	assert.equal(withoutCompany.recruiterCompany, undefined)
+	// When no company, mapper sets '-' placeholder so Kintone required validation passes
+	assert.equal(withoutCompany.recruiterCompany.value, '-')
 })
 
-test('2. CompanyService: updateCompany parent_recruiter_id validation', async () => {
+test('2. CompanyService: getCompanyById returns recruiters with isParent boolean', async () => {
+	const origFindByPk = Company.findByPk
+	try {
+		const mockCompany = {
+			id: 10,
+			company_name: 'ACME',
+			parent_recruiter_id: 1,
+			recruiters: [
+				{ id: 1, first_name: 'Taro', password: 'hash' },
+				{ id: 2, first_name: 'Jiro', password: 'hash' },
+			],
+		}
+		Company.findByPk = async () => mockCompany
+
+		const company = await CompanyService.getCompanyById(10)
+		assert.equal(company.parent_recruiter_id, 1)
+		assert.equal(company.recruiters[0].isParent, true)
+		assert.equal(company.recruiters[0].id, 1)
+		assert.equal(company.recruiters[1].isParent, false)
+		assert.equal(company.recruiters[1].id, 2)
+	} finally {
+		Company.findByPk = origFindByPk
+	}
+})
+
+test('3. RecruiterService: getRecruiterById returns isParent boolean', async () => {
+	const origFindOne = Recruiter.findOne
+	try {
+		const mockRecruiter = {
+			id: 5,
+			first_name: 'Hanako',
+			company: {
+				id: 20,
+				company_name: 'Tokyo Tech',
+				parent_recruiter_id: 5,
+			},
+			toJSON: function () {
+				return {
+					id: 5,
+					first_name: 'Hanako',
+					company: { id: 20, company_name: 'Tokyo Tech', parent_recruiter_id: 5 },
+				}
+			},
+		}
+		Recruiter.findOne = async () => mockRecruiter
+
+		const recruiter = await RecruiterService.getRecruiterById(5, false, true)
+		assert.equal(recruiter.isParent, true)
+	} finally {
+		Recruiter.findOne = origFindOne
+	}
+})
+
+test('4. CompanyService: updateCompany parent_recruiter_id validation', async () => {
 	const origFindByPk = Company.findByPk
 	const origFindOne = Recruiter.findOne
 	const origGetCompById = CompanyService.getCompanyById
@@ -66,7 +118,7 @@ test('2. CompanyService: updateCompany parent_recruiter_id validation', async ()
 	}
 })
 
-test('3. CompanyService: assignRecruiter sets parent_recruiter_id if empty', async () => {
+test('5. CompanyService: assignRecruiter sets parent_recruiter_id if empty', async () => {
 	const company = { id: 15, parent_recruiter_id: null, update: async data => Object.assign(company, data) }
 	const recruiter = { id: 77, update: async data => Object.assign(recruiter, data) }
 
@@ -89,7 +141,7 @@ test('3. CompanyService: assignRecruiter sets parent_recruiter_id if empty', asy
 	}
 })
 
-test('4. CompanyService: unassignRecruiter promotes next remaining recruiter', async () => {
+test('6. CompanyService: unassignRecruiter promotes next remaining recruiter', async () => {
 	const company = { id: 22, parent_recruiter_id: 88, update: async data => Object.assign(company, data) }
 	const recruiter = { id: 88, companyId: 22, update: async data => Object.assign(recruiter, data) }
 	const nextRecruiter = { id: 89, companyId: 22 }
@@ -118,13 +170,16 @@ test('4. CompanyService: unassignRecruiter promotes next remaining recruiter', a
 	}
 })
 
-test('5. RecruiterService: createRecruiterViaWeb with no company', async () => {
+test('7. RecruiterService: createRecruiterViaWeb with no company', async () => {
 	const origCreateRecord = KintoneService.createRecord
 	const origTx = sequelize.transaction
 	const origRecCreate = Recruiter.create
 
 	try {
-		KintoneService.createRecord = async () => ({ id: '9000' })
+		KintoneService.createRecord = async (app, data) => {
+			assert.equal(data.recruiterCompany.value, '-')
+			return { id: '9000' }
+		}
 		sequelize.transaction = async cb => cb({})
 		Recruiter.create = async data => ({
 			id: 111,
@@ -148,7 +203,7 @@ test('5. RecruiterService: createRecruiterViaWeb with no company', async () => {
 	}
 })
 
-test('6. RecruiterService: createRecruiterViaWeb with inline company and parent_recruiter_id', async () => {
+test('8. RecruiterService: createRecruiterViaWeb with inline company and parent_recruiter_id', async () => {
 	const origCreateRecord = KintoneService.createRecord
 	const origTx = sequelize.transaction
 	const origRecCreate = Recruiter.create

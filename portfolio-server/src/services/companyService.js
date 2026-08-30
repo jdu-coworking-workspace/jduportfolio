@@ -8,6 +8,23 @@ const recruitersInclude = {
 	attributes: { exclude: ['password'] },
 }
 
+const formatRecruitersWithParent = companyData => {
+	if (!companyData) return companyData
+	const plain = typeof companyData.toJSON === 'function' ? companyData.toJSON() : { ...companyData }
+	const pId = plain.parent_recruiter_id
+
+	if (Array.isArray(plain.recruiters)) {
+		plain.recruiters = plain.recruiters.map(r => {
+			const recruiterPlain = typeof r.toJSON === 'function' ? r.toJSON() : { ...r }
+			return {
+				...recruiterPlain,
+				isParent: Boolean(pId && recruiterPlain.id === pId),
+			}
+		})
+	}
+	return plain
+}
+
 class CompanyService {
 	/**
 	 * Creates a company (Admin only). company_name must be unique.
@@ -42,11 +59,13 @@ class CompanyService {
 			where.isPartner = String(filter.isPartner) === 'true'
 		}
 
-		return await Company.findAll({
+		const companies = await Company.findAll({
 			where,
 			include: [recruitersInclude],
 			order: [['company_name', 'ASC']],
 		})
+
+		return companies.map(c => formatRecruitersWithParent(c))
 	}
 
 	static async getCompanyById(id) {
@@ -58,7 +77,7 @@ class CompanyService {
 			error.status = 404
 			throw error
 		}
-		return company
+		return formatRecruitersWithParent(company)
 	}
 
 	static async resolveCompanyIdForDetails({ companyId, user }) {
@@ -84,12 +103,16 @@ class CompanyService {
 	static async getCompanyDetails({ companyId, user }) {
 		const resolvedCompanyId = await CompanyService.resolveCompanyIdForDetails({ companyId, user })
 		const company = await CompanyService.getCompanyById(resolvedCompanyId)
-		const plainCompany = company.toJSON()
+		const plainCompany = typeof company.toJSON === 'function' ? company.toJSON() : { ...company }
 		delete plainCompany.isPartner
 
 		const recruiters = (plainCompany.recruiters || []).map(recruiter => {
-			const { password, ...safeRecruiter } = recruiter
-			return safeRecruiter
+			const safe = typeof recruiter.toJSON === 'function' ? recruiter.toJSON() : { ...recruiter }
+			delete safe.password
+			return {
+				...safe,
+				isParent: Boolean(plainCompany.parent_recruiter_id && safe.id === plainCompany.parent_recruiter_id),
+			}
 		})
 		const recruiterIds = recruiters.map(recruiter => recruiter.id).filter(Boolean)
 
@@ -103,7 +126,7 @@ class CompanyService {
 				})
 			: []
 
-		const fileRows = files.map(file => file.toJSON())
+		const fileRows = files.map(file => (typeof file.toJSON === 'function' ? file.toJSON() : file))
 		const totalSize = fileRows.reduce((sum, file) => sum + (file.file_size || 0), 0)
 		const companyPayload = {
 			...plainCompany,

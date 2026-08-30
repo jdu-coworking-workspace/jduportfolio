@@ -38,7 +38,7 @@ class RecruiterService {
 			return company
 		}
 
-		if (!company_name || !String(company_name).trim()) {
+		if (!company_name || !String(company_name).trim() || String(company_name).trim() === '-' || String(company_name).trim() === '未設定') {
 			return null
 		}
 
@@ -126,8 +126,11 @@ class RecruiterService {
 				throw new Error('Kintone did not return a record id')
 			}
 		} catch (error) {
-			console.error('[RECRUITER][createViaWeb] Kintone create failed:', error.message)
-			const wrapped = new Error('Failed to create recruiter in Kintone. Recruiter was not created.')
+			const kintoneMsg = error.response?.data?.message || error.message
+			const kintoneErrors = error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : ''
+			console.error('[RECRUITER][createViaWeb] Kintone create failed:', kintoneMsg, kintoneErrors)
+			const detail = kintoneErrors ? `${kintoneMsg} (${kintoneErrors})` : kintoneMsg
+			const wrapped = new Error(`Failed to create recruiter in Kintone: ${detail}`)
 			wrapped.status = 502
 			wrapped.cause = error
 			throw wrapped
@@ -240,7 +243,11 @@ class RecruiterService {
 				subQuery: false,
 			})
 
-			return recruiters
+			return recruiters.map(r => {
+				const plain = typeof r.toJSON === 'function' ? r.toJSON() : { ...r }
+				plain.isParent = Boolean(plain.company && plain.company.parent_recruiter_id && plain.company.parent_recruiter_id === plain.id)
+				return plain
+			})
 		} catch (error) {
 			console.error('Error in getAllRecruiters service:', error.message, error.stack)
 			// Return empty array instead of throwing to prevent 500 errors
@@ -271,12 +278,15 @@ class RecruiterService {
 				throw new Error('Recruiter not found')
 			}
 
+			const plain = typeof recruiter.toJSON === 'function' ? recruiter.toJSON() : { ...recruiter }
+			plain.isParent = Boolean(plain.company && plain.company.parent_recruiter_id && plain.company.parent_recruiter_id === plain.id)
+
 			// Keep old behavior: isPartner is not exposed in API responses
-			if (recruiter.company) {
-				delete recruiter.company.dataValues.isPartner
+			if (plain.company) {
+				delete plain.company.isPartner
 			}
 
-			return recruiter
+			return plain
 		} catch (error) {
 			throw error
 		}
