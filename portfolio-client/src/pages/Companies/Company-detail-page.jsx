@@ -125,7 +125,7 @@ const CompanyDetailPage = () => {
 				<Typography variant='h5' fontWeight={700} sx={{ flex: 1 }}>
 					{company.company_name}
 				</Typography>
-				{company.isPartner && <Chip label='Hamkor' color='secondary' size='small' />}
+				{company.isPartner && <Chip label={t('partner_chip')} color='secondary' size='small' />}
 			</Stack>
 
 			{canEditCompanyIdentity && (
