@@ -20,19 +20,13 @@ const recruiterPersonalRules = ({ forCreation = false } = {}) => [
 
 /**
  * POST /api/recruiters (Admin only)
- * Creates a personal recruiter account. The admin MUST pick an existing
- * company from a drop-down (companyId). A recruiter cannot exist without a
- * company — company_name/find-or-create is NOT accepted on this endpoint
- * (that path is reserved for the Kintone webhook sync).
+ * Creates a personal recruiter account.
+ * Supports 3 modes:
+ *  1. With existing companyId
+ *  2. With new/inline company (company_name, company_representative, isPartner)
+ *  3. Without company (companyId: null / omitted) — can be attached later
  */
-exports.validateRecruiterCreation = [
-	...recruiterPersonalRules({ forCreation: true }),
-	body('password').notEmpty().withMessage('Password is required'),
-	body('companyId').exists({ checkNull: true }).withMessage('companyId is required — a recruiter must belong to a company').bail().isInt({ min: 1 }).withMessage('companyId must be a valid integer'),
-	// isPartner is admin-controlled at the company level, not here
-	body('isPartner').not().exists().withMessage('isPartner is managed on the company (PUT /api/companies/:id), not on recruiter creation'),
-	handleValidationErrors,
-]
+exports.validateRecruiterCreation = [...recruiterPersonalRules({ forCreation: true }), body('password').notEmpty().withMessage('Password is required'), body('companyId').optional({ nullable: true, checkFalsy: true }).isInt({ min: 1 }).withMessage('companyId must be a valid integer'), body('company_name').optional({ nullable: true, checkFalsy: true }).isString().isLength({ max: 100 }).withMessage('company_name must be a string up to 100 chars'), body('company_representative').optional({ nullable: true, checkFalsy: true }).isString().isLength({ max: 200 }).withMessage('company_representative must be a string'), body('isPartner').optional({ nullable: true }).isBoolean().withMessage('isPartner must be a boolean'), handleValidationErrors]
 
 /**
  * PUT /api/recruiters/:id

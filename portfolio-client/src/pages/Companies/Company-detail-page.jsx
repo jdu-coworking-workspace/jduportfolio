@@ -1,6 +1,8 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import { Alert, Avatar, Box, Button, Chip, CircularProgress, Divider, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemSecondaryAction, ListItemText, Paper, Snackbar, Stack, Switch, TextField, Typography } from '@mui/material'
 import { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -9,7 +11,6 @@ import { UserContext } from '../../contexts/UserContext'
 import { assignRecruiter, getCompany, unassignRecruiter, updateCompany } from '../../lib/api/companies-api'
 import translations from '../../locales/translations'
 import RecruiterAssignDialog from './recruiter-assign-dialog'
-
 const CompanyDetailPage = () => {
 	const { id } = useParams()
 	const navigate = useNavigate()
@@ -61,19 +62,6 @@ const CompanyDetailPage = () => {
 		}
 	}
 
-	const saveProfile = async profileValues => {
-		setSaving(true)
-		try {
-			const data = await updateCompany(id, profileValues)
-			setCompany(data)
-			setToast({ severity: 'success', message: t('updated_company_profile') })
-		} catch (err) {
-			setToast({ severity: 'error', message: err.message })
-		} finally {
-			setSaving(false)
-		}
-	}
-
 	const handleAssign = async recruiterId => {
 		try {
 			const data = await assignRecruiter(id, recruiterId)
@@ -90,6 +78,29 @@ const CompanyDetailPage = () => {
 			const data = await unassignRecruiter(id, recruiterId)
 			setCompany(data)
 			setToast({ severity: 'success', message: t('unassigned_recruiter_from_company') })
+		} catch (err) {
+			setToast({ severity: 'error', message: err.message })
+		}
+	}
+	const parentRecruiterId = company?.parent_recruiter_id ?? company?.primaryRecruiter?.id ?? null
+
+	// YANGI: parent (asosiy) rekruterni tayinlash
+	const handleSetParent = async recruiterId => {
+		try {
+			const data = await updateCompany(id, { parent_recruiter_id: recruiterId })
+			setCompany(data)
+			setToast({ severity: 'success', message: t('set_parent_recruiter') })
+		} catch (err) {
+			setToast({ severity: 'error', message: err.message })
+		}
+	}
+
+	// YANGI: parentlikni olib tashlash
+	const handleRemoveParent = async () => {
+		try {
+			const data = await updateCompany(id, { parent_recruiter_id: null })
+			setCompany(data)
+			setToast({ severity: 'success', message: t('removed_parent_recruiter') })
 		} catch (err) {
 			setToast({ severity: 'error', message: err.message })
 		}
@@ -114,7 +125,7 @@ const CompanyDetailPage = () => {
 				<Typography variant='h5' fontWeight={700} sx={{ flex: 1 }}>
 					{company.company_name}
 				</Typography>
-				{company.isPartner && <Chip label='Hamkor' color='secondary' size='small' />}
+				{company.isPartner && <Chip label={t('partner_chip')} color='secondary' size='small' />}
 			</Stack>
 
 			{canEditCompanyIdentity && (
@@ -153,21 +164,27 @@ const CompanyDetailPage = () => {
 				</Stack>
 				<Divider sx={{ mb: 1 }} />
 				<List>
-					{(company.recruiters || []).map(r => (
-						<ListItem key={r.id} disableGutters>
-							<ListItemAvatar>
-								<Avatar src={r.photo || undefined}>{r.first_name?.[0] || '?'}</Avatar>
-							</ListItemAvatar>
-							<ListItemText primary={`${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email} secondary={r.email} />
-							{canManageCompanies && (
-								<ListItemSecondaryAction>
-									<IconButton edge='end' aria-label='Biriktiruvni olib tashlash' onClick={() => handleUnassign(r.id)}>
-										<PersonRemoveIcon fontSize='small' />
-									</IconButton>
-								</ListItemSecondaryAction>
-							)}
-						</ListItem>
-					))}
+					{(company.recruiters || []).map(r => {
+						const isParent = r.id === parentRecruiterId
+						return (
+							<ListItem key={r.id} disableGutters>
+								<ListItemAvatar>
+									<Avatar src={r.photo || undefined}>{r.first_name?.[0] || '?'}</Avatar>
+								</ListItemAvatar>
+								<ListItemText primary={`${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email} secondary={r.email} />
+								{canManageCompanies && (
+									<ListItemSecondaryAction>
+										<IconButton edge='end' aria-label={isParent ? 'Parentlikni olib tashlash' : 'Parent qilib tayinlash'} onClick={() => (isParent ? handleRemoveParent() : handleSetParent(r.id))}>
+											{isParent ? <StarIcon fontSize='small' sx={{ color: '#fbc02d' }} /> : <StarBorderIcon fontSize='small' />}
+										</IconButton>
+										<IconButton edge='end' aria-label='Biriktiruvni olib tashlash' onClick={() => handleUnassign(r.id)}>
+											<PersonRemoveIcon fontSize='small' />
+										</IconButton>
+									</ListItemSecondaryAction>
+								)}
+							</ListItem>
+						)
+					})}
 					{(!company.recruiters || company.recruiters.length === 0) && (
 						<Typography color='text.secondary' fontSize={14} sx={{ py: 1 }}>
 							{t('no_recruiters_found')}

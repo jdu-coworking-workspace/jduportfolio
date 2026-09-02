@@ -8,6 +8,10 @@ module.exports = (sequelize, DataTypes) => {
 				foreignKey: 'companyId',
 				as: 'recruiters',
 			})
+			Company.belongsTo(models.Recruiter, {
+				foreignKey: 'parent_recruiter_id',
+				as: 'parentRecruiter',
+			})
 		}
 	}
 
@@ -22,6 +26,14 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
 				defaultValue: false,
+			},
+			parent_recruiter_id: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				references: {
+					model: 'Recruiters',
+					key: 'id',
+				},
 			},
 			company_description: { type: DataTypes.TEXT, allowNull: true },
 			gallery: { type: DataTypes.JSONB, allowNull: true },

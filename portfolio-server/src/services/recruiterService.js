@@ -27,7 +27,7 @@ class RecruiterService {
 	 * New companies default to isPartner=false (model default); the Kintone
 	 * webhook never overwrites an admin's isPartner decision.
 	 */
-	static async resolveCompany({ companyId, company_name }, transaction = null) {
+	static async resolveCompany({ companyId, company_name, company_representative, isPartner }, transaction = null) {
 		if (companyId) {
 			const company = await Company.findByPk(companyId, { transaction })
 			if (!company) {
@@ -38,14 +38,22 @@ class RecruiterService {
 			return company
 		}
 
-		if (!company_name || !String(company_name).trim()) {
+		if (!company_name || !String(company_name).trim() || String(company_name).trim() === '-' || String(company_name).trim() === '未設定') {
 			return null
 		}
 
 		const name = String(company_name).trim()
+		const defaults = { company_name: name }
+		if (company_representative !== undefined && company_representative !== null) {
+			defaults.company_representative = String(company_representative).trim()
+		}
+		if (isPartner !== undefined && isPartner !== null) {
+			defaults.isPartner = isPartner === true || isPartner === 'true'
+		}
+
 		const [company] = await Company.findOrCreate({
 			where: { company_name: name },
-			defaults: { company_name: name }, // isPartner defaults to false
+			defaults,
 			transaction,
 		})
 
@@ -58,10 +66,10 @@ class RecruiterService {
 	 * Does NOT push anything back to Kintone (that would create an echo loop).
 	 */
 	static async createRecruiter(recruiterData) {
-		const { companyId, company_name, isPartner, ...personal } = recruiterData
+		const { companyId, company_name, company_representative, isPartner, ...personal } = recruiterData
 
 		return await sequelize.transaction(async transaction => {
-			const company = await RecruiterService.resolveCompany({ companyId, company_name }, transaction)
+			const company = await RecruiterService.resolveCompany({ companyId, company_name, company_representative, isPartner }, transaction)
 
 			const newRecruiter = await Recruiter.create(
 				{
@@ -70,6 +78,11 @@ class RecruiterService {
 				},
 				{ transaction }
 			)
+
+			if (company && !company.parent_recruiter_id) {
+				await Company.update({ parent_recruiter_id: newRecruiter.id }, { where: { id: company.id }, transaction })
+				company.parent_recruiter_id = newRecruiter.id
+			}
 
 			newRecruiter.setDataValue('company', company)
 			return newRecruiter
@@ -80,28 +93,27 @@ class RecruiterService {
 	 * WEB (admin) create — Kintone-first.
 	 *
 	 * Flow:
-	 *   1. Validate the chosen company exists (companyId required).
+	 *   1. Resolve company (optional: companyId or inline company_name).
 	 *   2. Create the record in Kintone first and read back its id.
 	 *   3. Create the DB recruiter with kintone_id already set.
+	 *   4. If company has no parent_recruiter_id, sets the new recruiter as parent.
 	 *
 	 * The echo ADD_RECORD webhook that Kintone fires afterwards is absorbed by
 	 * the idempotency guard in the webhook handler (skips existing kintone_id).
 	 *
-	 * @param {object} recruiterData - personal fields + companyId
+	 * @param {object} recruiterData - personal fields + optional company fields
 	 * @returns {Promise<Recruiter>}
 	 */
 	static async createRecruiterViaWeb(recruiterData) {
 		const KintoneService = require('./kintoneService')
 		const { toKintoneRecord, extractKintoneId } = require('../utils/recruiterKintoneMapper')
 
-		const { companyId, ...personal } = recruiterData
+		const { companyId, company_name, company_representative, isPartner, ...personal } = recruiterData
 
-		// 1. Company must exist (drop-down selection)
-		const company = await RecruiterService.resolveCompany({ companyId })
-		if (!company) {
-			const error = new Error('A valid companyId is required to create a recruiter')
-			error.status = 400
-			throw error
+		// 1. Resolve company if provided (either companyId or company_name or neither)
+		let company = null
+		if (companyId || (company_name && String(company_name).trim())) {
+			company = await RecruiterService.resolveCompany({ companyId, company_name, company_representative, isPartner })
 		}
 
 		// 2. Kintone-first
@@ -114,8 +126,11 @@ class RecruiterService {
 				throw new Error('Kintone did not return a record id')
 			}
 		} catch (error) {
-			console.error('[RECRUITER][createViaWeb] Kintone create failed:', error.message)
-			const wrapped = new Error('Failed to create recruiter in Kintone. Recruiter was not created.')
+			const kintoneMsg = error.response?.data?.message || error.message
+			const kintoneErrors = error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : ''
+			console.error('[RECRUITER][createViaWeb] Kintone create failed:', kintoneMsg, kintoneErrors)
+			const detail = kintoneErrors ? `${kintoneMsg} (${kintoneErrors})` : kintoneMsg
+			const wrapped = new Error(`Failed to create recruiter in Kintone: ${detail}`)
 			wrapped.status = 502
 			wrapped.cause = error
 			throw wrapped
@@ -123,12 +138,27 @@ class RecruiterService {
 
 		// 3. DB create with kintone_id set
 		try {
-			const newRecruiter = await Recruiter.create({
-				...personal,
-				companyId: company.id,
-				kintone_id: String(kintoneId),
+			const newRecruiter = await sequelize.transaction(async transaction => {
+				const created = await Recruiter.create(
+					{
+						...personal,
+						companyId: company ? company.id : null,
+						kintone_id: String(kintoneId),
+					},
+					{ transaction }
+				)
+
+				if (company) {
+					const freshCompany = await Company.findByPk(company.id, { transaction })
+					if (freshCompany && !freshCompany.parent_recruiter_id) {
+						await freshCompany.update({ parent_recruiter_id: created.id }, { transaction })
+						company.parent_recruiter_id = created.id
+					}
+				}
+
+				created.setDataValue('company', company)
+				return created
 			})
-			newRecruiter.setDataValue('company', company)
 			return newRecruiter
 		} catch (error) {
 			// Race: the ADD_RECORD echo webhook may have created the row first.
@@ -213,7 +243,11 @@ class RecruiterService {
 				subQuery: false,
 			})
 
-			return recruiters
+			return recruiters.map(r => {
+				const plain = typeof r.toJSON === 'function' ? r.toJSON() : { ...r }
+				plain.isParent = Boolean(plain.company && plain.company.parent_recruiter_id && plain.company.parent_recruiter_id === plain.id)
+				return plain
+			})
 		} catch (error) {
 			console.error('Error in getAllRecruiters service:', error.message, error.stack)
 			// Return empty array instead of throwing to prevent 500 errors
@@ -244,12 +278,15 @@ class RecruiterService {
 				throw new Error('Recruiter not found')
 			}
 
+			const plain = typeof recruiter.toJSON === 'function' ? recruiter.toJSON() : { ...recruiter }
+			plain.isParent = Boolean(plain.company && plain.company.parent_recruiter_id && plain.company.parent_recruiter_id === plain.id)
+
 			// Keep old behavior: isPartner is not exposed in API responses
-			if (recruiter.company) {
-				delete recruiter.company.dataValues.isPartner
+			if (plain.company) {
+				delete plain.company.isPartner
 			}
 
-			return recruiter
+			return plain
 		} catch (error) {
 			throw error
 		}
@@ -413,7 +450,23 @@ class RecruiterService {
 			}
 		}
 
-		await recruiter.destroy()
+		await sequelize.transaction(async transaction => {
+			if (recruiter.companyId) {
+				const company = await Company.findByPk(recruiter.companyId, { transaction })
+				if (company && company.parent_recruiter_id === recruiter.id) {
+					const nextRecruiter = await Recruiter.findOne({
+						where: {
+							companyId: recruiter.companyId,
+							id: { [Op.ne]: recruiter.id },
+						},
+						order: [['createdAt', 'ASC']],
+						transaction,
+					})
+					await company.update({ parent_recruiter_id: nextRecruiter ? nextRecruiter.id : null }, { transaction })
+				}
+			}
+			await recruiter.destroy({ transaction })
+		})
 		return true
 	}
 
@@ -449,7 +502,26 @@ class RecruiterService {
 	}
 
 	static async deleteRecruiterByKintoneId(kintoneId) {
-		return await Recruiter.destroy({ where: { kintone_id: kintoneId } })
+		const recruiter = await Recruiter.findOne({ where: { kintone_id: kintoneId } })
+		if (!recruiter) return 0
+
+		return await sequelize.transaction(async transaction => {
+			if (recruiter.companyId) {
+				const company = await Company.findByPk(recruiter.companyId, { transaction })
+				if (company && company.parent_recruiter_id === recruiter.id) {
+					const nextRecruiter = await Recruiter.findOne({
+						where: {
+							companyId: recruiter.companyId,
+							id: { [Op.ne]: recruiter.id },
+						},
+						order: [['createdAt', 'ASC']],
+						transaction,
+					})
+					await company.update({ parent_recruiter_id: nextRecruiter ? nextRecruiter.id : null }, { transaction })
+				}
+			}
+			return await recruiter.destroy({ transaction })
+		})
 	}
 
 	/**

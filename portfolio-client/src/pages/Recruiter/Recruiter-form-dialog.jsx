@@ -1,5 +1,5 @@
 import CloseIcon from '@mui/icons-material/Close'
-import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, Stack, TextField, Typography } from '@mui/material'
+import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, IconButton, Stack, Switch, TextField, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -14,22 +14,6 @@ const EMPTY_FORM = {
 	phone: '',
 }
 
-/**
- * Create / edit dialog for recruiters.
- *
- * Create flow (Admin only):
- *   - Requires a company. Either pick an existing one (GET /api/companies)
- *     or create a new one inline (POST /api/companies), then
- *     POST /api/recruiters with the resulting companyId.
- *   - Kintone-first: if creation fails (502), the recruiter is NOT created
- *     and the returned error is shown as-is.
- *
- * Edit flow (self / Admin / Staff):
- *   - Only top-level personal fields are sent (first_name, last_name,
- *     phone, email, password + currentPassword). company_name / isPartner
- *     can never be changed here (400 if attempted), so company is shown
- *     read-only and never submitted.
- */
 const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 	const { language } = useLanguage()
 	const t = key => translations[language][key] || key
@@ -38,13 +22,14 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 	const [form, setForm] = useState(EMPTY_FORM)
 	const [currentPassword, setCurrentPassword] = useState('')
 	const [companies, setCompanies] = useState([])
-	const [companyId, setCompanyId] = useState(null)
+	const [companyId, setCompanyId] = useState(null) // nullable — yangi company yaratilsa null bo'lib qoladi
 	const [isNewCompany, setIsNewCompany] = useState(false)
 	const [newCompanyName, setNewCompanyName] = useState('')
+	const [companyRepresentative, setCompanyRepresentative] = useState('')
+	const [isPartner, setIsPartner] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState('')
 
-	// Company dropdown is only needed when creating a new recruiter
 	useEffect(() => {
 		if (!open || isEdit) return
 		axios
@@ -53,13 +38,14 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 			.catch(() => setCompanies([]))
 	}, [open, isEdit])
 
-	// (Re)initialize form whenever the dialog opens
 	useEffect(() => {
 		if (!open) return
 		setError('')
 		setCurrentPassword('')
 		setIsNewCompany(false)
 		setNewCompanyName('')
+		setCompanyRepresentative('')
+		setIsPartner(false)
 
 		if (isEdit && recruiter) {
 			setForm({
@@ -100,13 +86,15 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 				setError(t('fill_required_fields') || 'Please fill in all required fields')
 				return
 			}
-			if (!isNewCompany && !companyId) {
-				setError(t('select_company') || 'Please select a company')
-				return
-			}
-			if (isNewCompany && !newCompanyName.trim()) {
-				setError(t('company_name_required') || 'Company name is required')
-				return
+			if (isNewCompany) {
+				if (!newCompanyName.trim()) {
+					setError(t('company_name_required') || 'Company name is required')
+					return
+				}
+				if (!companyRepresentative.trim()) {
+					setError(t('company_representative_required') || 'Company representative is required')
+					return
+				}
 			}
 		} else if (!form.first_name || !form.last_name) {
 			setError(t('fill_required_fields') || 'Please fill in all required fields')
@@ -130,7 +118,11 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 			} else {
 				let finalCompanyId = companyId
 				if (isNewCompany) {
-					const companyRes = await axios.post('/api/companies', { company_name: newCompanyName.trim() })
+					const companyRes = await axios.post('/api/companies', {
+						company_name: newCompanyName.trim(),
+						company_representative: companyRepresentative.trim(),
+						isPartner,
+					})
 					finalCompanyId = companyRes.data.id
 				}
 
@@ -140,7 +132,7 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 					first_name: form.first_name,
 					last_name: form.last_name,
 					phone: form.phone,
-					companyId: finalCompanyId,
+					companyId: finalCompanyId, // null bo'lishi mumkin — backend companyId bo'lmasa ham qabul qilishi kerak
 				})
 			}
 
@@ -194,7 +186,7 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 							<Divider textAlign='left'>{t('company') || 'Company'}</Divider>
 							{!isNewCompany ? (
 								<Stack spacing={1}>
-									<Autocomplete options={companies} getOptionLabel={option => option.company_name || ''} isOptionEqualToValue={(option, value) => option.id === value.id} value={companies.find(c => c.id === companyId) || null} onChange={(_, value) => setCompanyId(value ? value.id : null)} renderInput={params => <TextField {...params} label={t('select_company') || 'Select company'} required />} />
+									<Autocomplete options={companies} getOptionLabel={option => option.company_name || ''} isOptionEqualToValue={(option, value) => option.id === value.id} value={companies.find(c => c.id === companyId) || null} onChange={(_, value) => setCompanyId(value ? value.id : null)} renderInput={params => <TextField {...params} label={t('select_company') || 'Select company'} />} />
 									<Button size='small' onClick={() => setIsNewCompany(true)} sx={{ alignSelf: 'flex-start' }}>
 										{t('create_new_company') || '+ Create new company'}
 									</Button>
@@ -202,6 +194,8 @@ const RecruiterFormDialog = ({ open, onClose, onSaved, recruiter }) => {
 							) : (
 								<Stack spacing={1}>
 									<TextField label={t('company_name') || 'Company name'} value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} fullWidth required />
+									<TextField label={t('company_representative') || 'Company representative'} value={companyRepresentative} onChange={e => setCompanyRepresentative(e.target.value)} fullWidth required />
+									<FormControlLabel control={<Switch checked={isPartner} onChange={e => setIsPartner(e.target.checked)} />} label={t('is_partner') || 'Is partner'} />
 									<Button size='small' onClick={() => setIsNewCompany(false)} sx={{ alignSelf: 'flex-start' }}>
 										{t('choose_existing_company') || 'Choose existing company'}
 									</Button>

@@ -34,7 +34,8 @@ const toKintoneRecord = (recruiter, company = null) => {
 	set('recruiterPhone', recruiter.phone)
 
 	const companyName = company?.company_name ?? recruiter.company?.company_name ?? recruiter.company_name
-	set('recruiterCompany', companyName)
+	// Kintone's recruiterCompany field is required in App 245. When no company is attached yet, use '-' placeholder.
+	set('recruiterCompany', companyName && String(companyName).trim() ? String(companyName).trim() : '-')
 
 	return record
 }

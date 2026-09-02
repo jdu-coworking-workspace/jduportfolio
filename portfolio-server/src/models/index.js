@@ -58,6 +58,10 @@ db.Recruiter.belongsTo(db.Company, {
 	foreignKey: 'companyId',
 	as: 'company',
 })
+db.Company.belongsTo(db.Recruiter, {
+	foreignKey: 'parent_recruiter_id',
+	as: 'parentRecruiter',
+})
 
 db.Admin.hasMany(db.News, {
 	foreignKey: 'authorId',

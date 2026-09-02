@@ -8,6 +8,23 @@ const recruitersInclude = {
 	attributes: { exclude: ['password'] },
 }
 
+const formatRecruitersWithParent = companyData => {
+	if (!companyData) return companyData
+	const plain = typeof companyData.toJSON === 'function' ? companyData.toJSON() : { ...companyData }
+	const pId = plain.parent_recruiter_id
+
+	if (Array.isArray(plain.recruiters)) {
+		plain.recruiters = plain.recruiters.map(r => {
+			const recruiterPlain = typeof r.toJSON === 'function' ? r.toJSON() : { ...r }
+			return {
+				...recruiterPlain,
+				isParent: Boolean(pId && recruiterPlain.id === pId),
+			}
+		})
+	}
+	return plain
+}
+
 class CompanyService {
 	/**
 	 * Creates a company (Admin only). company_name must be unique.
@@ -42,11 +59,13 @@ class CompanyService {
 			where.isPartner = String(filter.isPartner) === 'true'
 		}
 
-		return await Company.findAll({
+		const companies = await Company.findAll({
 			where,
 			include: [recruitersInclude],
 			order: [['company_name', 'ASC']],
 		})
+
+		return companies.map(c => formatRecruitersWithParent(c))
 	}
 
 	static async getCompanyById(id) {
@@ -58,7 +77,7 @@ class CompanyService {
 			error.status = 404
 			throw error
 		}
-		return company
+		return formatRecruitersWithParent(company)
 	}
 
 	static async resolveCompanyIdForDetails({ companyId, user }) {
@@ -84,12 +103,16 @@ class CompanyService {
 	static async getCompanyDetails({ companyId, user }) {
 		const resolvedCompanyId = await CompanyService.resolveCompanyIdForDetails({ companyId, user })
 		const company = await CompanyService.getCompanyById(resolvedCompanyId)
-		const plainCompany = company.toJSON()
+		const plainCompany = typeof company.toJSON === 'function' ? company.toJSON() : { ...company }
 		delete plainCompany.isPartner
 
 		const recruiters = (plainCompany.recruiters || []).map(recruiter => {
-			const { password, ...safeRecruiter } = recruiter
-			return safeRecruiter
+			const safe = typeof recruiter.toJSON === 'function' ? recruiter.toJSON() : { ...recruiter }
+			delete safe.password
+			return {
+				...safe,
+				isParent: Boolean(plainCompany.parent_recruiter_id && safe.id === plainCompany.parent_recruiter_id),
+			}
 		})
 		const recruiterIds = recruiters.map(recruiter => recruiter.id).filter(Boolean)
 
@@ -103,18 +126,20 @@ class CompanyService {
 				})
 			: []
 
-		const fileRows = files.map(file => file.toJSON())
+		const fileRows = files.map(file => (typeof file.toJSON === 'function' ? file.toJSON() : file))
 		const totalSize = fileRows.reduce((sum, file) => sum + (file.file_size || 0), 0)
 		const companyPayload = {
 			...plainCompany,
 			recruiters,
 		}
 
+		const primaryRecruiter = recruiters.find(r => r.id === plainCompany.parent_recruiter_id) || recruiters[0] || null
+
 		return {
 			...companyPayload,
 			company: companyPayload,
-			primaryRecruiter: recruiters[0] || null,
-			recruiter: recruiters[0] || null,
+			primaryRecruiter,
+			recruiter: primaryRecruiter,
 			files: fileRows,
 			totalSize,
 			maxSize: 20 * 1024 * 1024,
@@ -123,7 +148,7 @@ class CompanyService {
 
 	/**
 	 * Updates a company profile.
-	 * `isAdmin` unlocks admin-only fields (company_name, isPartner).
+	 * `isAdmin` unlocks admin-only fields (company_name, isPartner, parent_recruiter_id).
 	 */
 	static async updateCompany(id, data, { isAdmin = false } = {}) {
 		const company = await Company.findByPk(id)
@@ -137,6 +162,8 @@ class CompanyService {
 
 		if (!isAdmin) {
 			delete companyData.company_name
+			delete companyData.isPartner
+			delete companyData.parent_recruiter_id
 		} else {
 			if (companyData.company_name && companyData.company_name !== company.company_name) {
 				const duplicate = await Company.findOne({
@@ -151,6 +178,22 @@ class CompanyService {
 			if (data.isPartner !== undefined) {
 				companyData.isPartner = data.isPartner === true
 			}
+			if (data.parent_recruiter_id !== undefined) {
+				if (data.parent_recruiter_id === null || data.parent_recruiter_id === '') {
+					companyData.parent_recruiter_id = null
+				} else {
+					const targetRecruiterId = Number(data.parent_recruiter_id)
+					const cand = await Recruiter.findOne({
+						where: { id: targetRecruiterId, companyId: id },
+					})
+					if (!cand) {
+						const error = new Error('The specified parent recruiter does not belong to this company')
+						error.status = 400
+						throw error
+					}
+					companyData.parent_recruiter_id = targetRecruiterId
+				}
+			}
 		}
 
 		await company.update(companyData)
@@ -162,6 +205,7 @@ class CompanyService {
 	 * (companyId becomes NULL via FK ON DELETE SET NULL).
 	 */
 	static async deleteCompany(id) {
+		await Company.update({ parent_recruiter_id: null }, { where: { id } })
 		const deleted = await Company.destroy({ where: { id } })
 		if (!deleted) {
 			const error = new Error('Company not found')
@@ -173,6 +217,7 @@ class CompanyService {
 
 	/**
 	 * Assigns an existing recruiter to a company (Admin only).
+	 * If the company has no parent_recruiter_id, sets the newly assigned recruiter as parent.
 	 */
 	static async assignRecruiter(companyId, recruiterId) {
 		const company = await Company.findByPk(companyId)
@@ -190,11 +235,18 @@ class CompanyService {
 		}
 
 		await recruiter.update({ companyId: company.id })
+
+		if (!company.parent_recruiter_id) {
+			await company.update({ parent_recruiter_id: recruiter.id })
+		}
+
 		return await CompanyService.getCompanyById(companyId)
 	}
 
 	/**
 	 * Unassigns a recruiter from a company (Admin only).
+	 * If the unassigned recruiter was the parent_recruiter, reassigns parent to the earliest
+	 * remaining recruiter in the company, or null if none remain.
 	 */
 	static async unassignRecruiter(companyId, recruiterId) {
 		const recruiter = await Recruiter.findOne({
@@ -207,6 +259,16 @@ class CompanyService {
 		}
 
 		await recruiter.update({ companyId: null })
+
+		const company = await Company.findByPk(companyId)
+		if (company && company.parent_recruiter_id === Number(recruiterId)) {
+			const remaining = await Recruiter.findOne({
+				where: { companyId },
+				order: [['createdAt', 'ASC']],
+			})
+			await company.update({ parent_recruiter_id: remaining ? remaining.id : null })
+		}
+
 		return await CompanyService.getCompanyById(companyId)
 	}
 }
