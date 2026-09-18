@@ -6,6 +6,11 @@ class NotificationService {
 		return Notification.create(data)
 	}
 
+	static async bulkCreate(records) {
+		if (!Array.isArray(records) || records.length === 0) return []
+		return Notification.bulkCreate(records)
+	}
+
 	// static async getById(id) {
 	//   return Notification.findByPk(id);
 	// }

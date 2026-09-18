@@ -39,7 +39,17 @@ class NewsService {
 				dataToCreate.hashtags = dataToCreate.hashtags.split(',').map(tag => tag.trim())
 			}
 		}
-		return await News.create(dataToCreate)
+		const createdNews = await News.create(dataToCreate)
+
+		if (user.userType === 'Admin') {
+			const NewsNotificationService = require('./newsNotificationService')
+			createdNews.notifyPromise = NewsNotificationService.notifyAdminNewsCreated(createdNews, user).catch(error => {
+				console.error('[NewsNotify] Unhandled error after news create:', error)
+				return { error: error.message }
+			})
+		}
+
+		return createdNews
 	}
 
 	static async updateNews(newsId, updateData, file, user) {

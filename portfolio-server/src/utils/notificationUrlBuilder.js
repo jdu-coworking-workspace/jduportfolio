@@ -29,6 +29,10 @@ function buildNotificationUrl({ type, userRole, studentId, relatedId }) {
 		return `/student/profile/${studentId}/top`
 	}
 
+	if (type === 'news' && relatedId) {
+		return `/news/${relatedId}`
+	}
+
 	// No URL generated for unhandled notification types
 	// If a new notification type should have a URL, add explicit handling above
 	return null
