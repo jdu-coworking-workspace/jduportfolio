@@ -105,8 +105,7 @@ class RecruiterService {
 	 * @returns {Promise<Recruiter>}
 	 */
 	static async createRecruiterViaWeb(recruiterData) {
-		const KintoneService = require('./kintoneService')
-		const { toKintoneRecord, extractKintoneId } = require('../utils/recruiterKintoneMapper')
+		const isProduction = process.env.NODE_ENV === 'production'
 
 		const { companyId, company_name, company_representative, isPartner, ...personal } = recruiterData
 
@@ -116,34 +115,42 @@ class RecruiterService {
 			company = await RecruiterService.resolveCompany({ companyId, company_name, company_representative, isPartner })
 		}
 
-		// 2. Kintone-first
-		let kintoneId
-		try {
-			const kintonePayload = toKintoneRecord(personal, company)
-			const kintoneResp = await KintoneService.createRecord('recruiters', kintonePayload)
-			kintoneId = extractKintoneId(kintoneResp)
-			if (!kintoneId) {
-				throw new Error('Kintone did not return a record id')
+		// 2. Kintone-first (ONLY in production)
+		// In development/staging, skip Kintone to avoid polluting the real Kintone database.
+		let kintoneId = null
+		if (isProduction) {
+			const KintoneService = require('./kintoneService')
+			const { toKintoneRecord, extractKintoneId } = require('../utils/recruiterKintoneMapper')
+			try {
+				const kintonePayload = toKintoneRecord(personal, company)
+				const kintoneResp = await KintoneService.createRecord('recruiters', kintonePayload)
+				kintoneId = extractKintoneId(kintoneResp)
+				if (!kintoneId) {
+					throw new Error('Kintone did not return a record id')
+				}
+			} catch (error) {
+				const kintoneMsg = error.response?.data?.message || error.message
+				const kintoneErrors = error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : ''
+				console.error('[RECRUITER][createViaWeb] Kintone create failed:', kintoneMsg, kintoneErrors)
+				const detail = kintoneErrors ? `${kintoneMsg} (${kintoneErrors})` : kintoneMsg
+				const wrapped = new Error(`Failed to create recruiter in Kintone: ${detail}`)
+				wrapped.status = 502
+				wrapped.cause = error
+				throw wrapped
 			}
-		} catch (error) {
-			const kintoneMsg = error.response?.data?.message || error.message
-			const kintoneErrors = error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : ''
-			console.error('[RECRUITER][createViaWeb] Kintone create failed:', kintoneMsg, kintoneErrors)
-			const detail = kintoneErrors ? `${kintoneMsg} (${kintoneErrors})` : kintoneMsg
-			const wrapped = new Error(`Failed to create recruiter in Kintone: ${detail}`)
-			wrapped.status = 502
-			wrapped.cause = error
-			throw wrapped
+		} else {
+			console.log('[RECRUITER][createViaWeb] Skipping Kintone create — NODE_ENV is not "production".')
 		}
 
-		// 3. DB create with kintone_id set
+		// 3. DB create
 		try {
 			const newRecruiter = await sequelize.transaction(async transaction => {
 				const created = await Recruiter.create(
 					{
 						...personal,
 						companyId: company ? company.id : null,
-						kintone_id: String(kintoneId),
+						// kintone_id is null in dev (no Kintone record was created)
+						...(kintoneId ? { kintone_id: String(kintoneId) } : {}),
 					},
 					{ transaction }
 				)
@@ -161,17 +168,19 @@ class RecruiterService {
 			})
 			return newRecruiter
 		} catch (error) {
-			// Race: the ADD_RECORD echo webhook may have created the row first.
-			// If a recruiter with this kintone_id now exists, treat as success.
-			const raced = await RecruiterService.findByKintoneId(kintoneId)
-			if (raced) {
-				console.warn(`[RECRUITER][createViaWeb] DB row already created by webhook echo for kintone_id ${kintoneId}`)
-				raced.setDataValue('company', company)
-				return raced
+			if (kintoneId) {
+				// Race: the ADD_RECORD echo webhook may have created the row first.
+				// If a recruiter with this kintone_id now exists, treat as success.
+				const raced = await RecruiterService.findByKintoneId(kintoneId)
+				if (raced) {
+					console.warn(`[RECRUITER][createViaWeb] DB row already created by webhook echo for kintone_id ${kintoneId}`)
+					raced.setDataValue('company', company)
+					return raced
+				}
+				// Genuine DB failure after Kintone succeeded → the orphaned Kintone
+				// record will be reconciled into our DB by the next scheduled sync.
+				console.error(`[RECRUITER][createViaWeb] DB create failed after Kintone id ${kintoneId}:`, error.message)
 			}
-			// Genuine DB failure after Kintone succeeded → the orphaned Kintone
-			// record will be reconciled into our DB by the next scheduled sync.
-			console.error(`[RECRUITER][createViaWeb] DB create failed after Kintone id ${kintoneId}:`, error.message)
 			throw error
 		}
 	}
@@ -412,8 +421,13 @@ class RecruiterService {
 	 * Best-effort push of a recruiter's personal fields to Kintone.
 	 * Never throws — a Kintone outage must not block a DB update. The next
 	 * scheduled sync reconciles any drift.
+	 * Only runs in production to prevent polluting Kintone during local development.
 	 */
 	static async pushUpdateToKintone(recruiter) {
+		if (process.env.NODE_ENV !== 'production') {
+			console.log(`[RECRUITER][pushUpdateToKintone] Skipping Kintone update — NODE_ENV is not "production".`)
+			return
+		}
 		try {
 			const KintoneService = require('./kintoneService')
 			const { toKintoneRecord } = require('../utils/recruiterKintoneMapper')
@@ -426,10 +440,11 @@ class RecruiterService {
 	}
 
 	/**
-	 * WEB (admin) delete — Kintone-first.
+	 * WEB (admin) delete — Kintone-first (ONLY in production).
 	 * Removes the Kintone record (best-effort: proceeds even if it is already
 	 * gone), then deletes the DB row. The echo DELETE_RECORD webhook is a
 	 * harmless no-op (row already deleted).
+	 * In development, skips Kintone deletion to avoid affecting real Kintone data.
 	 */
 	static async deleteRecruiterViaWeb(id) {
 		const recruiter = await Recruiter.findByPk(id)
@@ -439,7 +454,7 @@ class RecruiterService {
 			throw error
 		}
 
-		if (recruiter.kintone_id) {
+		if (recruiter.kintone_id && process.env.NODE_ENV === 'production') {
 			try {
 				const KintoneService = require('./kintoneService')
 				await KintoneService.deleteRecord('recruiters', recruiter.kintone_id)
@@ -448,6 +463,8 @@ class RecruiterService {
 				// still remove locally so the admin's intent is honored.
 				console.error(`[RECRUITER][deleteViaWeb] Kintone delete failed for kintone_id ${recruiter.kintone_id}:`, error.message)
 			}
+		} else if (recruiter.kintone_id) {
+			console.log(`[RECRUITER][deleteViaWeb] Skipping Kintone delete — NODE_ENV is not "production".`)
 		}
 
 		await sequelize.transaction(async transaction => {
