@@ -254,6 +254,7 @@ const ADMIN_ONLY_COMPANY_FIELD_KEYS = ['isPartner']
 
 const CompanyProfile = ({ userId = 0 }) => {
 	const role = sessionStorage.getItem('role')
+	const canEdit = role === 'Recruiter' || role === 'Admin'
 	const navigate = useNavigate()
 	const location = useLocation()
 	const { companyId } = location.state || {}
@@ -479,6 +480,21 @@ const CompanyProfile = ({ userId = 0 }) => {
 		if (Array.isArray(data.company_video_url) && processedData.company_video_url.length < data.company_video_url.length) {
 			showAlert(t.invalid_video_urls_removed, 'warning')
 		}
+		if (role === 'Admin') {
+			const adminPayload = { ...processedData }
+			PERSONAL_FIELD_KEYS.forEach(key => delete adminPayload[key])
+			ADMIN_ONLY_COMPANY_FIELD_KEYS.forEach(key => delete adminPayload[key]) // isPartner UI da yo'q
+			delete adminPayload.parent_recruiter_id
+			delete adminPayload.recruiters
+			delete adminPayload.companyId
+			delete adminPayload.id
+			// company_name unique, shuning uchun faqat o'zgargan bo'lsa yuboramiz
+			if (!adminPayload.company_name || adminPayload.company_name === company?.company_name) {
+				delete adminPayload.company_name
+			}
+			await axios.put(`/api/companies/${id}`, adminPayload)
+			return
+		}
 
 		await axios.put(`/api/recruiters/${id}`, requestBody)
 	}
@@ -492,7 +508,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 			await handleUpdate(formData)
 
 			// Refresh data from backend to ensure consistency
-			await fetchCompany()
+			await fetchCompany(id)
 
 			// Exit edit mode
 			setEditMode(false)
@@ -607,7 +623,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	// Warn before leaving page with unsaved changes
 	useEffect(() => {
 		const handleBeforeUnload = e => {
-			if (editMode && role === 'Recruiter') {
+			if (canEdit && editMode) {
 				e.preventDefault()
 				e.returnValue = ''
 			}
@@ -621,7 +637,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 	// Track navigation attempts when in edit mode
 	useEffect(() => {
-		if (!editMode || role !== 'Recruiter') return
+		if (!editMode || !canEdit) return
 
 		let isNavigating = false
 		let navigationBlocked = false
@@ -682,7 +698,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 	// Handle language change with unsaved changes check
 	useEffect(() => {
 		const handleCheckUnsavedChanges = e => {
-			if (editMode && role === 'Recruiter') {
+			if (editMode && canEdit) {
 				// Always show warning in edit mode for Recruiters
 				e.preventDefault()
 				setShowUnsavedWarning(true)
@@ -698,7 +714,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 
 	// Auto-save effect with change detection
 	useEffect(() => {
-		if (editMode && role === 'Recruiter' && editData && company) {
+		if (editMode && canEdit && editData && company) {
 			const hasChanges = hasChangesFromOriginal(editData)
 
 			if (hasChanges) {
@@ -973,10 +989,10 @@ const CompanyProfile = ({ userId = 0 }) => {
 						<Avatar src={company.photo} alt={`${safeStringValue(company.first_name)} ${safeStringValue(company.last_name)}`} className={styles.avatar} />
 					</Box>
 					<Box className={styles.infoContainer}>
-						{(role === 'Recruiter' || editMode || hasContent(company.company_name)) && (
+						{(canEdit || editMode || hasContent(company.company_name)) && (
 							<Box>
 								<Box>
-									{editMode && role === 'Recruiter' ? (
+									{editMode && canEdit ? (
 										<>
 											<CustomTextField value={safeStringValue(editData.company_name)} onChange={e => handleUpdateEditData('company_name', e.target.value)} placeholder={t.company_name} fieldKey='company_name' inputRef={createInputRef('company_name')} maxLength={200} />{' '}
 										</>
@@ -987,7 +1003,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 							</Box>
 						)}
 						<Box className={styles.chipContainer}>
-							{editMode && role === 'Recruiter' ? (
+							{editMode && canEdit ? (
 								<Box className={styles.taglineRow}>
 									<Typography variant='subtitle1' className={styles.headerInlineLabel}>
 										{t.tagline}
@@ -997,7 +1013,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 									</Box>
 								</Box>
 							) : (
-								(role === 'Recruiter' || hasContent(company.tagline)) && (
+								(canEdit || hasContent(company.tagline)) && (
 									<Typography variant='subtitle1' className={styles.nameText}>
 										{safeStringValue(company.tagline)}
 									</Typography>
@@ -1005,7 +1021,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 							)}
 						</Box>
 					</Box>
-					{role === 'Recruiter' && (
+					{canEdit && (
 						<Box className={styles.topControlButtons}>
 							<Box className={styles.buttonsContainer}>
 								{editMode ? (
@@ -1038,7 +1054,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 					)}
 				</Box>
 			</HeaderContentBox>
-
 			{/* Tabs: 会社情報 / 募集概要 */}
 			<Box sx={{ mt: 2, mb: 2 }}>
 				<Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} textColor='primary' indicatorColor='primary'>
@@ -1046,7 +1061,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 					<Tab label={t.job_details} value='recruitment' sx={{ fontWeight: '600' }} />
 				</Tabs>
 			</Box>
-
 			{activeTab === 'company' && (
 				<>
 					{/* Company Information (会社情報) */}
@@ -1120,7 +1134,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 							<Typography variant='subtitle1' className={styles.label}>
 								{t.company_description}
 							</Typography>
-							<Box className={styles.value}>{editMode && role === 'Recruiter' ? <CustomTextField value={safeStringValue(editData.company_description)} onChange={e => handleUpdateEditData('company_description', e.target.value)} multiline minRows={4} placeholder={t.company_description} fieldKey='company_description' inputRef={createInputRef('company_description')} /> : <DisplayText>{safeStringValue(company.company_description)}</DisplayText>}</Box>
+							<Box className={styles.value}>{editMode && canEdit ? <CustomTextField value={safeStringValue(editData.company_description)} onChange={e => handleUpdateEditData('company_description', e.target.value)} multiline minRows={4} placeholder={t.company_description} fieldKey='company_description' inputRef={createInputRef('company_description')} /> : <DisplayText>{safeStringValue(company.company_description)}</DisplayText>}</Box>
 						</Box>
 
 						{/* Business Overview (single field) */}
@@ -1128,7 +1142,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 							<Typography variant='subtitle1' className={styles.label}>
 								{t.business_overview}
 							</Typography>
-							<Box className={styles.value}>{editMode && role === 'Recruiter' ? <CustomTextField value={safeStringValue(editData.business_overview)} onChange={e => handleUpdateEditData('business_overview', e.target.value)} multiline minRows={4} placeholder={t.business_content_placeholder} fieldKey='business_overview' inputRef={createInputRef('business_overview')} maxLength={5000} /> : <DisplayText>{safeStringValue(company.business_overview)}</DisplayText>}</Box>
+							<Box className={styles.value}>{editMode && canEdit ? <CustomTextField value={safeStringValue(editData.business_overview)} onChange={e => handleUpdateEditData('business_overview', e.target.value)} multiline minRows={4} placeholder={t.business_content_placeholder} fieldKey='business_overview' inputRef={createInputRef('business_overview')} maxLength={5000} /> : <DisplayText>{safeStringValue(company.business_overview)}</DisplayText>}</Box>
 						</Box>
 
 						{/* Employee Count (moved to follow after Business Overview) */}
@@ -1421,7 +1435,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 					{(role === 'Recruiter' || role === 'Admin' || role === 'Staff' || role === 'Student') && <RecruiterFiles editMode={editMode} companyId={company.id} currentRole={role} />}
 				</>
 			)}
-
 			{activeTab === 'recruitment' && (
 				<>
 					<ContentBox>
@@ -1636,7 +1649,7 @@ const CompanyProfile = ({ userId = 0 }) => {
 										<Box className={styles.value}>
 											{/* Array-style fields */}
 											{f.type === 'array' ? (
-												editMode && role === 'Recruiter' ? (
+												editMode && canEdit ? (
 													<CustomTextField
 														value={safeArrayRender(editData[f.key]).join('\n')}
 														multiline
@@ -1658,13 +1671,13 @@ const CompanyProfile = ({ userId = 0 }) => {
 												)
 											) : f.type === 'target' ? (
 												/* Special render for 対象: accept comma-separated string, display gracefully */
-												editMode && role === 'Recruiter' ? (
+												editMode && canEdit ? (
 													<CustomTextField value={safeStringValue(editData[f.key])} onChange={e => handleUpdateEditData(f.key, e.target.value)} placeholder={t[`${f.key}_placeholder`] || (typeof f.label === 'string' ? f.label : '')} fieldKey={f.key} inputRef={createInputRef(f.key)} maxLength={f.maxLength} multiline minRows={3} />
 												) : (
 													<DisplayText>{Array.isArray(company[f.key]) ? company[f.key].join('、') : safeStringValue(company[f.key])}</DisplayText>
 												)
 											) : /* Default text fields */
-											editMode && role === 'Recruiter' ? (
+											editMode && canEdit ? (
 												<CustomTextField value={safeStringValue(editData[f.key])} onChange={e => handleUpdateEditData(f.key, e.target.value)} multiline={!!f.multiline} minRows={f.multiline ? 3 : 1} placeholder={t[`${f.key}_placeholder`] || (typeof f.label === 'string' ? f.label : '')} fieldKey={f.key} inputRef={createInputRef(f.key)} maxLength={f.maxLength} />
 											) : (
 												<DisplayText>{safeStringValue(company[f.key])}</DisplayText>
@@ -1676,9 +1689,8 @@ const CompanyProfile = ({ userId = 0 }) => {
 					</ContentBox>
 				</>
 			)}
-
 			{/* Auto-save indicator */}
-			{editMode && role === 'Recruiter' && (
+			{editMode && canEdit && (
 				<Snackbar open={saveStatus.isSaving || !!saveStatus.lastSaved} autoHideDuration={saveStatus.isSaving ? null : 2000} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} onClose={() => setSaveStatus(prev => ({ ...prev, lastSaved: null }))}>
 					<Alert severity='info' icon={saveStatus.isSaving ? <SaveIcon /> : <SaveIcon />} sx={{ alignItems: 'center' }}>
 						{saveStatus.isSaving ? t.savingChanges || 'Saving...' : t.changesSaved || 'Changes saved'}
@@ -1686,7 +1698,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 					</Alert>
 				</Snackbar>
 			)}
-
 			{/* Recovery dialog */}
 			<Dialog open={showRecoveryDialog} onClose={() => setShowRecoveryDialog(false)}>
 				<DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1710,7 +1721,6 @@ const CompanyProfile = ({ userId = 0 }) => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-
 			{/* Simple Unsaved Changes Dialog */}
 			<Dialog open={showUnsavedDialog} onClose={() => setShowUnsavedDialog(false)}>
 				<DialogTitle>{t.unsaved_changes_title || 'Unsaved Changes'}</DialogTitle>
