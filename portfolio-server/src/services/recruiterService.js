@@ -205,15 +205,10 @@ class RecruiterService {
 
 			const andConditions = []
 
-			// Exclude recruiters of partner companies from the public list.
-			// Recruiters without a company are kept visible.
-			andConditions.push({
-				[Op.or]: [{ '$company.isPartner$': false }, { '$company.id$': null }],
-			})
-
 			// Handle search across recruiter + company columns
 			if (filter.search && String(filter.search).trim() !== '') {
 				const searchValue = String(filter.search).trim()
+
 				const orConditions = [
 					...RECRUITER_SEARCH_COLUMNS.map(column => ({
 						[column]: { [Op.iLike]: `%${searchValue}%` },
@@ -222,21 +217,27 @@ class RecruiterService {
 						[`$company.${column}$`]: { [Op.iLike]: `%${searchValue}%` },
 					})),
 				]
+
 				andConditions.push({ [Op.or]: orConditions })
 			}
 
-			// Handle other filters (recruiter fields directly, company fields via $company.x$)
+			// Handle other filters
 			Object.keys(filter).forEach(key => {
 				if (key !== 'search' && filter[key]) {
 					const columnKey = COMPANY_UPDATABLE_FIELDS.includes(key) || key === 'isPartner' ? `$company.${key}$` : key
+
 					if (Array.isArray(filter[key])) {
-						andConditions.push({ [columnKey]: { [Op.in]: filter[key] } })
+						andConditions.push({
+							[columnKey]: { [Op.in]: filter[key] },
+						})
 					} else if (typeof filter[key] === 'string') {
 						andConditions.push({
 							[columnKey]: { [Op.iLike]: `%${filter[key]}%` },
 						})
 					} else {
-						andConditions.push({ [columnKey]: filter[key] })
+						andConditions.push({
+							[columnKey]: filter[key],
+						})
 					}
 				}
 			})
@@ -244,7 +245,12 @@ class RecruiterService {
 			const recruiters = await Recruiter.findAll({
 				attributes: { exclude: ['password'] },
 				where: { [Op.and]: andConditions },
-				include: [{ ...companyInclude(), attributes: { exclude: ['isPartner'] } }],
+				include: [
+					{
+						...companyInclude(),
+						attributes: { exclude: ['isPartner'] },
+					},
+				],
 				order: [
 					['first_name', 'ASC'],
 					['last_name', 'ASC'],
@@ -254,12 +260,14 @@ class RecruiterService {
 
 			return recruiters.map(r => {
 				const plain = typeof r.toJSON === 'function' ? r.toJSON() : { ...r }
+
 				plain.isParent = Boolean(plain.company && plain.company.parent_recruiter_id && plain.company.parent_recruiter_id === plain.id)
+
 				return plain
 			})
 		} catch (error) {
 			console.error('Error in getAllRecruiters service:', error.message, error.stack)
-			// Return empty array instead of throwing to prevent 500 errors
+
 			return []
 		}
 	}

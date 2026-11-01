@@ -53,17 +53,14 @@ const Recruiter = () => {
 	// Called from the delete_icon column. Table shows its own confirmation
 	// modal ("この採用担当者を削除しますか？") before invoking this.
 	const handleDeleteAction = async id => {
-		const confirmed = window.confirm(t('confirm_delete_recruiter') || 'Are you sure you want to delete this recruiter?')
-
-		if (!confirmed) return
-
 		try {
-			await axios.delete(`/api/recruiters/${id}`)
+			const response = await axios.delete(`/api/recruiters/${id}`)
+
 			setRefreshTrigger(prev => prev + 1)
+
 			toast.success(t('delete_recruiter_success') || 'Recruiter deleted successfully')
 		} catch (error) {
-			console.error('Failed to delete recruiter:', error)
-			alert(t('delete_recruiter_failed') || 'Failed to delete recruiter')
+			alert(error.response?.data?.message || t('delete_recruiter_failed') || 'Failed to delete recruiter')
 		}
 	}
 

@@ -174,7 +174,7 @@ const CompanyDetailPage = () => {
 								<ListItemText primary={`${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email} secondary={r.email} />
 								{canManageCompanies && (
 									<ListItemSecondaryAction>
-										<IconButton edge='end' aria-label={isParent ? 'Parentlikni olib tashlash' : 'Parent qilib tayinlash'} onClick={() => (isParent ? handleRemoveParent() : handleSetParent(r.id))}>
+										<IconButton edge='end' aria-label={isParent ? 'Parentlikni olib tashlash' : 'Parent qilib tayinlash'} onClick={() => (isParent ? handleRemoveParent() : handleSetParent(r.id))} sx={{ mr: 1 }}>
 											{isParent ? <StarIcon fontSize='small' sx={{ color: '#fbc02d' }} /> : <StarBorderIcon fontSize='small' />}
 										</IconButton>
 										<IconButton edge='end' aria-label='Biriktiruvni olib tashlash' onClick={() => handleUnassign(r.id)}>
