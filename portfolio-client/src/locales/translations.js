@@ -1113,7 +1113,7 @@ You must not leave this section as the auto-generated template. You need to rewr
 		hobbies: '趣味',
 		specialSkills: '特技',
 		itSkills: 'ITスキル',
-		otherSkills: 'その他の資格・免許・表彰暦等',
+		otherSkills: 'その他の資格・免許・表彰歴等',
 		// Deliverables translations
 		addDeliverable: '成果物を追加',
 		createDeliverable: '成果物を作成',
