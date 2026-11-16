@@ -26,7 +26,8 @@ class DeliverableController {
 				})
 			}
 
-			const updatedDraft = await DeliverableService.addDeliverable(studentId, req.body, req.files)
+			const versionType = userType === 'student' ? 'draft' : 'pending'
+			const updatedDraft = await DeliverableService.addDeliverable(studentId, req.body, req.files, versionType)
 			res.status(201).json(updatedDraft)
 		} catch (err) {
 			next(err)
@@ -56,7 +57,8 @@ class DeliverableController {
 			}
 
 			const { deliverableId } = req.params
-			const updatedDraft = await DeliverableService.updateDeliverable(studentId, deliverableId, req.body, req.files)
+			const versionType = userType === 'student' ? 'draft' : 'pending'
+			const updatedDraft = await DeliverableService.updateDeliverable(studentId, deliverableId, req.body, req.files, versionType)
 			res.status(200).json(updatedDraft)
 		} catch (err) {
 			next(err)
@@ -86,7 +88,8 @@ class DeliverableController {
 			}
 
 			const { deliverableId } = req.params
-			const updatedDraft = await DeliverableService.removeDeliverable(studentId, deliverableId)
+			const versionType = userType === 'student' ? 'draft' : 'pending'
+			const updatedDraft = await DeliverableService.removeDeliverable(studentId, deliverableId, versionType)
 			res.status(200).json(updatedDraft)
 		} catch (err) {
 			next(err)
