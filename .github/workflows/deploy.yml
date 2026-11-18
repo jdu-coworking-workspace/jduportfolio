@@ -59,7 +59,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Prepare SSH key
         id: ssh-key
@@ -158,9 +158,9 @@ jobs:
           git reset --hard origin/main
 
           echo "=> Install backend dependencies"
-          npm install --include=dev
+          npm install --omit=dev
           cd portfolio-server
-          npm install --include=dev
+          npm install --omit=dev
 
           echo "=> Backup production database before migrations"
           BACKUP_DIR="/home/ec2-user/db_backups"

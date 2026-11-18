@@ -6,7 +6,7 @@
 		"portfolio-server"
 	],
 	"scripts": {
-		"prepare": "husky",
+		"prepare": "husky || true",
 		"format:check": "prettier --check . --ignore-unknown --ignore-path .prettierignore",
 		"format": "prettier --write . --ignore-unknown --ignore-path .prettierignore"
 	},
